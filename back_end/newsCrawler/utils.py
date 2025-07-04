@@ -14,11 +14,7 @@ headers = {
 }
 
 
-def get_chrome_paths(folder_chrome="chrome-win64", folder_driver="chromedriver-win64"):
-    # 設置絕對路徑
-    chrome_binary_path = r"C:\Users\USER\Dropbox\PC\Desktop\chrome\chrome-win64\chrome.exe"
-    chromedriver_path = r"C:\Users\USER\Dropbox\PC\Desktop\chrome\chromedriver-win64\chromedriver.exe"
-    
+def get_chrome_paths(chrome_binary_path=r"C:\Users\USER\Dropbox\PC\Desktop\chrome\chrome-win64\chrome.exe", chromedriver_path=r"C:\Users\USER\Dropbox\PC\Desktop\chrome\chromedriver-win64\chromedriver.exe"):
     return chrome_binary_path, chromedriver_path
 
 def init_steal_driver(USER_AGENT, headless=True):
