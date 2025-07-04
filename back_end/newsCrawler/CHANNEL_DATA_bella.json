@@ -1,0 +1,706 @@
+[
+  {
+    "url": "https://www.ftvnews.com.tw/author/145",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/f248e629-494e-46de-9801-4846a3f46fbe.jpg",
+    "name": "中央社",
+    "type": "中央通訊社",
+    "update_rate": null,
+    "introduce": ""
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/144",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/29f61656-ec7b-434f-ae17-d689bf85e647.jpg",
+    "name": "時局",
+    "type": "網路聲量觀察站",
+    "update_rate": null,
+    "introduce": ""
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/132",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/98eda297-dd4a-4138-a355-9eca768f829c.jpg",
+    "name": "在野法潮",
+    "type": "台北律師公會",
+    "update_rate": null,
+    "introduce": "台北律師公會會刊\n隨時關注憲政、司法、人權等社會公共事務與法律議題。"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/131",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/b985555f-3e00-42be-9474-a5bab39fef26.jpg",
+    "name": "周刊王",
+    "type": "綜合型新聞網站",
+    "update_rate": null,
+    "introduce": "CTWANT為一綜合型新聞網站，由王道旺台媒體股份有限公司於2019年7月創建，涵蓋政治、財經、社會、娛樂、漂亮、生活、國際、影音等八大類別，提供獨家新聞及豐富內容，未來將企劃更多精采專題，讓您一手掌握最新資訊！"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/130",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/e0c5019a-73b4-4b77-bb17-2c0ce5d815b2.jpg",
+    "name": "匯流新聞網",
+    "type": "新聞網站",
+    "update_rate": null,
+    "introduce": "台灣內容型網路新媒體，2016年成立，由資深記者、媒體人及影像工作者組成。"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/129",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/3f62b143-dd29-4b81-8f09-989fa1bad57d.jpg",
+    "name": "Double Pump女子籃球誌",
+    "type": "體育新聞網站",
+    "update_rate": null,
+    "introduce": "最熱血、最專業的女籃粉絲團，帶給你臺灣女籃及世界女籃的第一手消息！"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/128",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/7539fbd1-2f52-4d5d-b10c-a5e24769a3ff.jpg",
+    "name": "菱傳媒",
+    "type": "新聞網站",
+    "update_rate": null,
+    "introduce": "《菱傳媒》是由一群資深媒體工作者組成，秉持對新聞的熱愛與初衷，在新聞報導上只問是非、不問立場、沒有包袱、堅持事實。不受政府、黨派、商業利益以及股東等介入影響。"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/125",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/ed717200-c67b-4a82-b5e7-a417db7e3b4d.jpg",
+    "name": "享民頭條",
+    "type": "新聞網站",
+    "update_rate": null,
+    "introduce": "《享民頭條style》以女性視角為主要切入點，深度探討女性各層面的生活，報導包含時尚、美妝、寵物、兩性、美食、旅遊、潮流等領域，兼具深度與廣度解答女性在生活裡的疑難雜症。"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/123",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/dffc322f-7ae0-4e87-a04e-fc4f55d6b002.jpg",
+    "name": "艾食上",
+    "type": "食譜",
+    "update_rate": null,
+    "introduce": "從平民小吃到星級料理，艾食上幫助你從料理小白變成全民廚神！"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/122",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/fa840f2b-c89b-4df5-a11b-1440db1b9a06.jpg",
+    "name": "WOWSight",
+    "type": "體育新聞網站",
+    "update_rate": null,
+    "introduce": "從運動員角度出發，深度報導運動員的故事。"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/120",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/58896acc-cb90-4e98-bd57-b85ec59a0ece.jpg",
+    "name": "潮健康",
+    "type": "健康新聞網站",
+    "update_rate": null,
+    "introduce": "潮流，是種態度，維持健康的觀念永遠不會過時。潮健康新媒體為華人都會男女打造一個擁抱潮流、享受健康的全新「視」界。隨時追蹤《潮健康》，開啟健康生活的時尚旅程。\nhttps://coolhealth.com.tw/"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/115",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/2342fdb9-63fb-49b8-a568-566f57fa7a1d.jpg",
+    "name": "淡江時報",
+    "type": "淡江時報社",
+    "update_rate": null,
+    "introduce": "一份屬於淡江人的報紙。"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/114",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/b9aa0ef3-281a-463b-bacc-ca1bec213c17.jpg",
+    "name": "桃園電子報",
+    "type": "新聞媒體網站",
+    "update_rate": null,
+    "introduce": "桃園電子報，綜合性新聞網站，報導最多的地方新聞、即時追蹤全國重大新聞事件、時刻關心您在乎的事。"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/113",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/43b62d40-c806-45d8-a82f-e2d612d00090.jpg",
+    "name": "新聞人 NewsPeople",
+    "type": "世新大學新聞人報社",
+    "update_rate": null,
+    "introduce": "《新聞人電子報》是「新聞人報社」旗下的網路新聞發布平台，由新聞人報社數位新聞部負責營運及編採工作，已運作超過10年，報導內容涵蓋校園、社會等資訊，同時也致力於影音新聞甚至直播技術等，是世新大學師生的重要資訊來源，更是一個極具影響力的網路媒體。"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/112",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/537b147e-4364-4a7b-b237-d288e592ce47.jpg",
+    "name": "食力foodNEXT",
+    "type": "食事求實的知識頻道",
+    "update_rate": null,
+    "introduce": ""
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/110",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/452349dc-c100-4993-beb8-dbf037f1ede4.jpg",
+    "name": "Beauty美人圈",
+    "type": "時尚網站",
+    "update_rate": null,
+    "introduce": "美人圈所屬的《BEAUTY美人誌》成立於1994年，是台灣第一本專注於美妝的女性媒體，創刊6年後成立《大美人》！26年來BEAUTY在全台灣女性心中，始終是美妝保養的權威。"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/107",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/2e7af3eb-5cb3-4064-8311-94468e6e74b4.jpg",
+    "name": "黑侍樂讀",
+    "type": "黑侍樂讀",
+    "update_rate": null,
+    "introduce": ""
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/106",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/3bf587b1-c8ee-41a0-9301-391f11f7b60b.jpg",
+    "name": "小七車觀點",
+    "type": "小七車觀點",
+    "update_rate": null,
+    "introduce": ""
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/105",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/ddde9f9d-92fd-4250-9eab-46d57ac1cd08.jpg",
+    "name": "TravelKing旅遊王",
+    "type": "旅遊資訊",
+    "update_rate": null,
+    "introduce": ""
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/104",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/5969aeaf-b042-4c97-9e46-9ac25f8e46ea.jpg",
+    "name": "Golike",
+    "type": "旅遊美食網站資訊",
+    "update_rate": null,
+    "introduce": "Golike for your life.\n吃跟旅行我都愛 Golike\n\n官網：https://golike.tw　　\n\n訂閱 YT 頻道：https://www.youtube.com/@Goliketw　　　　　　　\n\n按讚 FB 專頁：https://www.facebook.com/golike.tw　　　　　　　　\n\n追蹤 IG 專頁：https://www.instagram.com/golike.tw　　　　　　　　　\n\n關注 抖音 專頁：https://www.tiktok.com/@golike.tw"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/103",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/f9578876-a8ed-4691-9a8d-c1542fb10600.jpg",
+    "name": "數位時代",
+    "type": "數位時代",
+    "update_rate": null,
+    "introduce": ""
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/102",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/587888e0-d48f-43c5-9925-d37b3b659702.jpg",
+    "name": "購車趣",
+    "type": "購車趣",
+    "update_rate": null,
+    "introduce": ""
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/100",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/820b236f-0245-4a3f-bec7-e4c608199adc.jpg",
+    "name": "台灣旅行趣",
+    "type": "twSharelife",
+    "update_rate": null,
+    "introduce": ""
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/99",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/97356b1c-f1a2-4be0-86f2-f0e6c871f11a.jpg",
+    "name": "引新聞",
+    "type": "innews",
+    "update_rate": null,
+    "introduce": ""
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/98",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/2b54e639-2b86-460d-a039-9582dafa73c5.jpg",
+    "name": "網路溫度計",
+    "type": "dailyview",
+    "update_rate": null,
+    "introduce": ""
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/97",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/0489314f-edf0-41a6-8324-5f8ebd267283.jpg",
+    "name": "品觀點傳媒",
+    "type": "深度觀點搶先報",
+    "update_rate": null,
+    "introduce": "品觀點帶你品味生活新觀點 不只是單純傳播媒體，更堅持“深度”的傳達，我們致力於建立一個具有品質、品味、品行，值得信任的媒體品牌。聚焦時事議題提供有品、有價值且白色中立之論點，讓觀眾可以從中獲得最真實的訊息。"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/96",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/e3bb5186-1f5d-4707-b2ee-c333987fceb5.jpg",
+    "name": "Tiss玩味食尚",
+    "type": "部落客",
+    "update_rate": null,
+    "introduce": "我是Tiss。育有二女，相差六歲，喜歡吃、喜歡玩、喜歡做菜、喜歡打扮，分享我的生活"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/95",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/a4454f9a-f1f9-4907-b0fd-40539a117b1f.jpg",
+    "name": "小磨坊",
+    "type": "食譜",
+    "update_rate": null,
+    "introduce": "享受嚐新 (Keep trying ; Be enjoy )\n獨特美味(Creating your owntaste is tasty)\n為愛料理(For love we cook)"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/94",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/4880917f-d4e2-4720-b270-3ad997545bf6.jpg",
+    "name": "3cTim哥生活日常",
+    "type": "3C達人",
+    "update_rate": null,
+    "introduce": "想要了解第一手 科技 手機 智能家電 電動車 蘋果 軟體教學小技巧嗎?\n大家好！我是3CTim哥！我會快速分享給你最新資訊：\n最新的手機開箱；3C科技新品開箱；手機小技巧分享；科技趨勢預測"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/93",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/13b6198e-2e3e-4f2b-9855-02ebcdc5accd.jpg",
+    "name": "愛料理",
+    "type": "台灣最大料理生活平台",
+    "update_rate": null,
+    "introduce": "我們深信料理是一件幸福的事，分享食譜則是分享幸福給更多的人。"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/91",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/a1c67279-55b4-4796-a24b-a308af308a5c.jpg",
+    "name": "Cookpad",
+    "type": "全世界最大的烹飪社群",
+    "update_rate": null,
+    "introduce": "由每位熱愛烹飪的使用者透過分享日常食譜和烹飪的美好時光組合而成\n天天享受烹飪趣～Make everyday cooking FUN !!!!"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/88",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/9df95a06-b91e-4806-9fe5-44bad28c1fb1.jpg",
+    "name": "夏洛克 財金密室",
+    "type": "財經專家",
+    "update_rate": null,
+    "introduce": "曾任職外商資產管理、本國金控和外銀資深副總裁。有敏銳的洞察力和豐富的財金資歷，分享獨特趣味的財金故事和觀點。"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/85",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/247f53a1-e091-4705-ba44-8a56e5f1536f.jpg",
+    "name": "NOW健康",
+    "type": "healthmedia",
+    "update_rate": null,
+    "introduce": "健康數位內容第一品牌！《NOW健康》提供全方位醫療保健新知，適用於0到100歲以上。基因與生俱來，體質後天翻轉；打造長壽體質，就從《NOW健康》開始。【更多健康資訊一次滿足！盡在：NOW健康】"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/84",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/4410de36-b826-4cd6-afa6-cb6956f93862.jpg",
+    "name": "四季線上",
+    "type": "4gTV",
+    "update_rate": null,
+    "introduce": ""
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/80",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/d252972a-c7f2-462e-80df-ff151278f27d.jpg",
+    "name": "台灣事實查核中心",
+    "type": "Taiwan FactCheck",
+    "update_rate": null,
+    "introduce": ""
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/78",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/aad2466c-0b32-4131-8053-5de868ed36fe.png",
+    "name": "EnterBox",
+    "type": "3C資訊網",
+    "update_rate": null,
+    "introduce": "EnterBox 從多面向的角度，穿梭於理感之間。深入淺出各項規格數據，分享箱裡箱外的各種面貌，和你一起閱讀科技產品。Enter the Box & Explore more！"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/76",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/94a55f95-1092-4442-8594-cc673877c68c.jpg",
+    "name": "布咕布咕美食小天地～＊",
+    "type": "部落客",
+    "update_rate": null,
+    "introduce": "美食 就像是荒漠中的綠洲 稀少且珍貴難尋。在廣闊的荒漠中，不放棄希望的前進，總會在一片荒蕪裡發現蘊含生命的泉源，靜待在看似渺無生氣的荒漠邊。\n對我而言，食物是療癒人心最直接的方法。"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/75",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/17e0a494-4f2e-461c-8f9e-8a340fbcc3ed.jpg",
+    "name": "算命的說我很愛吃",
+    "type": "部落客",
+    "update_rate": null,
+    "introduce": "旅行，沒有理由，就是想去，想離天空近一點：旅行，談上夢想可能太偉大，想做的事情還比喻得差不多。\n吃我想吃｜說我想說，算命的說我很愛吃\nIG：https://instagram.com/master_food_diary\nFB：https://m.facebook.com/MASTER.FOOD.DIARY/\n部落格：www.masterpon.com"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/73",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/6d493414-0450-444b-81ff-7aa5183556fb.jpg",
+    "name": "漫遊者文化 AzothBooks",
+    "type": "大雁出版基地",
+    "update_rate": null,
+    "introduce": "漫遊，一種新的路上觀察學。 希望在出版中找到新的閱讀形式和新風景。 但或許，只是找到了想與別人分享的書。"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/66",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/d4920284-abe6-46ec-b624-754c1ce9358e.png",
+    "name": "Zoetis 寵物健康網",
+    "type": "全球第一動物保健品公司",
+    "update_rate": null,
+    "introduce": "致力服務世界各地的獸醫師、獸醫專業人員與畜牧業者，照護與飼養和我們的生活息息相關的寵物與經濟動物。"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/65",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/1efb7c7a-31d5-45f5-b064-17777b7d3771.jpg",
+    "name": "晨星寵物網",
+    "type": "全台灣最大最專業寵物書籍出版",
+    "update_rate": null,
+    "introduce": "愛牠，就要保護牠，照顧牠一生終老，這是我們的約定，也是我們的責任！"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/62",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/99312e2d-341b-40a3-bc8b-6e04a5253134.jpg",
+    "name": "健康醫療網",
+    "type": "healthnews",
+    "update_rate": null,
+    "introduce": "健康醫療網透過專業記者編採，與各大入口網站、通訊軟體、新聞平台聯播，提供即時深度資訊內容，可隨時閱覽、吸收最新、最正確衛教訊息。"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/61",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/7185e523-6c01-4f48-a557-79302c04ca84.jpg",
+    "name": "耳道運行式Phantasmagoria",
+    "type": "樂評",
+    "update_rate": null,
+    "introduce": "成立於2014年春的台北，是一群游牧於數位與現實世界的音樂癡迷者，倚著對文學及音樂的狂熱，煉合作一種類型的音樂書寫，遍及音樂評論、實體唱片評論、現場演唱會回顧、人物專訪，以及每年作為重頭戲的年度評選，書寫同時擴及每月選曲發展作為詩與極短篇平台的主題歌單DREFU（追弗）。無偏好音樂類型，只追逐能拓展思考與想像的聲音世界。"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/60",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/674e2cc8-0211-4269-8ff8-d55b26ee4c33.png",
+    "name": "LnB信用市集",
+    "type": "P2P網路借貸平台",
+    "update_rate": null,
+    "introduce": "LnB信用市集，以人與人間的信任為基礎，再進一步把信任透過獨家的核心FinTech技術，轉為有價的信用，讓放款人(Lender)升級成主動獲利的投資人，讓借款人(borrower)成為重視信用的申貸人，雙方在這個【市集】裡找到彼此，共同創造出不只是金錢財富，更囊括無形的信用資產。"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/59",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/68ab9d2f-a29d-42ff-913d-6c23c73a0210.jpg",
+    "name": "原創屋劇團",
+    "type": "台灣舞台劇團",
+    "update_rate": null,
+    "introduce": "『堅持台灣原創．走出自己的路』致力將台灣精神融入創作，堅持原創文本之撰寫，並希望培育新人來製作展演舞台劇。\n▲獲得獎項▲\n2005年兩廳院藝術競技廣場-入圍決選 (創團前身作)\n2006年第五屆台新藝術獎提名(創團作-惡了)\n2008年第一屆台北藝穗節 (最佳藝穗獎)\n2012年新北市動漫畫原作劇本-動畫電影劇本 (首獎/狗比)"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/58",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/822a8139-1ba6-4a79-b7a6-123b7dc6ba70.png",
+    "name": "工商好朋友",
+    "type": "報馬仔",
+    "update_rate": null,
+    "introduce": ""
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/57",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/93f04643-dfc2-4ed2-a42a-d2b795b66634.jpg",
+    "name": "電影初心者",
+    "type": "非常主觀的堆砌文字",
+    "update_rate": null,
+    "introduce": ""
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/56",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/d284b697-3b70-41ef-8f35-ab04f7feea4c.jpg",
+    "name": "王祥維",
+    "type": "民視新聞 專題記者",
+    "update_rate": null,
+    "introduce": ""
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/54",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/28d5d941-cbbd-4bb9-a9f3-6fb7af7d6d06.jpg",
+    "name": "憤青看電影",
+    "type": "不專業影評人",
+    "update_rate": null,
+    "introduce": ""
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/53",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/0efa5e46-3866-4ae2-96fe-c85d03694725.jpg",
+    "name": "不文藝小清新",
+    "type": "路過支援的寫手",
+    "update_rate": null,
+    "introduce": "電影、書籍、電玩、香氛～想到什麼寫什麼"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/52",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/a249ab83-11d5-41b3-a74d-a775426cb8e5.jpg",
+    "name": "電影包裝者",
+    "type": "努力成為資深影評的編輯",
+    "update_rate": null,
+    "introduce": "哭過笑過後別忘記電影存在的意義"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/51",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/9ff399db-6552-4cd7-a5a8-dede1e9dec32.jpg",
+    "name": "台灣好新聞",
+    "type": "在地媒體",
+    "update_rate": null,
+    "introduce": "從在地出發，\n關心跟你有關的新聞。\n\n更多台灣好新聞：\nhttps://www.taiwanhot.net/"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/50",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/83e86a99-2d7f-42c8-869e-e58c443589df.jpg",
+    "name": "旅人食通信",
+    "type": "附食材情報誌",
+    "update_rate": null,
+    "introduce": "《旅人食通信》是一本「附食材情報誌」：拿到刊物的同時，也會收到一份食材。我們從「食材」出發，以「旅人」的眼光細心觀察，走入產地，尋找被忽略的家鄉之美。每一期，以一樣當季食材作為主題，由生產者的人生故事，步步帶出食材知識、趣味專題、產地風土，以及簡單上手的主題食譜；讓《旅人食通信》成為你的在地嚮導，以食材背後的點滴為風景，帶你由「食」認識家鄉與產地之美。\n\n購買連結：\nhttps://www.taaze.tw/sing.html?pid=21100028872"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/49",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/6ca86ff0-924d-4ee0-895e-6c7196d7275d.jpg",
+    "name": "旅行酒吧 Travel98",
+    "type": "日本旅行者最便利的資訊平台",
+    "update_rate": null,
+    "introduce": "我們希望提供一個資訊平台，讓欲前往日本旅行者，能取得所需資訊，從買機票、訂飯店到行程安排都可以輕鬆完成。更希望部落客與日本旅遊相關的優質照片文章，能透過平台的分享，被更多人看見。旅行酒吧的logo，直看是一杯啤酒，橫看則是一個行李箱，在分享與旅行之間，感受生活。在旅行酒吧裡，花幾杯啤酒的時間，討論景點安排行程；走出酒吧，整理行囊，旅行隨時出發。旅行酒吧，為旅行乾杯！"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/48",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/bdbbf49e-6147-4ac7-9347-3029790ff6d8.jpg",
+    "name": "麥兜小米",
+    "type": "3C達人",
+    "update_rate": null,
+    "introduce": "麥兜小米，喜歡自稱為不知名部落格，流浪作家，現職小小IT工程師，熱愛手機、筆記型電腦、電腦周邊和電玩……等各種3C產品，喜歡於論壇上發表3C產品的測試文、心得和教學文章，亦於各大熱門討論區解答使用者的疑惑與相互討論。\n著有《iPad HD App終極玩樂特輯》和《高手過招！iPhone口袋軟體TOP 500》……等9本書籍。FashionGuide 2015 FG超級部落客3C王、並入圍痞客幫兩屆金典賞年度最佳數位生活類獎。"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/47",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/debe5806-476d-416e-803a-fc6b74866c60.png",
+    "name": "研之有物",
+    "type": "科普網站",
+    "update_rate": null,
+    "introduce": "研之有物，取諧音自「言之有物」，出處為《周易·家人》：「君子以言有物而行有恆」。希望每篇科普/人文文章，都是推進生活邁向永續的動力。"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/46",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/b6cd89bd-2887-45b2-9ec4-3dc1b6299a6e.jpg",
+    "name": "Wu Talk！ 台南在地誌",
+    "type": "在地雜誌",
+    "update_rate": null,
+    "introduce": "Wu Talk！台南在地誌，為延續《挖客台南》，整合相關資源所重新發行之線上雜誌，主要內容為介紹台南在地的小店、旅行、人文、文化等相關的在地旅行誌！"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/45",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/5beadd8f-e4d5-482e-add9-5d3b1bdda72c.png",
+    "name": "新零售時代",
+    "type": "New Retail Times",
+    "update_rate": null,
+    "introduce": "有別傳統的新零售時代，以實體門店、電子商務、內容行銷、行動網路為線上線下互通的渠道，實現商品、會員、交易、行銷等數據的共融，並以「人」為核心，向顧客提供多元體驗。"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/43",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/78357e23-015c-4c8f-8a3d-95e5456c5012.jpg",
+    "name": "劉燕美",
+    "type": "民視新聞 專題記者",
+    "update_rate": null,
+    "introduce": "做專題新聞常常有種狗吠火車的無奈，然而，每當採訪到堅持善念的人，又會有種久旱逢霖的甦醒，期待時間的醱酵，能換來一點點好的轉變。"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/42",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/69e7a126-59bd-4017-b8a7-1c540b0b5423.jpg",
+    "name": "萬真彣",
+    "type": "民視新聞 專題記者",
+    "update_rate": null,
+    "introduce": "給觀眾的話：大嘆「社會怎麼了？」的同時，別忘了，你我都是社會的一分子。\n自我期許：感謝每一個故事，讓我改好自己的人生。"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/41",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/4800a354-49d1-4266-986a-c7a945356267.jpg",
+    "name": "沈雅雯",
+    "type": "民視新聞 專題記者",
+    "update_rate": null,
+    "introduce": "給觀眾的話：民視異言堂努力挖掘真相、追求社會公平正義，也盼觀眾支持。\n自我期許：盡力做好每一則報導，永遠當真相的保衛者。"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/39",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/464e3e66-5ab5-40ec-9ed5-75d02ea7f4b8.jpg",
+    "name": "黃建璋",
+    "type": "民視新聞 專題記者",
+    "update_rate": null,
+    "introduce": "給觀眾的話：世界這麼大，和你一起看見台灣。\n自我期許：用雙眼見證世界，以鏡頭理解真相"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/38",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/ed8a72d1-6638-4df6-8a76-cf8b1ee40545.jpg",
+    "name": "蘇晟維",
+    "type": "民視新聞 文字記者",
+    "update_rate": null,
+    "introduce": "七年級中段班，從小看電視新聞長大，新聞界小菜鳥，目前主跑北市社會，期許自己有朝一日，也能成為一名觀察獨到的記者。"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/37",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/ae8f1dfe-cfae-496b-ad06-b7923df2108b.jpg",
+    "name": "人物誌",
+    "type": "persona",
+    "update_rate": null,
+    "introduce": "以各領域具有影響力、足以作為典範學習之人物為本，錄誌其人生故事及心路歷程，表彰不凡精神，傳承世代思維希冀。\n\n讓讀者在字裡行間中，獲得人生階段遭遇困境時所需的醍醐智識與堅韌勇氣，亦期許讀者能透過閱讀來自各方的真實故事映照自身，覺察本我尋回自信快樂的初心。"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/36",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/f1f55aeb-50e1-45ef-a9e1-e505d2ec40f8.jpg",
+    "name": "南亞觀察South Asia Watch",
+    "type": "南亞資訊平台",
+    "update_rate": null,
+    "introduce": "《南亞觀察》是紮根台灣、放眼南界的南亞研究資訊平台，以不同形式的報導和多元化的題材，建立具備台灣觀點與南亞觀點的南亞知識資料庫。"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/35",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/b64a66d8-3c10-4812-88a5-12fc1a9cb7a1.jpg",
+    "name": "Chris香水評論報台",
+    "type": "香氛精品相關評論",
+    "update_rate": null,
+    "introduce": ""
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/33",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/e81cb80d-0ca6-4be7-b722-13ba3147dc98.jpg",
+    "name": "科技控本人",
+    "type": "熱愛電子產品的編輯",
+    "update_rate": null,
+    "introduce": "對電子產品有高度熱忱，喜歡嘗試最新的3C產品，就算冒著被科技綁架的風險，也要把最好的3C資訊帶給大家。"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/32",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/d2c797c3-d4da-48f1-9c0a-0f8a2ab3e293.jpg",
+    "name": "MUZIK AIR",
+    "type": "古典音樂雜誌",
+    "update_rate": null,
+    "introduce": ""
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/31",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/712011b3-fa99-40a5-b052-0a854e083ba5.jpg",
+    "name": "俏媽咪玩3C",
+    "type": "3C部落客",
+    "update_rate": null,
+    "introduce": "誰說 3C 產品一定很難懂？我是「俏媽咪玩3C」的「球球」，曾獲痞客邦金點賞十大 3C 部落客，喜歡把玩各種科技產品與家電，快來跟著我一起用女生的角度來看資訊 3C 吧！"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/30",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/3fcb0b84-aa43-401f-a193-d17d6a460d4d.jpg",
+    "name": "就是愛寵物",
+    "type": "專為喜愛動物的人所設的寵物社群網站",
+    "update_rate": null,
+    "introduce": "不只是貓狗，更關心所有動物，我們提供最新的寵物訊息，有歡笑，有淚水，有健康，有奇蹟，喜歡寵物的您一定不能錯過"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/29",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/96ee7674-b0f2-4151-aff9-533095c0864b.png",
+    "name": "寵物の優",
+    "type": "致力於提供所有動物安全與快樂的生活",
+    "update_rate": null,
+    "introduce": "知識平台、健康食譜、寵物用品、認養資訊、社會企業"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/27",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/4b0d6c5f-b979-419e-814d-148fd4dbefa4.png",
+    "name": "宅宅新聞",
+    "type": "卡卡洛普",
+    "update_rate": null,
+    "introduce": "每天提供最新鮮最有梗的宅相關內容，動漫、正妹、電影、遊戲等各種類最新的新聞或當下最流行的夯話題，絕對不容錯過，趕快進來補腦吧！"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/25",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/c0772e40-03e3-4751-9f8b-2254440bc194.jpg",
+    "name": "美麗佳人Marie Claire",
+    "type": "Think Smart, Look Amazing",
+    "update_rate": null,
+    "introduce": ""
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/24",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/2f85a81a-cad8-451d-bf43-3a90c76c983b.jpg",
+    "name": "BeautiMode創意生活風格網",
+    "type": "與你一起發掘美的更多可能",
+    "update_rate": null,
+    "introduce": ""
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/22",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/e8edb113-40ec-43cb-a14f-b7906bb0c5e8.jpg",
+    "name": "Esquire君子雜誌",
+    "type": "男性時尚生活情報",
+    "update_rate": null,
+    "introduce": ""
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/21",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/9eeefc34-8fbd-41dc-bd76-6c2472b3b097.png",
+    "name": "珠寶商情雜誌",
+    "type": "珠寶相關訊息知識",
+    "update_rate": null,
+    "introduce": ""
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/20",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/045c8a9c-4d52-48cb-af82-1ec93691a482.jpg",
+    "name": "zero zero妳好你好生活誌",
+    "type": "綠色生活雜誌",
+    "update_rate": null,
+    "introduce": "你好，我好，地球共好。zero zero團隊以好回收，好生活為信念，提倡零廢棄、零浪費、全循環的新生活運動。我們期望用輕鬆、愉悅又有趣的方式推廣環保觀念，以創新、智慧的工具解決環境問題，為下個世代找到明日的解答。\nzero zero妳好你好生活誌：\nhttps://blog.zerozero.com.tw/\nzero zero回收服務平台：\nhttps://www.zerozero.com.tw/"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/19",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/97014c5f-1b01-43b0-ab6d-566fe499ca49.jpg",
+    "name": "定居在國會的人們",
+    "type": "-- 讓陽光照進來 --",
+    "update_rate": null,
+    "introduce": ""
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/28",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/d1e2af87-dbbe-44cd-86a1-acd66ea5846c.jpg",
+    "name": "愛毛孩",
+    "type": "領養、教育、不棄養。任何生命都值得被尊重。",
+    "update_rate": null,
+    "introduce": "以認養代替購買\n推廣寵物絕育重要觀念\n提倡不打罵人道教育方式\n打造資訊透明化杜絕黑心企業\n鼓勵飼主學習與了解寵物\n促進寵物業界正向發展\n宣導愛是不離不棄\n關心與尊重生命"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/18",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/d61bacae-7637-4507-b3f4-0b90a936d44a.jpg",
+    "name": "法律白話文運動",
+    "type": "法律知識平台",
+    "update_rate": null,
+    "introduce": "成立於2014年，「法律白話文運動」是一群對法律知識普及有熱忱的青年，想要將艱澀的法學知識，透過平白的文字傳達給社會大眾，以拉近法律與大眾的距離，成為法律專業與社會的橋樑──希望以法律理論實務為經、以人性尊嚴關懷為緯，透過書寫，喚醒台灣人的權利意識，並一同寫下屬於台灣社會的法治篇章。"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/14",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/c7fa9f76-b719-4f40-b4cb-730cb63ac62b.png",
+    "name": "好青年荼毒室 - 哲學部",
+    "type": "哲學普及團體",
+    "update_rate": null,
+    "introduce": "目標是把循規蹈矩的好青年帶進哲學的世界。文章有深有淺，古今中外，無所不談。在這裏，一切都可以被質疑、反省和追問。"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/16",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/d835564b-4535-4343-93fd-36cc9703d31f.png",
+    "name": "故事：寫給所有人的歷史",
+    "type": "人文知識新媒體",
+    "update_rate": null,
+    "introduce": "「故事」是由一群喜歡故事的人成立的，目標是透過有趣的、有創意的方式，結合新媒體的運用，讓歷史走進日常生活之中，提供適合所有人閱讀、且值得信賴的知識。我們希望和讀者一起，帶著具有歷史縱深的眼光，重新認識這個世界。 「故事」不是新聞或時事評論網站，但它也不只有無關緊要的陳年往事。我們認為，當人們的腳步越走越快，社會越是顯得喧囂，我們越需要沉靜下來，回顧這世界變化的軌跡。我們相信思索歷史，不只可以理解過去，也能夠將當下看的更透徹，更能夠開啟對於未來的想像！"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/13",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/a8dd25d3-edb1-44a5-b65d-cef34e845c62.png",
+    "name": "黑咖啡聊美劇",
+    "type": "影集交流社群平台",
+    "update_rate": null,
+    "introduce": "蒐集更完善完整的美國影集情報及新聞，分享美劇影集心得及評論，希望能夠建構一個最完善的影集交流社群平台，讓大家都能找到最適合自己觀賞的好劇！"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/11",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/a79c3737-88e4-4315-84c0-3a9c8af8c47f.jpg",
+    "name": "民俗亂彈",
+    "type": "臺灣民俗文化研究平台",
+    "update_rate": null,
+    "introduce": "吃肉吃三層，看戲看亂彈。\n邀請你用民俗之愛，書寫臺灣血肉，閱讀臺灣感情，走找臺灣記憶，使臺灣文化立挺開花。"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/8",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/5bcaf125-1793-4786-8631-d165847ec6e0.jpg",
+    "name": "3C滔客誌",
+    "type": "知名3C線上雜誌",
+    "update_rate": null,
+    "introduce": "全台最大的3C線上雜誌網站。"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/9",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/3ae0c184-22e2-48fb-9b15-b7107c4c4033.png",
+    "name": "法操 FOLLAW",
+    "type": "法操司想傳媒",
+    "update_rate": null,
+    "introduce": "法操是一個司法監督媒體，以檢調問題作為監督重點，揪出台灣大小案件的檢察官繆誤。"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/7",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/2b240777-c982-4082-81ba-964cb459ca3a.png",
+    "name": "癮科技",
+    "type": "知名3C社群網站",
+    "update_rate": null,
+    "introduce": "因為對科技上癮，所以我們天天癮科技。\nhttps://www.cool3c.com/"
+  },
+  {
+    "url": "https://www.ftvnews.com.tw/author/4",
+    "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/6be8deac-246e-4d91-aed1-6e6489a60e3a.png",
+    "name": "毛起來",
+    "type": "可能是台灣最有趣的寵物社群",
+    "update_rate": null,
+    "introduce": "毛起來MaoUP是毛小孩最多采多姿的知識站，用最簡單清楚的圖文訊息，搭配可愛的插畫，傳達給毛爸媽們正確的飼養觀念。\n同時也深入研究寵物健康養護領域，旗下有人氣寵物肌膚養護專家品牌─毛起來洗，以及寵物營養健康食策─毛起來吃。"
+  }
+]

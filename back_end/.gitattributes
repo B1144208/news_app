@@ -1,2 +1,0 @@
-newsCrawler/chrome-win64/* filter=lfs diff=lfs merge=lfs -text
-newsCrawler/chromedriver-win64/* filter=lfs diff=lfs merge=lfs -text

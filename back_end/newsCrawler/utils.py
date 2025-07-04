@@ -14,6 +14,50 @@ headers = {
 }
 
 
+def get_chrome_paths(folder_chrome="chrome-win64", folder_driver="chromedriver-win64"):
+    # 設置絕對路徑
+    chrome_binary_path = r"C:\Users\USER\Dropbox\PC\Desktop\chrome\chrome-win64\chrome.exe"
+    chromedriver_path = r"C:\Users\USER\Dropbox\PC\Desktop\chrome\chromedriver-win64\chromedriver.exe"
+    
+    return chrome_binary_path, chromedriver_path
+
+def init_steal_driver(USER_AGENT, headless=True):
+
+    chrome_binary_path, chromedriver_path = get_chrome_paths()
+
+    options = Options()
+    options.binary_location = chrome_binary_path
+    
+    if headless:
+        options.add_argument("--headless=new")
+    options.add_argument("--log-level=3")       # 只顯示錯誤訊息
+    options.add_argument("--disable-logging")   # 關掉日誌
+    options.add_argument("--disable-gpu")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_argument(f"--user-agent={USER_AGENT}")
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    prefs = {
+        "profile.default_content_setting_values.notifications": 2,
+    }
+    options.add_experimental_option("prefs", prefs)
+    options.add_experimental_option("useAutomationExtension", False)
+
+    service = Service(executable_path=chromedriver_path)
+    driver = webdriver.Chrome(service=service, options=options)
+
+    # 修正 JS 誤寫：navigate → navigator，underfined → undefined
+    driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+        "source": """
+            Object.defineProperty(navigator, 'webdriver', {
+                get: () => undefined
+            })
+        """
+    })
+
+    print("✅ Stealth Chrome 啟動成功")
+    return driver
 
 # 將抓到的html原始碼儲存
 def save_html_source(html_txt, filename="a_temp.html"):
@@ -82,51 +126,3 @@ def normalize_url(BASE_URL: str, href: str, allow_prefixes=["http", "https"]) ->
 
     return href.rstrip("/").lower()
 
-
-def get_chrome_paths(folder_chrome="chrome-win64", folder_driver="chromedriver-win64"):
-    # 取得目前目錄的絕對路徑
-    project_root = os.path.dirname(os.path.abspath(__file__))
-
-    # 設定 Chrome 和 ChromeDriver 的路徑
-    chrome_binary_path = os.path.join(project_root, folder_chrome, "chrome.exe")
-    chromedriver_path = os.path.join(project_root, folder_driver, "chromedriver.exe")
-    return chrome_binary_path, chromedriver_path
-
-
-def init_steal_driver(USER_AGENT, headless=True):
-
-    chrome_binary_path, chromedriver_path = get_chrome_paths()
-
-    options = Options()
-    options.binary_location = chrome_binary_path
-    
-    if headless:
-        options.add_argument("--headless=new")
-    options.add_argument("--log-level=3")       # 只顯示錯誤訊息
-    options.add_argument("--disable-logging")   # 關掉日誌
-    options.add_argument("--disable-gpu")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_argument(f"--user-agent={USER_AGENT}")
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    prefs = {
-        "profile.default_content_setting_values.notifications": 2,
-    }
-    options.add_experimental_option("prefs", prefs)
-    options.add_experimental_option("useAutomationExtension", False)
-
-    service = Service(executable_path=chromedriver_path)
-    driver = webdriver.Chrome(service=service, options=options)
-
-    # 修正 JS 誤寫：navigate → navigator，underfined → undefined
-    driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
-        "source": """
-            Object.defineProperty(navigator, 'webdriver', {
-                get: () => undefined
-            })
-        """
-    })
-
-    print("✅ Stealth Chrome 啟動成功")
-    return driver

@@ -15,16 +15,16 @@ def run():
     # 開始載入首頁
     FTV_Main_url = "https://www.ftvnews.com.tw"
     
-    #while True:
+    """while True:
         # 首頁入口
         #function_news.start_news_collection(FTV_Main_url, driver)
 
         # 專欄作者入口
-        #function_channel.start_channel_collection(FTV_Main_url, "authors", driver)
-
+        function_channel.start_channel_collection(FTV_Main_url, "authors", driver)
+    """
     # 測試 extract_news_urls
     
-    function_news.extract_news_urls(FTV_Main_url, "https://www.ftvnews.com.tw/tag/時尚", "時尚", driver)
+    #function_news.extract_news_urls(FTV_Main_url, "https://www.ftvnews.com.tw/tag/時尚", "時尚", driver)
     
 
     # 測試 get_news_information
@@ -51,18 +51,29 @@ def run():
     """
 
     # 測試 get_channel_information
-    """
+    
     channels = [
+        {
+            "href": "https://www.ftvnews.com.tw/author/9",
+            "tag": "channel"
+        },
+        {
+            "href": "https://www.ftvnews.com.tw/author/7",
+            "tag": "channel"
+        },
+        {
+            "href": "https://www.ftvnews.com.tw/author/4",
+            "tag": "channel"
+        }
+    ]
+    #function_channel.get_channel_information(FTV_Main_url, channels, driver)
+    #print(f"channel_list:\n{channel_list}")
+    
+    """
         {
             "href": "https://www.ftvnews.com.tw/author/87",    # 1頁 channel
             "tag": "channel"
-        }
-        
-    ]
-    channel_list = function_channel.get_channel_information(FTV_Main_url, channels, driver)
-    print(f"channel_list:\n{channel_list}")
-    """
-    """,
+        },
         {
             "href": "https://www.ftvnews.com.tw/author/90",     # 2頁 channel
             "tag": "channel"

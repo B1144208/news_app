@@ -124,7 +124,7 @@ def start_channel_collection(BASE_URL: str, SUB_TAG: str, driver: WebDriver) -> 
         for author in authors:
             a_tag = author.find("a", class_="author")
             href = a_tag.get("href", "")
-            href = f"{BASE_URL}\{href}"
+            href = urljoin(BASE_URL, href)  # fr"{BASE_URL}\{href}"
             name = a_tag.find("div", class_="name").get_text(strip=True)
             job = a_tag.find("div", class_="job").get_text(strip=True)
 
@@ -143,7 +143,7 @@ def start_channel_collection(BASE_URL: str, SUB_TAG: str, driver: WebDriver) -> 
     if not_in_json:
         save_author_data(not_in_json)
     
-    # print(author_url_list)                # 網址格式有問題
+    #print(author_url_list)                # 網址格式有問題
     get_channel_information(BASE_URL, author_url_list, driver)
 
     return author_url_list
@@ -151,20 +151,28 @@ def start_channel_collection(BASE_URL: str, SUB_TAG: str, driver: WebDriver) -> 
 # 擷取 channel 資訊
 def get_channel_information(BASE_URL: str, CHANNELS_URL: list[dict], driver: WebDriver) -> list[dict]:
 
-    channels = []
+    
+    channels_data = utils.load_json("CHANNEL_DATA_bella.json")
+    existing_urls = {item["url"] for item in channels_data if "url" in item}
 
     #driver = change_fake_ua(driver)
-
+    channels = []
     for channel in CHANNELS_URL:
+        
+        
 
         news_url = []
-
+        
         # 擷取 channel 資料
         channel_data = {}
 
         href = channel['href']
         tag = channel['tag']
         
+        # 如果已經有該新聞，則跳過
+        if href in existing_urls:
+            continue
+
         
         driver.get(href)
         WebDriverWait(driver, 10).until(
@@ -180,7 +188,7 @@ def get_channel_information(BASE_URL: str, CHANNELS_URL: list[dict], driver: Web
         introduce = channel.find("div", class_="intro").text.strip()
 
         if tag=='channel':
-            channel_data['url'] = CHANNELS_URL
+            channel_data['url'] = href
             channel_data['img'] = img
             channel_data['name'] = name
             channel_data['type'] = job
@@ -188,10 +196,23 @@ def get_channel_information(BASE_URL: str, CHANNELS_URL: list[dict], driver: Web
             channel_data['introduce'] = introduce
 
             channels.append(channel_data)
+            #print(f"channel_data:\n{channel_data}\n\n")
         else:
             name = "民視新聞網"
+            continue
+        
+        
+        time.sleep(random.uniform(1, 3))
 
+        #print(f"channels:\n{channels}\n\n")
 
+        
+        
+        utils.save_data_to_json(channels, output_file="CHANNEL_DATA_bella.json")
+        
+        
+        
+        """
         # 擷取總頁數
         page_info = soup.find("span", class_="pagiNum")
         if not page_info or "/" not in page_info.text:
@@ -227,8 +248,9 @@ def get_channel_information(BASE_URL: str, CHANNELS_URL: list[dict], driver: Web
 
         # print(f"news_url_list:\n[\n{news_url}\n]\n")
         function_news.get_news_information(news_url, driver, CHANNEL=name)
-
+        """
     utils.save_data_to_json(channels, output_file="CHANNEL_DATA_bella.json")
+    
     return channels
 
 # 載入 json 檔案
