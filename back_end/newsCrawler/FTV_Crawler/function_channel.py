@@ -151,9 +151,13 @@ def start_channel_collection(BASE_URL: str, SUB_TAG: str, driver: WebDriver) -> 
 # 擷取 channel 資訊
 def get_channel_information(BASE_URL: str, CHANNELS_URL: list[dict], driver: WebDriver) -> list[dict]:
 
-    
-    channels_data = utils.load_json("CHANNEL_DATA_bella.json")
-    existing_urls = {item["url"] for item in channels_data if "url" in item}
+    # 載入 CHANNEL_DATA_bella.json
+    #channels_data = utils.load_json("CHANNEL_DATA_bella.json")
+    #existing_urls = {item["url"] for item in channels_data if "url" in item}
+
+    # 載入新聞
+    news_data = utils.load_json("NEWS_DATA_bella.json")
+    existing_urls = {item["url"] for item in news_data if "url" in item}
 
     #driver = change_fake_ua(driver)
     channels = []
@@ -161,7 +165,8 @@ def get_channel_information(BASE_URL: str, CHANNELS_URL: list[dict], driver: Web
         
         
 
-        news_url = []
+        
+        
         
         # 擷取 channel 資料
         channel_data = {}
@@ -169,10 +174,11 @@ def get_channel_information(BASE_URL: str, CHANNELS_URL: list[dict], driver: Web
         href = channel['href']
         tag = channel['tag']
         
-        # 如果已經有該新聞，則跳過
+        """
+        # 如果已經有該新聞台，則跳過
         if href in existing_urls:
             continue
-
+        """
         
         driver.get(href)
         WebDriverWait(driver, 10).until(
@@ -208,11 +214,11 @@ def get_channel_information(BASE_URL: str, CHANNELS_URL: list[dict], driver: Web
 
         
         
-        utils.save_data_to_json(channels, output_file="CHANNEL_DATA_bella.json")
+        #utils.save_data_to_json(channels, output_file="CHANNEL_DATA_bella.json")
         
         
         
-        """
+        
         # 擷取總頁數
         page_info = soup.find("span", class_="pagiNum")
         if not page_info or "/" not in page_info.text:
@@ -227,7 +233,9 @@ def get_channel_information(BASE_URL: str, CHANNELS_URL: list[dict], driver: Web
 
         # 擷取新聞連結
         for page in range(1, total_page + 1):
-            page_url = f"{href}/{str(page)}"
+            news_url = []
+            page_url = fr"{href}/{str(page)}"
+            driver.get(page_url)
 
             WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.CLASS_NAME, "pagiNum"))
@@ -242,14 +250,16 @@ def get_channel_information(BASE_URL: str, CHANNELS_URL: list[dict], driver: Web
                 a_tag = news.find("a", href=True)
                 if(a_tag):
                     url = urljoin(BASE_URL, a_tag.get("href"))
+                    if url in existing_urls:
+                        continue
                     news_url.append(url)
 
             time.sleep(random.uniform(2, 4))
+            function_news.get_news_information(news_url, driver, CHANNEL=name)
 
         # print(f"news_url_list:\n[\n{news_url}\n]\n")
-        function_news.get_news_information(news_url, driver, CHANNEL=name)
-        """
-    utils.save_data_to_json(channels, output_file="CHANNEL_DATA_bella.json")
+        #function_news.get_news_information(news_url, driver, CHANNEL=name)
+    """utils.save_data_to_json(channels, output_file="CHANNEL_DATA_bella.json")"""
     
     return channels
 

@@ -15,13 +15,14 @@ def run():
     # 開始載入首頁
     FTV_Main_url = "https://www.ftvnews.com.tw"
     
-    """while True:
+    while True:
         # 首頁入口
         #function_news.start_news_collection(FTV_Main_url, driver)
 
         # 專欄作者入口
         function_channel.start_channel_collection(FTV_Main_url, "authors", driver)
-    """
+    
+    
     # 測試 extract_news_urls
     
     #function_news.extract_news_urls(FTV_Main_url, "https://www.ftvnews.com.tw/tag/時尚", "時尚", driver)

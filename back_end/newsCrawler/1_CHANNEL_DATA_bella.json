@@ -1,5 +1,13 @@
 [
   {
+    "url": "https://www.ftvnews.com.tw/",
+    "img": "https://cdn.ftvnews.com.tw/client/images/logo.png",
+    "name": "民視新聞台",
+    "type": "民視新聞台",
+    "update_rate": null,
+    "introduce": ""
+  },
+  {
     "url": "https://www.ftvnews.com.tw/author/145",
     "img": "https://cdn.ftvnews.com.tw/manasystem/FileData/Authors/f248e629-494e-46de-9801-4846a3f46fbe.jpg",
     "name": "中央社",

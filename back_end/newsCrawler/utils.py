@@ -55,6 +55,11 @@ def init_steal_driver(USER_AGENT, headless=True):
     print("✅ Stealth Chrome 啟動成功")
     return driver
 
+
+
+
+
+
 # 將抓到的html原始碼儲存
 def save_html_source(html_txt, filename="a_temp.html"):
     with open(filename, "w", encoding="utf-8") as f:
@@ -64,7 +69,6 @@ def save_html_source(html_txt, filename="a_temp.html"):
 # 載入 json 檔案
 def load_json(file_name: str, file_dir: str = os.path.join(os.path.dirname(os.path.abspath(__file__)))) -> list[dict]:
     file_path = urljoin(file_dir, file_name)
-    print(file_path)
     if os.path.exists(file_path):
         with open(file_path, "r", encoding="utf-8") as f:
             try:
@@ -72,6 +76,25 @@ def load_json(file_name: str, file_dir: str = os.path.join(os.path.dirname(os.pa
             except json.JSONDecodeError:
                 return []
     return []
+
+def set_json(file_name: str, set_item: str, file_dir: str = os.path.join(os.path.dirname(os.path.abspath(__file__)))):
+    file_path = urljoin(file_dir, file_name)
+    if os.path.exists(file_path):
+        with open(file_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            set_data = { item[f"{set_item}"] for item in data }
+        
+
+# 判斷 compare_list 是否有在 absolute_list 中
+def compare_list(compare_list, absolute_list) -> list:
+
+    new_list = []
+    for c_list in compare_list:
+        if not c_list in absolute_list:
+            new_list.append(c_list)
+    return new_list
+
+
 
 # 將新聞資料儲存到 JSON
 def save_data_to_json(articles: dict, output_file="output.json", path=os.path.join(os.path.dirname(os.path.abspath(__file__)))):
