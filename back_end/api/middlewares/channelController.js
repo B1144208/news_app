@@ -92,7 +92,7 @@ async function insertChannel(req, res, next) {
 
     const sql = `
         INSERT INTO channel_data (
-            channel_url, 
+            origin_url, 
             image_id, 
             channel_name, 
             channel_type, 
@@ -134,7 +134,59 @@ async function updateChannel(req, res, next) {
 
 // delete
 async function deleteChannel(req, res, next) {
-    const { type, id } = req.params;
+    const id = req.params.id;
+    const has = 'has' in req.query;
+
+    // 檢查 id 是否有效
+    if (!id || isNaN(id)) {
+        let err = new Error('Invalid Number Error');
+        err.desc = 'middlewares-deleteChannel(): Missing or Invalid required fields - channel_id';
+        err.status = 400;
+        return next(err);
+    }
+
+    if ( has ) {
+        let sql = `
+            SELECT channel_id
+            FROM channel_data
+            NATURAL JOIN (
+                SELECT channel_id FROM news_data
+            ) AS used_channel
+            WHERE channel_id=?;
+        `
+        let params = [id]
+        try {
+            let [result] = await pool.query(sql, params);
+            if ( result.length !== 0 ) {
+                return res.apiSuccess({}, "Search Success");
+            }
+        } catch (err) {
+            err.desc = 'middlewares-deleteChannel(): search Channel is already has error';
+            return next(err);
+        }
+    }
+        
+    let sql = `
+        DELETE FROM channel_data 
+        WHERE channel_id = ?
+    `;
+    let params = [ id ]
+    try {
+        let [result] = await pool.query(sql, params);
+
+        // 如果沒有刪除任何資料
+        if (result.affectedRows === 0) {
+            let err = new Error('Channel not found')
+            err.desc = 'middlewares-deleteChannel(): Channel not found';
+            err.status = 404;
+            return next(err);
+        }
+
+        res.apiSuccess( null, 'Delete Success' )
+    } catch (err) {
+        err.desc = 'middlewares-deleteChannel(): database delete error'
+        return next(err)
+    }
     return;
 }
 

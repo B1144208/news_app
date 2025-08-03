@@ -39,8 +39,8 @@ app.use((err, req, res, next) => {
     console.error(err);
 
     // 錯誤訊息插入資料庫
-    const sql = 'INSERT INTO error_logs (error_message, error_description, error_stack, created_at) VALUES (?, ?, ?, ?)';
-    const params = [ err.message, err.desc || null, err.stack, new Date() ];
+    const sql = 'INSERT INTO error_logs (error_message, error_description, error_stack) VALUES (?, ?, ?)';
+    const params = [ err.message, err.desc || null, err.stack ];
     pool.query(sql, params, (dbErr, next) => {
          if (dbErr) {
             console.error('Failed to log error to database:', dbErr);

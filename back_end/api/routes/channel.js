@@ -14,9 +14,7 @@ router.put('/', async (req, res, next) => {
 });
 
 // delete
-router.delete('/', async (req, res, next) => {
-    res.send('This is the delete route');
-});
+router.delete('/:id', deleteChannel);
 
 
 module.exports = router

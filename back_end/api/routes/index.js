@@ -20,11 +20,17 @@ const newsRouter = require('./news')
 const channelRouter = require('./channel')
 const imageRouter = require('./image')
 const groupRouter = require('./group')
+const locationRouter = require('./location')
+const relationRouter = require('./relation')
+const keywordRouter = require('./keyword')
 
 // 使用模組
 router.use('/news', newsRouter)
 router.use('/channel', channelRouter)
 router.use('/image', imageRouter)
 router.use('/group', groupRouter)
+router.use('/location', locationRouter)
+router.use('/relation', relationRouter)
+router.use('/keyword', keywordRouter)
 
 module.exports = router;

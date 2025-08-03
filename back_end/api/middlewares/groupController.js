@@ -172,7 +172,7 @@ async function updateGroup(req, res, next) {
 
 // delete
 async function deleteGroup(req, res, next) {
-    const { type, id } = req.params;
+    const id = req.params.id;
     return;
 }
 

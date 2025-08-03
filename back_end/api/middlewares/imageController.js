@@ -102,6 +102,7 @@ async function updateImage(req, res, next) {
 // delete
 async function deleteImage(req, res, next) {
     const id = req.params.id;
+    const has = 'has' in req.query;
 
     // 檢查 id 是否有效
     if (!id || isNaN(id)) {
@@ -109,6 +110,31 @@ async function deleteImage(req, res, next) {
         err.desc = 'middlewares-deleteImage(): Missing or Invalid required fields - image_id';
         err.status = 400;
         return next(err);
+    }
+
+    // 檢查是否有 news 使用
+    if ( has ) {
+        let sql = `
+            SELECT image_id
+            FROM image_data
+            NATURAL JOIN (
+                SELECT cover_image AS image_id FROM news_data
+                UNION
+                SELECT body_image AS image_id FROM news_body
+            ) AS used_image
+            WHERE image_id=?
+        `;
+        let params = [ id ];
+
+        try {
+            let [result] = await pool.query(sql, params);
+            if( result.length !== 0 ) {
+                return res.apiSuccess({}, "Search Success");
+            }
+        } catch (err) {
+            err.desc = 'middlewares-deleteImage(): search Image is already has error';
+            return next(err);
+        }
     }
 
     let sql = `

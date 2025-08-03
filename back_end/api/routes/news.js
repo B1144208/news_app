@@ -17,5 +17,6 @@ router.put('/', async (req, res, next) => {
 
 // delete
 router.delete('/', deleteNews);
+router.delete('/:id', deleteNews);
 
 module.exports = router

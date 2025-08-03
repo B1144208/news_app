@@ -1,12 +1,12 @@
 const express = require('express')
 const router = express.Router()
-const { searchGroup, insertGroup, updateGroup, deleteGroup } = require('../middlewares/groupController')
+const { searchLocation, insertLocation, updateLocation, deleteLocation } = require('../middlewares/locationController');
 
 // search
-router.get('/', searchGroup);
+router.get('/', searchLocation);
 
 // insert
-router.post('/', insertGroup);
+router.post('/', insertLocation);
 
 // update
 router.put('/', async (req, res, next) => {

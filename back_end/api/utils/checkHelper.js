@@ -1,4 +1,80 @@
 
+async function checkRequireField ( requireFields ) {
+    /*
+    @ Check Require Field
+    @ field, data: necessary raw
+    @ type : number, string, image, array, object
+    @ other: [null]
+    */
+    
+    let errors = [];
+    let newData = [];
+
+    requireFields.map ( fieldObj => {
+        
+        const { field, data, type, other } = fieldObj;
+        
+        // 檢查 必須有 field, data
+        if ( !field || !typeof field === 'string' || !field.trim() === '' ) {
+            errors.push(`Missing 'field'`);
+            return data;
+        }
+
+        // 判斷 type 是否 invalid
+        let validType = false;
+        if ( type ) {
+            switch ( type ){
+                case 'number': 
+                    if ( !(validType = typeof data === 'number') )
+                        errors.push(`${field} must be a number`);
+                    break;
+                case 'string':
+                    if ( !(validType = typeof data === 'string' && data.trim() === '') )
+                        errors.push(`${field} must be a string`);
+                    data = data.trim();
+                    break;
+                case 'image': 
+                    try {
+                        //data = await checkImageFormat ( data )
+                        validType = Boolean(data);
+                        if ( !validType ) {
+                            errors.push(`${field} must be a image`);
+                        }
+                    } catch (err) {
+                        throw err;
+                    }
+                    break;
+                case 'array': 
+                    validType = Array.isArray(data);
+                    if ( !validType ) {
+                        errors.push(`${field} must be a array`);
+                    }
+                    break;
+                case 'object': 
+                    validType = typeof data === 'object';
+                    if ( !validType ) {
+                        errors.push(`${field} must be a object`);
+                    }
+                    break;
+                default:
+                    errors.push(`Valid 'type'`);
+                    break;
+            }
+        }
+
+        const allowNull = other.includes('null');
+        
+
+        //if ( ( allowNull && ( data === undefined || data === null )))
+
+        
+
+
+    });
+
+    
+}
+
 async function checkImageFormat( img ) {
 
     // 若 img 不存在或不是 object，直接回傳 null
@@ -46,5 +122,5 @@ function formatDateTimeForSQL(input) {
 }
 
 
-module.exports = { checkImageFormat, formatDateTimeForSQL };
+module.exports = { checkRequireField, checkImageFormat, formatDateTimeForSQL };
 

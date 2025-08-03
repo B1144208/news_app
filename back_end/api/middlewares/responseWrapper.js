@@ -13,7 +13,7 @@ module.exports = (req, res, next) => {
             success: false,
             message: err.message || 'Unexpected error occurred',
             desc: err.desc || null,
-            statck: err.stacl || null
+            stack: err.stack || null
         })
     };
 
