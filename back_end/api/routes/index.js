@@ -24,6 +24,8 @@ const locationRouter = require('./location')
 const relationRouter = require('./relation')
 const keywordRouter = require('./keyword')
 
+const testRouter = require('./test')
+
 // 使用模組
 router.use('/news', newsRouter)
 router.use('/channel', channelRouter)
@@ -32,5 +34,7 @@ router.use('/group', groupRouter)
 router.use('/location', locationRouter)
 router.use('/relation', relationRouter)
 router.use('/keyword', keywordRouter)
+
+router.use('/test', testRouter)
 
 module.exports = router;

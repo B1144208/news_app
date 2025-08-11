@@ -4,7 +4,18 @@ const { callAndCatchApiSuccess } = require('../utils/fakeHelper');
 // search
 async function searchValue (req, res, next) {
     
-    const type = req.query.type;
+    const type = req.query?.type;
+
+    // 檢查必要欄位 & 格式 - type
+    try {
+        [ type ] = await checkRequireField ([
+            { field: 'type'   , data: type  , type: 'string' }
+        ]);
+    } catch (err) {
+        err.desc = "middlewares-searchValue(): Missing or Invalid required fields";
+        return next(err);
+    }
+
     
     let sql = `
         SELECT * FROM value_adjust
@@ -28,7 +39,20 @@ async function searchValue (req, res, next) {
 
 // insert
 async function insertValue (req, res, next) {
-    return;
+    const { type, value } = req.body ?? {};
+
+    // 檢查必要欄位 & 格式 - type, value
+    try {
+        [ type, value ] = await checkRequireField ([
+            { field: 'type'     , data: type    , type: 'string'    , need: ['non_null'] },
+            { field: 'value'    , data: value   , type: 'number'    , need: ['non_null'] }
+        ]);
+    } catch (err) {
+        err.desc = "middlewares-insertValue(): Missing or Invalid required fields";
+        return next(err);
+    }
+
+
 }
 
 // update
@@ -39,13 +63,15 @@ async function updateValue(req, res, next) {
 // delete
 async function deleteValue(req, res, next) {
 
-    const type = req.params.type;
+    const type = req.params?.type;
 
-    // 檢查 id 是否有效
-    if ( typeof type !== 'string') {
-        let err = new Error('Invalid Data Error');
-        err.desc = 'middlewares-deleteValue(): Missing or Invalid required fields - type';
-        err.status = 400;
+    // 檢查必要欄位 & 格式 - type
+    try {
+        [ type ] = await checkRequireField ([
+            { field: 'type' , data: type    , type: 'string'    , need: ['non_null'] }
+        ]);
+    } catch (err) {
+        err.desc = "middlewares-searchValue(): Missing or Invalid required fields";
         return next(err);
     }
 

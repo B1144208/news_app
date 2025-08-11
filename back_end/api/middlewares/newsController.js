@@ -1,7 +1,7 @@
 const pool = require('../connect_db');
 const { callAndCatchApiSuccess } = require('../utils/fakeHelper');
-const { checkImageFormat, formatDateTimeForSQL, checkRequireField } = require('../utils/checkHelper');
-const { searchChannel, insertChannel, deleteChannel } = require('./channelController');
+const { checkRequireField } = require('../utils/checkHelper');
+const { insertChannel } = require('./channelController');
 const { insertImage, deleteImage } = require('./imageController');
 const { insertGroup } = require('./groupController');
 const { searchLocation } = require('./locationController');
@@ -9,12 +9,37 @@ const { insertRelation, deleteRelation } = require('./relationController');
 
 // search
 async function searchNews(req, res, next) {
+    let id = req.params?.id;
+    let url = req.body?.url;
+
+    // 檢查必要欄位 & 格式 - id, url
+    try {
+        [ id, url ] = await checkRequireField ([
+            { field: 'id'   , data: id  , type: 'number'    , need: ['lth'] },
+            { field: 'url'  , data: url , type: 'string'    , need: ['lth'] }
+        ]);
+    } catch (err) {
+        err.desc = "middlewares-searchNews(): Missing or Invalid required fields";
+        return next(err);
+    }
+
     let sql = `
         SELECT * 
         FROM news_data 
         WHERE 1
     `
     let params = []
+    if ( id ) {
+        sql += `
+            AND news_id=?
+        `
+        params.push( id );
+    } else if ( url ) {
+        sql += `
+            AND origin_url=?
+        `
+        params.push( url );
+    }
     try {
         let [result] = await pool.query(sql, params);
         return res.apiSuccess(result, 'Search Success');
@@ -28,131 +53,50 @@ async function searchNews(req, res, next) {
 async function insertNews(req, res, next) {
     let { url, channel, cover_img, news_title, publish_date, detail, group, location, keyword } = req.body;
 
-    // 檢查必要欄位 & 格式
-    let requireFields = [];
-    requireFields.push(
-        { field: 'url'          , data: url         , type: 'string'    , other: ['null'] },
-        { field: 'channel'      , data: channel     , type: 'string'    , other: ['null'] },
-        { field: 'cover_img'    , data: cover_img   , type: 'image'                       },
-        { field: 'news_title'   , data: news_title  , type: 'string'    , other: ['null'] },
-        { field: 'publish_date' , data: publish_date, type: 'datetime'  , other: ['null'] },
-        { field: 'detail'       , data: detail      , type: 'object'    , other: ['null'] }
-    );
-
-    let result = await checkRequireField ( requireFields );
-    { url, channel, cover_img, news_title, publish_date, detail, group, location, keyword }
-
-
-
-
-    /*let missingFields = [];
-
-    if (!url || typeof url !== 'string' || url.trim() === '') missingFields.push('url');
-    if (!channel || typeof channel !== 'string' || channel.trim() === '') missingFields.push('channel');
-    if (!news_title || typeof news_title !== 'string' || news_title.trim() === '') missingFields.push('news_title');
-    if (!publish_date || typeof publish_date !== 'string' || publish_date.trim() === '') missingFields.push('publish_date');
-    if (!detail) missingFields.push('detail');
-
-    if (missingFields.length > 0) {
-        let err = new Error('Internal Server Error');
-        err.desc = `middlewares-insertNews(): Missing required fields - ${missingFields.join(', ')}`;
-        err.status = 400;
-        return next(err);
-    }*/
-
-    // 檢查 publish_date 格式
-    /*try {
-        publish_date = formatDateTimeForSQL(publish_date);
-    } catch (err) {
-        err.desc = 'middlewares-insertNews(): Invalid Format - publish_date ( must be DATETIME )';
-        err.status = 400
-        return next(err)
-    }*/
-
-    // 檢查 detail 格式
-    /*if (typeof detail !== 'object' || detail === null) {
-        let err = new Error('Invalid Format Error');
-        err.desc = 'middlewares-insertNews(): Invalid Format - detail ( must be object )';
-        err.status = 400
-        return next(err)
-    }*/
-
-    // 檢查 detail 的 text, img 格式
-    let cleanaedDetail = await Promise.all ( detail.map ( async item => {
-        // 跳過空字串
-        if ( typeof item !== 'object' || item === null ) return null;
-
-        // 檢查 text
-        if ( 'text' in item && typeof item.text === 'string' && item.text.trim() !== '') {
-            return { text: item.text.trim() };
-        }
-
-        // 檢查 img
-        if ('img' in item) {
-            let formattedImg  = await checkImageFormat(item.img);
-            if( formattedImg ) {
-                return { img: formattedImg };
+    // 優先檢查 url 是否已經存在
+    try {
+        let fakeReq = {
+            body: {
+                url: url
             }
+        };
+        searchNewsResult = await callAndCatchApiSuccess ( searchNews, fakeReq );
+        if ( searchNewsResult.length === 1 ) {
+            return res.apiSuccess ( {insertId: searchNewsResult[0].news_id}, "Search Success" );
         }
-        return null;
-    }));
-    detail = cleanaedDetail.filter( item => item !== null );
-    if ( detail.length === 0 ) {
-        let err = new Error('Invalid Format Error');
-        err.desc('middlewares-insertNews(): Invalid Format - detail ( error format )')
-        err.status = 400;
+    } catch (err) {
+        err.desc = "middlewares-insertNews(): database search error";
+        return next(err);
     }
 
-    // 檢查 cover_img 格式
-    cover_img = await checkImageFormat(cover_img);
-
-    // req.body 處理
-    url = url.trim();
-    channel = channel.trim();
-    news_title = news_title.trim();
-    publish_date = publish_date.trim();
-    group = ( Array.isArray(group) )
-        ? ( (group.length !== 0)
-            ? (group.map( each_group => {
-                return each_group = ( each_group && typeof each_group === 'string' && each_group.trim() !== '' )
-                ? each_group.trim()
-                : null
-            })).filter( item => item !== null)
-            : [null] )
-        : ( ( group && typeof group === 'string' && group.trim() !== '' )
-            ? [group.trim()]
-            : [null] );
-    if( group.length === 0 ) group = [null];
-
-    location = ( Array.isArray(location) )
-        ? ((location.length !== 0)
-            ? (location.map( each_location => {
-                return each_location = ( each_location && typeof each_location === 'string' && each_location.trim() !== '' )
-                ? each_location.trim()
-                : null
-            })).filter( item => item !== null )
-            : [null])
-        : (( location && typeof location === 'string' && location.trim() !== '' )
-            ? [location.trim()]
-            : [null] );
-    if( location.length === 0 ) location = [null];
-
-    keyword = (Array.isArray(keyword))
-        ? keyword.filter(item => item && typeof item === 'string' && item.trim() !== '').map(item => item.trim())
-        : (keyword && typeof keyword === 'string' && keyword.trim() !== '') 
-            ? [keyword.trim()]
-            : [];
+    // 檢查必要欄位 & 格式
+    let requireFields = [
+        { field: 'url'          , data: url         , type: 'string'    , need: ['non_null'] },
+        { field: 'channel'      , data: channel     , type: 'string'    , need: ['non_null'] },
+        { field: 'cover_img'    , data: cover_img   , type: 'image'     , need: ['lth' ]     },
+        { field: 'news_title'   , data: news_title  , type: 'string'    , need: ['non_null'] },
+        { field: 'publish_date' , data: publish_date, type: 'datetime'  , need: ['non_null'] },
+        { field: 'detail'       , data: detail      , type: 'object'    , need: ['non_null']    , other: ['news_detail'] },
+        { field: 'group'        , data: group       , type: 'array'     , other: ['string_into_array'] },
+        { field: 'location'     , data: location    , type: 'array'     , other: ['string_into_array'] },
+        { field: 'keyword'      , data: keyword     , type: 'array'     , other: ['string_into_array'] }
+    ];
+    try {
+        let result = await checkRequireField ( requireFields );
+        [ url, channel, cover_img, news_title, publish_date, detail, group, location, keyword ] = result;
+    } catch (err) {
+        err.desc = "middlewares-insertNews(): Missing or Invalid required fields";
+        return next(err);
+    }
     
-
+    // 失敗時，刪除 news
     async function callDeleteNews ( news_id, image_id, relation_id ) {
-        
         let fakeReq = {
             body: {
                 image_id: image_id,
                 relation_id: relation_id
             }
         };
-
         if ( news_id ) {
             fakeReq = {
                 params: {
@@ -160,7 +104,6 @@ async function insertNews(req, res, next) {
                 }
             };
         }
-
         await callAndCatchApiSuccess( deleteNews, fakeReq );
     }
 
@@ -168,39 +111,23 @@ async function insertNews(req, res, next) {
     let channel_id = null;
     try {
         let fakeReq = {
-            query: {
+            body: {
                 name: channel
             }
         }
-        const searchChannelResult = await callAndCatchApiSuccess( searchChannel, fakeReq );
-        channel_id = searchChannelResult.searchId; 
+        const insertChannelResult = await callAndCatchApiSuccess( insertChannel, fakeReq );
+        channel_id = insertChannelResult.insertId; 
     } catch (err) {
-        //console.warn('[Search Channel Failed]', err.message);
-    }
-    if ( !channel_id ) {
-        try {
-            let fakeReq = {
-                body: {
-                    name: channel
-                }
-            }
-            const insertChannelResult = await callAndCatchApiSuccess( insertChannel, fakeReq );
-            channel_id = insertChannelResult.insertId; 
-        } catch (err) {
-            err.desc = 'middlewares-insertNews(): database insert error ( channel )';
-            next(err)
-        }
+        err.desc = 'middlewares-insertNews(): database insert error ( channel )';
+        next(err)
     }
 
     // 獲取 img_id
     async function getImgId( imgData ) {
-
         if ( !imgData || !imgData.src ) return null;
-
         let fakeReq = {
             body: {
-                src: imgData.src,
-                alt: imgData.alt || null
+                img: imgData,
             }
         }
         try {
@@ -267,21 +194,21 @@ async function insertNews(req, res, next) {
 
     // 2. 插入 news_body
     let order = 10;
-    for( let item of detail ) {
+    for( let [index, item] of detail.entries() ) {
 
         let type = null;
         let text = null;
         let img_id = null;
 
-        if ( 'text' in item ) {
+        if ( typeof item === 'string' ) {
             type = 'text';
-            text = item.text;
+            text = item;
 
         }
-        if ('img' in item ) {
+        if ( typeof item === 'object' ) {
             type = 'image';
             try {
-                img_id = await getImgId( item.img );
+                img_id = await getImgId( item );
                 image_id.push( img_id );
             } catch (err) {
                 await callDeleteNews( null, image_id, relation_id );
@@ -291,6 +218,8 @@ async function insertNews(req, res, next) {
             
         }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////// 改成一條sql /////////////////////////////////////////////////////////////////
         sql = `
             INSERT INTO news_body (
                 news_id,
@@ -309,10 +238,9 @@ async function insertNews(req, res, next) {
         }
         order += 10;
     }
-    // res.apiSuccess( { insertId: news_id }, 'Insert news_body Success' );
 
     // 3. 插入 news_group
-    
+    group = !group? [null]: group;
     for (let each_group of group) {
         // 查找 group_type, group_id
         let group_type = null;
@@ -341,54 +269,57 @@ async function insertNews(req, res, next) {
         params = [ news_id, group_id ];
         try {
             let [newsGroupResult] = await pool.query(sql, params);
-            res.apiSuccess({ insertId: newsGroupResult.insertId }, 'Insert Success')
         } catch (err) {
             await callDeleteNews( news_id, null, null );
             err.desc = 'middlewares-insertNews(): database insert error ( group )';
             return next(err)
         }
     }
+    
 
     // 4. 插入 news_location
-    for ( let each_location of location ) {
-        if ( each_location != null ) {
-            // 查找 location_type, location_id
-            let location_type = null;
-            let location_id = null;
-            try {
-                fakeReq = {
-                    query: {
-                        name: each_location
-                    }
-                };
-                searchLocationResult = await callAndCatchApiSuccess ( searchLocation, fakeReq );
-                ( {type: location_type, id: location_id } = searchLocationResult );
-            } catch (err) {
-                console.warn('[Search Location Failed]', err.message);
-            }
-
-            // 插入 news_location
-            if ( location_type != null ) {
+    if ( location ) {
+        for ( let each_location of location ) {
+            if ( each_location != null ) {
+                // 查找 location_type, location_id
+                let location_type = null;
+                let location_id = null;
                 try {
-                    sql = `
-                        INSERT INTO news_location (
-                            news_id,
-                            location_${ location_type }_id
-                        ) VALUES (?, ?)
-                    `;
-                    params = [ news_id, location_id ];
-                    let [newsLocationResult] = await pool.query(sql, params);
-                } catch(err) {
-                    await callDeleteNews( news_id, null, null );
-                    err.desc = 'middlewares-insertNews(): database insert error ( location )';
-                    return next(err)
+                    fakeReq = {
+                        query: {
+                            name: each_location
+                        }
+                    };
+                    searchLocationResult = await callAndCatchApiSuccess ( searchLocation, fakeReq );
+                    ( {type: location_type, id: location_id } = searchLocationResult );
+                } catch (err) {
+                    console.warn('[Search Location Failed]', err.message);
+                }
+
+                // 插入 news_location
+                if ( location_type != null ) {
+                    try {
+                        sql = `
+                            INSERT INTO news_location (
+                                news_id,
+                                location_${ location_type }_id
+                            ) VALUES (?, ?)
+                        `;
+                        params = [ news_id, location_id ];
+                        let [newsLocationResult] = await pool.query(sql, params);
+                    } catch(err) {
+                        await callDeleteNews( news_id, null, null );
+                        err.desc = 'middlewares-insertNews(): database insert error ( location )';
+                        return next(err)
+                    }
                 }
             }
         }
     }
     
-    // 插入 keyword 到 relation_data
 
+
+    return res.apiSuccess({insertId: news_id}, "Insert Success");
 
 }
 
@@ -404,10 +335,8 @@ async function deleteNews(req, res, next) {
 
     // 檢查必要欄位
     if ( !id ) {
-        
         const hasImageId = Object.prototype.hasOwnProperty.call(req.body, 'image_id');
         const hasRelationId = Object.prototype.hasOwnProperty.call(req.body, 'relation_id');
-
         if (!hasImageId || !hasRelationId) {
             const err = new Error('Missing required fields');
             err.desc = 'middlewares-deleteNews(): Missing required fields - ( image_id & relation_id )';
@@ -417,11 +346,15 @@ async function deleteNews(req, res, next) {
     }
 
     // 檢查 id 是否有效
-    if ( id && isNaN(id)) {
-        let err = new Error('Invalid Number Error');
-        err.desc = 'middlewares-deleteNews(): Missing or Invalid required fields - news_id';
-        err.status = 400;
-        return next(err);
+    if ( id ) {
+        try {
+            let result = await checkRequireField ([
+                { field: 'id'   , data: id  , type: 'number' }
+            ]);
+        } catch (err) {
+            err.desc = "middlewares-deleteNews(): Missing or Invalid required fields";
+            return next(err);
+        }
     }
 
     // 刪除 image, relation
@@ -470,7 +403,7 @@ async function deleteNews(req, res, next) {
     }
     // 還沒生成 news_id
     if ( !id ) {
-        delete_data( image_id, relation_id );
+        await delete_data( image_id, relation_id );
         return res.apiSuccess({}, "Delete Success");
     }
 
@@ -494,7 +427,7 @@ async function deleteNews(req, res, next) {
         })
     } catch (err) {
         err.desc = "middlewares-deleteNews(): database search error - image-_id, relation_id";
-        next(err);
+        return next(err);
     }
 
     sql = `
@@ -513,8 +446,6 @@ async function deleteNews(req, res, next) {
             err.status = 404;
             return next(err);
         }
-
-        res.apiSuccess( null, 'Delete Success' )
     } catch (err) {
         err.desc = 'middlewares-deleteNews(): database delete error - news_id'
         return next(err)

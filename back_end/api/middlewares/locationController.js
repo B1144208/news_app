@@ -1,4 +1,5 @@
 const pool = require('../connect_db');
+const { checkRequireField } = require('../utils/checkHelper');
 const { callAndCatchApiSuccess } = require('../utils/fakeHelper');
 const { locationSearch } = require('../utils/stringHelper');
 
@@ -27,7 +28,6 @@ async function searchLocation (req, res, next) {
     }
 
     // name search
-    
         
         // 儲存匹配的結果
         let highestMatch = {

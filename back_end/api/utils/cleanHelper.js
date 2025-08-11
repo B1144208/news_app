@@ -10,7 +10,7 @@ router.get('/', async (req, res, next) => {
     const image     = 'image'       in req.query;
     const keyword   = 'keyword'     in req.query;
     const relation  = 'relation'    in req.query;
-    const err       = 'err'         in req.query;
+    const error     = 'error'       in req.query;
 
     let sql = ''
 
@@ -24,7 +24,7 @@ router.get('/', async (req, res, next) => {
         sql += 'DELETE FROM keyword_data;'
     }if ( relation ) {
         sql += 'DELETE FROM relation_data;'
-    }if ( err ) {
+    }if ( error ) {
         sql += 'DELETE FROM error_logs;'
     }
     sql += `

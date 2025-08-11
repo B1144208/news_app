@@ -1,10 +1,11 @@
-const pool = require('../connect_db')
+const pool = require('../connect_db');
+const { checkRequireField } = require('../utils/checkHelper');
 const { callAndCatchApiSuccess } = require('../utils/fakeHelper')
 const { insertImage, deleteImage } = require('./imageController')
 
 // search
 async function searchChannel(req, res, next) {
-    const name = req.query.name;
+    let name = req.query.name;
 
     let sql = `
         SELECT * 
@@ -12,6 +13,19 @@ async function searchChannel(req, res, next) {
         WHERE 1
     `;
     let params = [];
+
+    // 檢查必要欄位 & 格式 - name
+    if (name) {
+        try {
+            [ name ] = await checkRequireField ([
+                { field: 'name'   , data: name  , type: 'string' }
+            ]);
+        } catch (err) {
+            err.desc = "middlewares-searchChannel(): Missing or Invalid required fields";
+            return next(err);
+        }
+    }
+    
 
     // general search
     if (!name) {
@@ -32,7 +46,7 @@ async function searchChannel(req, res, next) {
             FROM channel_data
             WHERE channel_name LIKE ?
         `;
-        params = [`%${name}%`];
+        params = [`${name}%`];
         let [result] = await pool.query(sql, params);
 
         if (result.length > 0) {
@@ -57,22 +71,32 @@ async function searchChannel(req, res, next) {
 
 // insert
 async function insertChannel(req, res, next) {
-    let { url, img, name, type, update_rate, introduce } = req.body;
+    let { url=null, img=null, name, type=null, update_rate=null, introduce=null } = req.body ?? {};
 
-    // Check for required field
-    if (!name) {
-        let err = new Error('Internal Server Error');
-        err.desc = 'middlewares-insertChannel(): Missing required fields - name';
-        err.status = 400;
+    // 檢查必要欄位 & 格式 - name
+    try {
+        [ url, img, name, type, update_rate, introduce ] = await checkRequireField ([
+            { field: 'url'   , data: url  , type: 'string' },
+            { field: 'img'   , data: img  , type: 'string' },
+            { field: 'name'   , data: name  , type: 'string'    , need: ['non_null'] },
+            { field: 'update_rate'   , data: update_rate  , type: 'string' },
+            { field: 'introduce'   , data: introduce  , type: 'string' }
+        ]);
+    } catch (err) {
+        err.desc = "middlewares-insertChannel(): Missing or Invalid required fields";
         return next(err);
     }
 
-    // Sanitize input
-    url = (!url || url.trim() === '') ? null : url;
-    img = (!img || img.trim() === '') ? null : img;
-    type = (!type || type.trim() === '') ? null : type;
-    update_rate = (!update_rate || update_rate.trim() === '') ? null : update_rate;
-    introduce = (!introduce || introduce.trim() === '') ? null : introduce;
+    // 先 search channel
+    try {
+        let fakeReq = {
+            query: {
+                name: name
+            }
+        };
+        let result = await callAndCatchApiSuccess( searchChannel, fakeReq );
+        return res.apiSuccess( { insertId: result.searchId }, "Search Success");
+    } catch (err) {}
 
     // Insert image if provided
     let img_id = null
@@ -80,7 +104,10 @@ async function insertChannel(req, res, next) {
         try {
             let fakeReq = {
                 body: {
-                    img: img
+                    img: {
+                        src: img,
+                        alt: null
+                    }
                 }
             }
             const result = await callAndCatchApiSuccess( insertImage, fakeReq );
@@ -135,16 +162,19 @@ async function updateChannel(req, res, next) {
 // delete
 async function deleteChannel(req, res, next) {
     const id = req.params.id;
-    const has = 'has' in req.query;
+    const has = req.query?.has !== undefined;
 
-    // 檢查 id 是否有效
-    if (!id || isNaN(id)) {
-        let err = new Error('Invalid Number Error');
-        err.desc = 'middlewares-deleteChannel(): Missing or Invalid required fields - channel_id';
-        err.status = 400;
+    // 檢查必要欄位 & 格式 - id
+    try {
+        let result = await checkRequireField ([
+            { field: 'id'   , data: id  , type: 'number'    , need: ['non_null'] }
+        ]);
+    } catch (err) {
+        err.desc = "middlewares-deleteChannel(): Missing or Invalid required fields";
         return next(err);
     }
 
+    // 檢查是否有 news 包含其中
     if ( has ) {
         let sql = `
             SELECT channel_id

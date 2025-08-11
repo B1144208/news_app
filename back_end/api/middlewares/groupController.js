@@ -1,4 +1,5 @@
 const pool = require('../connect_db');
+const { checkRequireField } = require('../utils/checkHelper');
 const { callAndCatchApiSuccess } = require('../utils/fakeHelper');
 
 // search
@@ -76,12 +77,14 @@ async function insertGroup(req, res, next) {
     // 3. 'other'           : 判斷 name 是否能 search 到，如果不行則插入'其他'分類的 group_detail 中
     let { id, name } = req.body;
 
-    // 檢查必要欄位
-    if ( !name || name.trim() === '' ) {
-        let err = new Error('Internal Server Error')
-        err.desc = 'middlewares-insertGroup(): Missing required fields - name'
-        err.status = 400
-        return next(err)
+    // 檢查必要欄位 & 格式 - name
+    try {
+        [ name ] = await checkRequireField ([
+            { field: 'name'   , data: name  , type: 'string'    , need: ['non_null'] }
+        ]);
+    } catch (err) {
+        err.desc = "middlewares-insertKeyword(): Missing or Invalid required fields";
+        return next(err);
     }
 
     // 檢查 id 是否合法
@@ -172,7 +175,6 @@ async function updateGroup(req, res, next) {
 
 // delete
 async function deleteGroup(req, res, next) {
-    const id = req.params.id;
     return;
 }
 

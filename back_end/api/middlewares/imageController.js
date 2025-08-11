@@ -1,4 +1,5 @@
 const pool = require('../connect_db');
+const { checkRequireField } = require('../utils/checkHelper');
 const { callAndCatchApiSuccess } = require('../utils/fakeHelper');
 
 // search
@@ -39,18 +40,18 @@ async function searchImage (req, res, next) {
 
 // insert
 async function insertImage (req, res, next) {
-    let { src, alt } = req.body;
+    let { img } = req.body;
 
-    // 檢查必要欄位
-    if (!src) {
-        let err = new Error('Internal Server Error')
-        err.desc = 'middlewares-insertImage() : Missing required fields - src'
-        err.status = 400
-        return next(err)
+    // 檢查必要欄位 & 格式 - 
+    try {
+        [ img ] = await checkRequireField ([
+            { field: 'img'   , data: img  , type: 'image'    , need: ['non_null'] }
+        ]);
+    } catch (err) {
+        err.desc = "middlewares-insertKeyword(): Missing or Invalid required fields";
+        return next(err);
     }
-
-    // res.body 處理
-    alt = ( !alt || alt.trim() === '' )? null: alt;
+    const src = img.src, alt = img.alt;
 
     // 先 search img
     let fakeReq = {
@@ -102,13 +103,15 @@ async function updateImage(req, res, next) {
 // delete
 async function deleteImage(req, res, next) {
     const id = req.params.id;
-    const has = 'has' in req.query;
+    const has = req.query?.has !== undefined;
 
-    // 檢查 id 是否有效
-    if (!id || isNaN(id)) {
-        let err = new Error('Invalid Number Error');
-        err.desc = 'middlewares-deleteImage(): Missing or Invalid required fields - image_id';
-        err.status = 400;
+    // 檢查必要欄位 & 格式 - id
+    try {
+        let result = await checkRequireField ([
+            { field: 'id'   , data: id  , type: 'number'    , need: ['non_null'] }
+        ]);
+    } catch (err) {
+        err.desc = "middlewares-deleteRelation(): Missing or Invalid required fields";
         return next(err);
     }
 

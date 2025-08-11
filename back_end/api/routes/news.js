@@ -6,6 +6,7 @@ const { searchNews, insertNews, updateNews, deleteNews } = require('../middlewar
 
 // search
 router.get('/', searchNews);
+router.get('/:id', searchNews);
 
 // insert
 router.post('/', insertNews);

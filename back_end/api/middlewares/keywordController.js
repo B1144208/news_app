@@ -1,4 +1,5 @@
 const pool = require('../connect_db');
+const { checkRequireField } = require('../utils/checkHelper');
 const { callAndCatchApiSuccess } = require('../utils/fakeHelper');
 
 // search
@@ -27,11 +28,13 @@ async function searchKeyword (req, res, next) {
 async function insertKeyword (req, res, next) {
     let text = req.query.text;
 
-    // 檢查 text
-    if (!text || typeof text !== 'string' || text.trim() === '') {
-        const err = new Error("Invalid text format");
-        err.desc = "middlewares - insertRelation(): Invalid Format - ( text )";
-        err.status = 400;
+    // 檢查必要欄位 & 格式 - text
+    try {
+        [ text ] = await checkRequireField ([
+            { field: 'text'   , data: text  , type: 'string'    , need: ['non_null'] }
+        ]);
+    } catch (err) {
+        err.desc = "middlewares-insertKeyword(): Missing or Invalid required fields";
         return next(err);
     }
     
@@ -69,12 +72,16 @@ async function updateKeyword(req, res, next) {
 // delete
 async function deleteKeyword(req, res, next) {
     const id = req.params.id;
+    
+    console.log(`id:${id}`);
 
-    // 檢查 id 是否有效
-    if (!id || isNaN(id)) {
-        let err = new Error('Invalid Number Error');
-        err.desc = 'middlewares-deleteKeyword(): Missing or Invalid required fields - keyword_id';
-        err.status = 400;
+    // 檢查必要欄位 & 格式 - id
+    try {
+        let result = await checkRequireField ([
+            { field: 'id'   , data: id  , type: 'number'    , need: ['non_null'] }
+        ]);
+    } catch (err) {
+        err.desc = "middlewares-deleteKeyword(): Missing or Invalid required fields";
         return next(err);
     }
 

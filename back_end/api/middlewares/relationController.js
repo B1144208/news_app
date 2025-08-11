@@ -1,6 +1,7 @@
 const pool = require('../connect_db');
+const { checkRequireField } = require('../utils/checkHelper');
 const { callAndCatchApiSuccess } = require('../utils/fakeHelper');
-const { insertKeyword, searchKeyword } = require('./keywordController');
+const { insertKeyword } = require('./keywordController');
 
 // search
 async function searchRelation (req, res, next) {
@@ -173,13 +174,15 @@ async function updateRelation(req, res, next) {
 // delete
 async function deleteRelation(req, res, next) {
     const id = req.params.id;
-    const has = 'has' in req.query;
+    const has = req.query?.has !== undefined;
 
-    // 檢查 id 是否有效
-    if (!id || isNaN(id)) {
-        let err = new Error('Invalid Number Error');
-        err.desc = 'middlewares-deleteRelation(): Missing or Invalid required fields - relation_id';
-        err.status = 400;
+    // 檢查必要欄位 & 格式 - id
+    try {
+        let result = await checkRequireField ([
+            { field: 'id'   , data: id  , type: 'number'    , need: ['non_null'] }
+        ]);
+    } catch (err) {
+        err.desc = "middlewares-deleteRelation(): Missing or Invalid required fields";
         return next(err);
     }
 
