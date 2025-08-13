@@ -7,6 +7,7 @@ router.get('/', searchGroup);
 
 // insert
 router.post('/', insertGroup);
+router.post('/other', insertGroup);
 
 // update
 router.put('/', async (req, res, next) => {

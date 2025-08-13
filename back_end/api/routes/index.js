@@ -16,6 +16,8 @@ router.get('/', (req, res) => {
 });
 
 // 路由模組
+const userRouter = require('./user')
+
 const newsRouter = require('./news')
 const channelRouter = require('./channel')
 const imageRouter = require('./image')
@@ -27,6 +29,8 @@ const keywordRouter = require('./keyword')
 const testRouter = require('./test')
 
 // 使用模組
+router.use('/user', userRouter)
+
 router.use('/news', newsRouter)
 router.use('/channel', channelRouter)
 router.use('/image', imageRouter)

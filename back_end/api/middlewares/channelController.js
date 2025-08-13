@@ -5,7 +5,7 @@ const { insertImage, deleteImage } = require('./imageController')
 
 // search
 async function searchChannel(req, res, next) {
-    let name = req.query.name;
+    let name = req.query?.name;
 
     let sql = `
         SELECT * 
@@ -18,14 +18,13 @@ async function searchChannel(req, res, next) {
     if (name) {
         try {
             [ name ] = await checkRequireField ([
-                { field: 'name'   , data: name  , type: 'string' }
+                { field: 'name' , data: name , type: 'string' }
             ]);
         } catch (err) {
             err.desc = "middlewares-searchChannel(): Missing or Invalid required fields";
             return next(err);
         }
     }
-    
 
     // general search
     if (!name) {
@@ -76,11 +75,11 @@ async function insertChannel(req, res, next) {
     // 檢查必要欄位 & 格式 - name
     try {
         [ url, img, name, type, update_rate, introduce ] = await checkRequireField ([
-            { field: 'url'   , data: url  , type: 'string' },
-            { field: 'img'   , data: img  , type: 'string' },
-            { field: 'name'   , data: name  , type: 'string'    , need: ['non_null'] },
-            { field: 'update_rate'   , data: update_rate  , type: 'string' },
-            { field: 'introduce'   , data: introduce  , type: 'string' }
+            { field: 'url'          , data: url         , type: 'string' },
+            { field: 'img'          , data: img         , type: 'string' },
+            { field: 'name'         , data: name        , type: 'string'    , other: ['non_null'] },
+            { field: 'update_rate'  , data: update_rate , type: 'string' },
+            { field: 'introduce'    , data: introduce   , type: 'string' }
         ]);
     } catch (err) {
         err.desc = "middlewares-insertChannel(): Missing or Invalid required fields";
@@ -90,9 +89,7 @@ async function insertChannel(req, res, next) {
     // 先 search channel
     try {
         let fakeReq = {
-            query: {
-                name: name
-            }
+            query: { name: name }
         };
         let result = await callAndCatchApiSuccess( searchChannel, fakeReq );
         return res.apiSuccess( { insertId: result.searchId }, "Search Success");
@@ -102,14 +99,9 @@ async function insertChannel(req, res, next) {
     let img_id = null
     if (img) {
         try {
-            let fakeReq = {
-                body: {
-                    img: {
-                        src: img,
-                        alt: null
-                    }
-                }
-            }
+            let fakeReq = { 
+                body: { img: { src: img, alt: null } } 
+            };
             const result = await callAndCatchApiSuccess( insertImage, fakeReq );
             img_id = result.insertId;
         } catch (err) {
@@ -138,11 +130,9 @@ async function insertChannel(req, res, next) {
         // Try to clean up inserted image if insertion failed
         if ( img_id ) {
             try {
-                let fakeReq = {
-                    params: {
-                        id: img_id
-                    }
-                }
+                let fakeReq = { 
+                    params: { id: img_id } 
+                };
                 await callAndCatchApiSuccess( deleteImage, fakeReq );
             } catch (deleteErr) {
                 deleteErr.desc = err.desc + ' & image delete error';
@@ -161,13 +151,13 @@ async function updateChannel(req, res, next) {
 
 // delete
 async function deleteChannel(req, res, next) {
-    const id = req.params.id;
+    let id = req.params?.id;
     const has = req.query?.has !== undefined;
 
     // 檢查必要欄位 & 格式 - id
     try {
-        let result = await checkRequireField ([
-            { field: 'id'   , data: id  , type: 'number'    , need: ['non_null'] }
+        [ id ] = await checkRequireField ([
+            { field: 'id' , data: id , type: 'number' , other: ['non_null'] }
         ]);
     } catch (err) {
         err.desc = "middlewares-deleteChannel(): Missing or Invalid required fields";

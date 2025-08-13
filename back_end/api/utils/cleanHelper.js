@@ -5,8 +5,11 @@ const pool = require('../connect_db')
 // 清理 database
 router.get('/', async (req, res, next) => {
 
+    const user      = 'user'        in req.query;
+
     const news      = 'news'        in req.query;
     const channel   = 'channel'     in req.query;
+    const group     = 'group'       in req.query;
     const image     = 'image'       in req.query;
     const keyword   = 'keyword'     in req.query;
     const relation  = 'relation'    in req.query;
@@ -14,20 +17,23 @@ router.get('/', async (req, res, next) => {
 
     let sql = ''
 
-    if ( news ) {
-        sql += 'DELETE FROM news_data;'
-    }if ( channel ) {
-        sql += 'DELETE FROM channel_data;'
-    }if ( image ) {
-        sql += 'DELETE FROM image_data;'
-    }if ( keyword ) {
-        sql += 'DELETE FROM keyword_data;'
-    }if ( relation ) {
-        sql += 'DELETE FROM relation_data;'
-    }if ( error ) {
-        sql += 'DELETE FROM error_logs;'
-    }
+    // 刪除資料
+    user        &&  ( sql += 'DELETE FROM user_profile;'                            );
+    
+    news        &&  ( sql += 'DELETE FROM news_data;'                               );
+    channel     &&  ( sql += 'DELETE FROM channel_data;'                            );
+    group       &&  ( sql += 'DELETE FROM group_data   WHERE group_id > 15;'        );
+    group       &&  ( sql += 'DELETE FROM group_detail WHERE group_detail_id > 66;' );
+    image       &&  ( sql += 'DELETE FROM image_data;'                              );
+    keyword     &&  ( sql += 'DELETE FROM keyword_data;'                            );
+    relation    &&  ( sql += 'DELETE FROM relation_data;'                           );
+
+    error       &&  ( sql += 'DELETE FROM error_logs;'                              );
+
+    // AUTO 重置
     sql += `
+    ALTER TABLE user_profile AUTO_INCREMENT = 1;
+
     ALTER TABLE news_data AUTO_INCREMENT = 1;
     ALTER TABLE news_body AUTO_INCREMENT = 1;
     ALTER TABLE news_group AUTO_INCREMENT = 1;
@@ -41,7 +47,7 @@ router.get('/', async (req, res, next) => {
     ALTER TABLE relation_keyword AUTO_INCREMENT = 1;
     ALTER TABLE error_logs AUTO_INCREMENT = 1;`
 
-    params = []
+    params = [];
     
     try {
         const [result] = await pool.query(sql, params);

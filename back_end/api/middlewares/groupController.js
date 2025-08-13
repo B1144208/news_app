@@ -5,7 +5,17 @@ const { callAndCatchApiSuccess } = require('../utils/fakeHelper');
 // search
 async function searchGroup (req, res, next) {
 
-    const name = req.query.name;
+    let name = req.query?.name;
+
+    // 檢查必要欄位 & 格式 - name
+    try {
+        [ name ] = await checkRequireField ([
+            { field: 'name' , data: name , type: 'string' , other: ['non_null'] }
+        ]);
+    } catch (err) {
+        err.desc = "middlewares-searchGroup(): Missing or Invalid required fields";
+        return next(err);
+    }
 
     let sql = `
         SELECT * 
@@ -19,7 +29,7 @@ async function searchGroup (req, res, next) {
     if ( !name ) {
         try {
             let [result] = await pool.query(sql, params);
-            return res.apiSuccess(result)
+            return res.apiSuccess(result, "Search Seccess");
         } catch (err){
             err.desc = 'middlewares-searchGroup(): database search error (general search)'
             return next(err)
@@ -29,7 +39,7 @@ async function searchGroup (req, res, next) {
     // name search
     try {
         
-        params = [`%${name}%`];
+        params = [`${name}`];
 
         // 先查 group_data
         sql = `
@@ -75,41 +85,36 @@ async function insertGroup(req, res, next) {
     // 1. group_detail_id   : 插入 group_detail
     // 2. null              : 插入 group_data
     // 3. 'other'           : 判斷 name 是否能 search 到，如果不行則插入'其他'分類的 group_detail 中
-    let { id, name } = req.body;
+    let { id, name } = req.body ?? {};
 
     // 檢查必要欄位 & 格式 - name
     try {
         [ name ] = await checkRequireField ([
-            { field: 'name'   , data: name  , type: 'string'    , need: ['non_null'] }
+            { field: 'name' , data: name , type: 'string' , other: ['non_null'] }
         ]);
     } catch (err) {
-        err.desc = "middlewares-insertKeyword(): Missing or Invalid required fields";
+        err.desc = "middlewares-insertGroup(): Missing or Invalid required fields";
         return next(err);
     }
 
     // 檢查 id 是否合法
-    if ( id  && id !== 'other' && isNaN( Number( id ) ) ) {
+    if ( id  && id !== 'other' && isNaN( id ) ) {
         let err = new Error('middlewares-insertGroup(): Invalid Number - id');
         err.status = 400;
         console.warn('[Invalid Number]', err.message);
-
-        id = null;
+        id = 'other';
     }
 
     // 查找 group
     async function search ( name ) {
         try {
             fakeReq = {
-                query: {
-                    name: name
-                }
-            }
+                query: { name: name }
+            };
             const searchGroupResult = await callAndCatchApiSuccess ( searchGroup, fakeReq );
             return searchGroupResult;
             
-        } catch (err) {
-            console.warn('[Search Group Failed]', err.message);
-        }
+        } catch (err) {}
     }
 
     // 1. 查找是否已經有 group
@@ -124,7 +129,7 @@ async function insertGroup(req, res, next) {
     if ( id === 'other' ) {
         try {
             const searchGroupResult = await search ( '其他' );
-            id = searchGroupResult.id;
+            id = searchGroupResult?.id || 15;
         } catch (err) {
             err.desc = 'middlewares-insertGroup(): database search error ( \'other\' )';
             return next(err);

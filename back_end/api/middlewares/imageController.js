@@ -5,7 +5,7 @@ const { callAndCatchApiSuccess } = require('../utils/fakeHelper');
 // search
 async function searchImage (req, res, next) {
 
-    let { src, alt } = req.body;
+    let { src, alt } = req.body ?? {};
 
     let sql = `
         SELECT * 
@@ -40,26 +40,23 @@ async function searchImage (req, res, next) {
 
 // insert
 async function insertImage (req, res, next) {
-    let { img } = req.body;
+    let { img } = req.body ?? {};
 
     // 檢查必要欄位 & 格式 - 
     try {
         [ img ] = await checkRequireField ([
-            { field: 'img'   , data: img  , type: 'image'    , need: ['non_null'] }
+            { field: 'img'   , data: img  , type: 'image'    , other: ['non_null'] }
         ]);
     } catch (err) {
-        err.desc = "middlewares-insertKeyword(): Missing or Invalid required fields";
+        err.desc = "middlewares-insertImage(): Missing or Invalid required fields";
         return next(err);
     }
     const src = img.src, alt = img.alt;
 
     // 先 search img
     let fakeReq = {
-        body: {
-            src: src,
-            alt: alt
-        }
-    }
+        body: { src: src, alt: alt }
+    };
     
     try {
         let result = await callAndCatchApiSuccess ( searchImage, fakeReq );
@@ -102,16 +99,16 @@ async function updateImage(req, res, next) {
 
 // delete
 async function deleteImage(req, res, next) {
-    const id = req.params.id;
+    let id = req.params?.id;
     const has = req.query?.has !== undefined;
 
     // 檢查必要欄位 & 格式 - id
     try {
-        let result = await checkRequireField ([
-            { field: 'id'   , data: id  , type: 'number'    , need: ['non_null'] }
+        [ id ] = await checkRequireField ([
+            { field: 'id' , data: id , type: 'number' , other: ['non_null'] }
         ]);
     } catch (err) {
-        err.desc = "middlewares-deleteRelation(): Missing or Invalid required fields";
+        err.desc = "middlewares-deleteImage(): Missing or Invalid required fields";
         return next(err);
     }
 

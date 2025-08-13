@@ -5,7 +5,7 @@ const { callAndCatchApiSuccess } = require('../utils/fakeHelper');
 
 // search
 async function testCheckRequireField (req, res, next) {
-    //const { field, data, type, other } = req.body;
+    //const { field, data, type, other } = req.body ?? {};
 
     // type: number, string, image, datetime, array, object
 
@@ -53,16 +53,18 @@ async function testCheckRequireField (req, res, next) {
       }
     ];
     e5 = null;
-    f6 = [null];
+    f6 = ["    fsb  ", "   jyf  "];
+    g7 = [5, '9', 3]
     console.log(`f6: ${f6.length}`);
     let requireFields = [];
     requireFields.push (
-        /*{ field: 'a1', data: a1, type: 'string', need: ['non_null'] },
-        { field: 'b2', data: b2, type: 'image', need: ['lth']},
-        { field: 'c3', data: c3, type: 'datetime', need: ['non_null'] },
-        { field: 'd4', data: d4, type: 'object', need: ['non_null'], other: ['news_detail'] },
-        { field: 'e5', data: e5, type: 'number', need: ['non_string_number'] },*/
-        { field: 'f6', data: f6, type: 'array', other: ['string_into_array'] }
+        /*{ field: 'a1', data: a1, type: 'string', other: ['non_null'] },
+        { field: 'b2', data: b2, type: 'image', other: ['lth']},
+        { field: 'c3', data: c3, type: 'datetime', other: ['non_null'] },
+        { field: 'd4', data: d4, type: 'object', other: ['non_null'], other: ['news_detail'] },
+        { field: 'e5', data: e5, type: 'number', other: ['non_string_number'] },*/
+        { field: 'f6', data: f6, type: 'array', other: ['non_null', 'string_into_array'], array_filter: 'string' },
+        { field: 'g7', data: g7, type: 'array', other: ['non_null'], array_filter: 'number' }
     );
     
     let result;

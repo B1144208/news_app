@@ -44,8 +44,8 @@ async function insertValue (req, res, next) {
     // 檢查必要欄位 & 格式 - type, value
     try {
         [ type, value ] = await checkRequireField ([
-            { field: 'type'     , data: type    , type: 'string'    , need: ['non_null'] },
-            { field: 'value'    , data: value   , type: 'number'    , need: ['non_null'] }
+            { field: 'type'     , data: type    , type: 'string'    , other: ['non_null'] },
+            { field: 'value'    , data: value   , type: 'number'    , other: ['non_null'] }
         ]);
     } catch (err) {
         err.desc = "middlewares-insertValue(): Missing or Invalid required fields";
@@ -68,7 +68,7 @@ async function deleteValue(req, res, next) {
     // 檢查必要欄位 & 格式 - type
     try {
         [ type ] = await checkRequireField ([
-            { field: 'type' , data: type    , type: 'string'    , need: ['non_null'] }
+            { field: 'type' , data: type , type: 'string' , other: ['non_null'] }
         ]);
     } catch (err) {
         err.desc = "middlewares-searchValue(): Missing or Invalid required fields";

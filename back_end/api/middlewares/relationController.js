@@ -6,9 +6,9 @@ const { insertKeyword } = require('./keywordController');
 // search
 async function searchRelation (req, res, next) {
     
-    let id = req.query.id;
-    let relation_keyword =  'relation_keyword' in req.query;
-    let { keyword } = req.body;
+    let id = req.query?.id;
+    const relation_keyword = req.query?.relation_keyword !== undefined;
+    let { keyword } = req.body ?? {};
     
     // 1. 查詢 relation
     let sql = `
@@ -90,10 +90,10 @@ async function searchRelation (req, res, next) {
 // insert
 async function insertRelation (req, res, next) {
     
-    let { keyword } = req.body;
+    let { keyword } = req.body ?? {};
 
     // 處理 keyword
-    keyword = (Array.isArray(keyword))
+    /*keyword = (Array.isArray(keyword))
         ? keyword.filter(item => item && typeof item === 'string' && item.trim() !== '').map(item => item.trim())
         : (keyword && typeof keyword === 'string' && keyword.trim() !== '') 
             ? [keyword.trim()]
@@ -106,6 +106,15 @@ async function insertRelation (req, res, next) {
         // 過濾掉空值或無效的項目，並保證每個項目是有效字串
         keyword = keyword.filter(item => item && typeof item === 'string' && item.trim() !== '')
                         .map(item => item.trim());
+    }*/
+
+    try {
+        [ keyword ] = await checkRequireField ([
+            { field: 'keyword' , data: keyword , type: 'array' , other: ['string_into_array']  , array_filter: 'string' }
+        ]);
+    } catch (err) {
+        err.desc = "middlewares-insertRelation(): Missing or Invalid required fields";
+        return next(err);
     }
 
     // 獲取 relation_id
@@ -117,8 +126,8 @@ async function insertRelation (req, res, next) {
     let [result] = await pool.query(sql, params);
     const relation_id = result.insertId;
 
-    if ( keyword==null || keyword.length === 0 ) {
-        return res.apiSuccess( { insertId: relation_id }, "Insert Seccess");
+    if ( keyword == null ) {
+        return res.apiSuccess( { insertId: relation_id }, "Insert Seccess" );
     }
 
     // 插入 relation_keyword
@@ -130,9 +139,7 @@ async function insertRelation (req, res, next) {
             // 獲取 keyword_id
             let keyword_id;
             let fakeReq = {
-                query: {
-                    text: item
-                }
+                query: { text: item }
             };
             try {
                 let insertKeywordResult = await callAndCatchApiSuccess( insertKeyword, fakeReq );
@@ -173,13 +180,13 @@ async function updateRelation(req, res, next) {
 
 // delete
 async function deleteRelation(req, res, next) {
-    const id = req.params.id;
+    let id = req.params?.id;
     const has = req.query?.has !== undefined;
 
     // 檢查必要欄位 & 格式 - id
     try {
-        let result = await checkRequireField ([
-            { field: 'id'   , data: id  , type: 'number'    , need: ['non_null'] }
+        [ id ] = await checkRequireField ([
+            { field: 'id' , data: id , type: 'number' , other: ['non_null'] }
         ]);
     } catch (err) {
         err.desc = "middlewares-deleteRelation(): Missing or Invalid required fields";

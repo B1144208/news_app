@@ -4,7 +4,18 @@ const { callAndCatchApiSuccess } = require('../utils/fakeHelper');
 
 // search
 async function searchKeyword (req, res, next) {
-    let text = req.query.text;
+    let text = req.query?.text;
+
+    // 檢查必要欄位 & 格式 - text
+    try {
+        [ text ] = await checkRequireField ([
+            { field: 'text' , data: text , type: 'string' }
+        ]);
+    } catch (err) {
+        err.desc = "middlewares-searchKeyword(): Missing or Invalid required fields";
+        return next(err);
+    }
+
     let sql = `
         SELECT * FROM keyword_data
         WHERE 1
@@ -26,12 +37,12 @@ async function searchKeyword (req, res, next) {
 
 // insert
 async function insertKeyword (req, res, next) {
-    let text = req.query.text;
+    let text = req.query?.text;
 
     // 檢查必要欄位 & 格式 - text
     try {
         [ text ] = await checkRequireField ([
-            { field: 'text'   , data: text  , type: 'string'    , need: ['non_null'] }
+            { field: 'text' , data: text , type: 'string' , other: ['non_null'] }
         ]);
     } catch (err) {
         err.desc = "middlewares-insertKeyword(): Missing or Invalid required fields";
@@ -40,9 +51,7 @@ async function insertKeyword (req, res, next) {
     
     // 先 search
     let fakeReq = {
-        query: {
-            text: text
-        }
+        query: { text: text }
     };
     
     let searchKeywordResult = await callAndCatchApiSuccess ( searchKeyword, fakeReq );
@@ -71,14 +80,12 @@ async function updateKeyword(req, res, next) {
 
 // delete
 async function deleteKeyword(req, res, next) {
-    const id = req.params.id;
-    
-    console.log(`id:${id}`);
+    let id = req.params?.id;
 
     // 檢查必要欄位 & 格式 - id
     try {
-        let result = await checkRequireField ([
-            { field: 'id'   , data: id  , type: 'number'    , need: ['non_null'] }
+        [ id ] = await checkRequireField ([
+            { field: 'id' , data: id , type: 'number' , other: ['non_null'] }
         ]);
     } catch (err) {
         err.desc = "middlewares-deleteKeyword(): Missing or Invalid required fields";

@@ -6,14 +6,17 @@ routes req:
     d.  delete {}
 
 1.  news
-    a.  search { none ( need to add )}
+    a.  search {
+            params: id,
+            body: { url }
+        }
     b.  insert {
             body: { url, channel, cover_img, news_title, publish_date, detail, group, location, keyword }
         }
     c.  update {}
     d.  delete {
             params: id,
-            body: image_id, relation_id
+            body: { image_id, relation_id }
         }
 
 2.  channel
@@ -64,7 +67,7 @@ routes req:
     a.  search { 
             query: id, 'relation_keyword',
             body: { keyword }
-        } (4b.) not complete
+        } (4b.) not complete    **********************************************************
     b.  insert {
             body: { keyword }
         }
@@ -85,6 +88,17 @@ routes req:
     d.  delete {
             params: id
         }
+
+8.  user
+    a.  search {
+            params: id,
+            body: { account, password };
+        }
+    b.  insert {}
+    c.  update {}
+    d.  delete {}
+
+
 
 
 *.  test

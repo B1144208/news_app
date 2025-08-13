@@ -6,7 +6,7 @@ const { locationSearch } = require('../utils/stringHelper');
 // search
 async function searchLocation (req, res, next) {
 
-    const name = req.query.name
+    const name = req.query?.name
 
     // general search
     if ( !name ) {
@@ -107,7 +107,7 @@ async function updateLocation(req, res, next) {
 
 // delete
 async function deleteLocation(req, res, next) {
-    const id = req.params.id;
+    const id = req.params?.id;
     return;
 }
 

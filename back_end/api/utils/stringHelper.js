@@ -62,7 +62,7 @@ function temp_exactSearch ( search_form, search_item, str ) {
     return { sql, params };
 }
 
-function formatSql(sql, params) {
+/*function formatSql(sql, params) {
     // 遍歷 params 替換 SQL 中的問號
     params.forEach(param => {
         sql = sql.replace('?', `'${param}'`);
@@ -76,6 +76,6 @@ function build_next() {
 
 function caculateStringSimulate() {
 
-}
+}*/
 
-module.exports = { locationSearch, caculateStringSimulate };
+module.exports = { locationSearch };
