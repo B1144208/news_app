@@ -12,6 +12,7 @@ router.post('/', insertValue);
 router.put('/', updateValue);
 
 // delete
+router.delete('/', deleteValue);
 router.delete('/:type', deleteValue);
 
 module.exports = router

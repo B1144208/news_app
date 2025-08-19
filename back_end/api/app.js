@@ -5,21 +5,19 @@ const pool = require('./connect_db')
 
 const app = express(); // Express app 實體
 app.use(cors());
-app.use(express.json());
+app.use(express.json());    // 解析 JSON body
 
 // 回應中介
-const responseWrapper = require('./middlewares/responseWrapper');
+const responseWrapper = require('./utils/responseWrapper');
 app.use(responseWrapper);
 
 // 清除資料庫資料 + AUTO_INCREMENT 重數
 const cleanHelper = require('./utils/cleanHelper');
-app.use('/clean', cleanHelper);
+app.get('/clean', cleanHelper);
 
 // router 設定
 const routes = require('./routes/index');
 app.use('/api', routes);
-
-
 
 // 測試-首頁
 app.get('/', (req, res) => {
@@ -48,7 +46,6 @@ app.use((err, req, res, next) => {
             console.log('Error logged to database');
         }
     })
-
     // 回覆錯誤訊息
     res.apiError(err, err.status || 500);
     

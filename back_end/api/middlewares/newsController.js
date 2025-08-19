@@ -51,7 +51,7 @@ async function searchNews(req, res, next) {
 
 // insert
 async function insertNews(req, res, next) {
-    let { url, channel, cover_img, news_title, publish_date, detail, group, location, keyword } = req.body ?? {};
+    let { url, channel, cover_img, title, publish_date, detail, group, location, keyword } = req.body ?? {};
 
 
     try {
@@ -76,7 +76,7 @@ async function insertNews(req, res, next) {
             { field: 'url'          , data: url         , type: 'string'    , other: ['non_null'] },
             { field: 'channel'      , data: channel     , type: 'string'    , other: ['non_null'] },
             { field: 'cover_img'    , data: cover_img   , type: 'image'     , other: ['lth' ]     },
-            { field: 'news_title'   , data: news_title  , type: 'string'    , other: ['non_null'] },
+            { field: 'title'        , data: title       , type: 'string'    , other: ['non_null'] },
             { field: 'publish_date' , data: publish_date, type: 'datetime'  , other: ['non_null'] },
             { field: 'detail'       , data: detail      , type: 'object'    , other: ['non_null', 'news_detail'] },
             { field: 'group'        , data: group       , type: 'array'     , other: ['string_into_array']  , array_filter: 'string' },
@@ -85,7 +85,7 @@ async function insertNews(req, res, next) {
         ];
         try {
             let result = await checkRequireField ( requireFields );
-            [ url, channel, cover_img, news_title, publish_date, detail, group, location, keyword ] = result;
+            [ url, channel, cover_img, title, publish_date, detail, group, location, keyword ] = result;
         } catch (err) {
             err.desc = "middlewares-insertNews(): Missing or Invalid required fields";
             return next(err);
@@ -167,7 +167,7 @@ async function insertNews(req, res, next) {
                 news_date
             ) VALUES (?, ?, ?, ?, ?, ?);
         `;
-        params = [ url, channel_id, relation_id, cover_img_id, news_title, publish_date ]
+        params = [ url, channel_id, relation_id, cover_img_id, title, publish_date ];
 
         try {
             const [newsDataResult] = await pool.query(sql, params);
@@ -297,6 +297,8 @@ async function insertNews(req, res, next) {
         }
         return res.apiSuccess({insertId: news_id}, "Insert Success");
     } catch (err) {
+        await callDeleteNews ( news_id, image_id, relation_id )
+
         err.desc = "middlewares-insertNews: unknown error";
         return next(err);
     }

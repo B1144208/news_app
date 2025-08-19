@@ -1,3 +1,4 @@
+const fs = require('fs').promises;
 const pool = require('../connect_db');
 const { checkRequireField } = require('../utils/checkHelper');
 const { callAndCatchApiSuccess } = require('../utils/fakeHelper')
@@ -70,15 +71,15 @@ async function searchChannel(req, res, next) {
 
 // insert
 async function insertChannel(req, res, next) {
-    let { url=null, img=null, name, type=null, update_rate=null, introduce=null } = req.body ?? {};
+    let { url=null, img=null, name, type=null, introduce=null } = req.body ?? {};
 
     // 檢查必要欄位 & 格式 - name
     try {
-        [ url, img, name, type, update_rate, introduce ] = await checkRequireField ([
+        [ url, img, name, type, introduce ] = await checkRequireField ([
             { field: 'url'          , data: url         , type: 'string' },
             { field: 'img'          , data: img         , type: 'string' },
             { field: 'name'         , data: name        , type: 'string'    , other: ['non_null'] },
-            { field: 'update_rate'  , data: update_rate , type: 'string' },
+            { field: 'type'         , data: type        , type: 'string' },
             { field: 'introduce'    , data: introduce   , type: 'string' }
         ]);
     } catch (err) {
@@ -115,11 +116,10 @@ async function insertChannel(req, res, next) {
             image_id, 
             channel_name, 
             channel_type, 
-            channel_update, 
             channel_introduction
-        ) VALUES (?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?)
     `;
-    const params = [url, img_id, name, type, update_rate, introduce];
+    const params = [url, img_id, name, type, introduce];
 
     try {
         const [result] = await pool.query(sql, params);

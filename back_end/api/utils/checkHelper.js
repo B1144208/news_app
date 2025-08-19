@@ -5,7 +5,7 @@ async function checkRequireField ( requireFields ) {
     @ Check Require Field
     @ field, data: necessary raw
     @ type  : number, string, image, array, object
-    @ other  : [ jump, lth, non_null, non_trim, non_string_number, string_into_array, news_detail ]
+    @ other : [ jump, lth, non_null, non_trim, non_string_number, string_into_array, news_detail ]
     @       1. jump : 若 invalidType 或 nonNull && isNull 時, 則直接跳過
     @       2. lth  : Lenient Type Handling (寬鬆型別處理) 若 type 錯誤, 則設成 null
     @       3. non_null : 不能為空
@@ -14,6 +14,7 @@ async function checkRequireField ( requireFields ) {
     @       6. string_into_array: 若是 array, 則 each trim() ; 若是 string, 先 trim() 後再轉 array
     @       7. news_detail: detail 處理
     @ array_filter: type ( 過濾 array 中的值 )
+    @ enum  : [] 可以包含的值
     */
     
     
@@ -22,7 +23,7 @@ async function checkRequireField ( requireFields ) {
 
     for (const fieldObj of requireFields) {
         
-        const { field, data, type, other, array_filter: array_type } = fieldObj;
+        const { field, data, type, other, array_filter: array_type, enum:enum_value } = fieldObj;
 
         // 檢查 必須有 field, data
         if ( (!('field' in fieldObj) || !typeof field === 'string' || !field.trim() === '') || !('data' in fieldObj) ) {
@@ -45,9 +46,10 @@ async function checkRequireField ( requireFields ) {
         const stringIntoArray = (hasOther && other.includes('string_into_array'))? true: false;
         const detail = (hasOther && other.includes('news_detail'))? true: false;
         
-        
-        // 處理 array_filter 資料格式
+        // 處理 其他 資料格式
         const arrayFilter = ('array_filter' in fieldObj)? true: false;
+        const hasEnum = ('enum' in fieldObj)? true: false;
+
 
         // 若資料為空且可以為空
         if ( checkDataNull ( changeData ) ) {
@@ -114,8 +116,8 @@ async function checkRequireField ( requireFields ) {
             }
         }
 
-        // 如果沒有 other & arrayFilter
-        if ( !hasOther && arrayFilter) {
+        // 如果沒有 other & arrayFilter & hasEnum
+        if ( !hasOther && arrayFilter && hasEnum) {
             !nonChange && ( newData.push( changeData ) );
             continue;
         }
@@ -144,7 +146,6 @@ async function checkRequireField ( requireFields ) {
                     requireFields.push({ field: `detail[${index}]`, data: isText? item.text: item.img, type: isText?'string': 'image', other: ['jump', 'non_null'] });
                 }
             });
-            
             try {
                 !nonChange && ( changeData = await checkRequireField ( requireFields ) );
             } catch (err) {
@@ -166,6 +167,13 @@ async function checkRequireField ( requireFields ) {
                 !nonChange && ( changeData = null );
             }
         }
+
+        // enum
+        if ( hasEnum ) {
+            const includeEnum = enum_value.includes( data );
+            !includeEnum && ( errors.push(`'${field}' has an error input`) );
+        }
+        
 
         // 檢查資料為空
         if ( checkDataNull ( changeData ) ) {

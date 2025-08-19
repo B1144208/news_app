@@ -1,7 +1,9 @@
 const pool = require('../connect_db');
 const { checkRequireField } = require('../utils/checkHelper');
 const { callAndCatchApiSuccess } = require('../utils/fakeHelper');
+const { insertEventsorting } = require('./eventsortingController');
 const { insertKeyword } = require('./keywordController');
+const { insertMultipleperspectives } = require('./multipleperspectivesController');
 
 // search
 async function searchRelation (req, res, next) {
@@ -92,22 +94,6 @@ async function insertRelation (req, res, next) {
     
     let { keyword } = req.body ?? {};
 
-    // 處理 keyword
-    /*keyword = (Array.isArray(keyword))
-        ? keyword.filter(item => item && typeof item === 'string' && item.trim() !== '').map(item => item.trim())
-        : (keyword && typeof keyword === 'string' && keyword.trim() !== '') 
-            ? [keyword.trim()]
-            : [];
-
-   // 確保 keyword 是有效的陣列，即使它是 null 或 undefined
-    if (!Array.isArray(keyword)) {
-        keyword = [];  // 如果 keyword 不是陣列，將其設為空陣列
-    } else {
-        // 過濾掉空值或無效的項目，並保證每個項目是有效字串
-        keyword = keyword.filter(item => item && typeof item === 'string' && item.trim() !== '')
-                        .map(item => item.trim());
-    }*/
-
     try {
         [ keyword ] = await checkRequireField ([
             { field: 'keyword' , data: keyword , type: 'array' , other: ['string_into_array']  , array_filter: 'string' }
@@ -119,10 +105,11 @@ async function insertRelation (req, res, next) {
 
     // 獲取 relation_id
     let sql = `
-        INSERT INTO relation_data( updated_at )
-        VALUES (?)
+        INSERT INTO relation_data ()
+        VALUES ()
     `;
-    let params = [ new Date()];
+    
+    let params = [];
     let [result] = await pool.query(sql, params);
     const relation_id = result.insertId;
 
@@ -162,14 +149,25 @@ async function insertRelation (req, res, next) {
                 throw err;
             }
         });
-
-        
         await Promise.all(insertionTasks);
-        return res.apiSuccess({ insertId: relation_id }, "Insert Success");
         
     } catch (err) {
         return next(err);
     }
+
+    // 插入 eventsorting_data, multipleperspectives_data
+    try {
+        let fakeReq = {
+            body: { id: relation_id }
+        };
+        let insertEventsortingResult = await callAndCatchApiSuccess( insertEventsorting, fakeReq );
+        let insertMultipleperspectivesResult = await callAndCatchApiSuccess( insertMultipleperspectives, fakeReq );
+    } catch (err) {
+        err.desc += "\nmiddlewares-insertRelation(): database insert eventsorting_data, multipleperspectives_data";
+        return next(err);
+    }
+
+    return res.apiSuccess({ insertId: relation_id }, "Insert Success");
 
 }
 

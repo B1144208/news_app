@@ -1,5 +1,5 @@
 // req & res
-async function callAndCatchApiSuccess(middlewareFn, fakeReq) {
+async function callAndCatchApiSuccess(middlewaresFn, fakeReq) {
     let data;
     
     const fakeRes = {
@@ -11,7 +11,7 @@ async function callAndCatchApiSuccess(middlewareFn, fakeReq) {
         throw err;
     };
 
-    await middlewareFn(fakeReq, fakeRes, fakeNext);
+    await middlewaresFn(fakeReq, fakeRes, fakeNext);
     return data;
 }
 

@@ -5,12 +5,19 @@ const { callAndCatchApiSuccess } = require('../utils/fakeHelper');
 // search
 async function searchKeyword (req, res, next) {
     let text = req.query?.text;
+    const relation = req.query?.relation !== undefined;
 
     // 檢查必要欄位 & 格式 - text
     try {
-        [ text ] = await checkRequireField ([
-            { field: 'text' , data: text , type: 'string' }
-        ]);
+        
+        [ text ] = relation
+            ? await checkRequireField ([
+                { field: 'text' , data: text , type: 'string' , other: ['non_null']}
+            ])
+            : await checkRequireField ([
+                { field: 'text' , data: text , type: 'string' }
+            ])
+
     } catch (err) {
         err.desc = "middlewares-searchKeyword(): Missing or Invalid required fields";
         return next(err);
@@ -22,11 +29,22 @@ async function searchKeyword (req, res, next) {
     `;
     let params = [];
     if ( text ) {
-        sql += " AND keyword_text=?";
-        params.push(text);
+        sql += " AND keyword_text LIKE ?";
+        relation
+            ? params.push(`%${text}%`)
+            : params.push(text)
     }
     try {
         let [result] = await pool.query( sql, params );
+
+        if ( relation ) {
+            if ( result.length === 0) {
+                return res.apiSuccess({ success: false }, "Search Fail");
+            } else {
+                return res.apiSuccess({ success: true, searchId: result[0].keyword_relation_id }, "Search Success");
+            }
+        }
+
         return res.apiSuccess(result, "Search Success");
     } catch (err) {
         err.desc = "middlewares - searchKeyword(): database search error";
@@ -38,6 +56,25 @@ async function searchKeyword (req, res, next) {
 // insert
 async function insertKeyword (req, res, next) {
     let text = req.query?.text;
+    const relation = req.query?.relation !== undefined;
+    
+    // insert keyword_relation
+    if ( relation ) {
+
+        let sql =  `
+            INSERT INTO keyword_relation ()
+            VALUES ()
+        `;
+        let params = [];
+        try {
+            let [result] = await pool.query(sql, params);
+            return res.apiSuccess ({ insertId: result.insertId }, "Insert Success");
+        } catch (err) {
+            err.desc = "middlewares-insertKeyword(): database insert error ( relation )";
+            return next(err);
+        }
+        
+    }
 
     // 檢查必要欄位 & 格式 - text
     try {
@@ -53,17 +90,57 @@ async function insertKeyword (req, res, next) {
     let fakeReq = {
         query: { text: text }
     };
-    
-    let searchKeywordResult = await callAndCatchApiSuccess ( searchKeyword, fakeReq );
-    if ( searchKeywordResult.length > 0 ) {
-        return res.apiSuccess({ insertId: searchKeywordResult[0].keyword_id }, "Search Success" );
+    try {
+        let searchKeywordResult = await callAndCatchApiSuccess ( searchKeyword, fakeReq );
+        if ( searchKeywordResult.length > 0 ) {
+            return res.apiSuccess({ insertId: searchKeywordResult[0].keyword_id }, "Search Success" );
+        }
+    } catch (err) {
+        err.desc = "middlewares-insertKeyword(): Search keyword error";
+        return next(err);
     }
 
     // 再 insert
+    // 先 search keyword_relation_id
+    let keyword_relation_id = null;
+    fakeReq = {
+        query: { text: text , relation:'' }
+    };
+    try {
+        let searchKeywordRelationResult = await callAndCatchApiSuccess ( searchKeyword, fakeReq );
+        if ( searchKeywordRelationResult.success ) {
+            keyword_relation_id = searchKeywordRelationResult.searchId;
+        }
+    } catch (err) {
+        err.desc = "middlewares-insertKeyword(): Search keyword error";
+        return next(err);
+    }
+    // 如果沒有 keyword_relation_id ，就創一個
+    if ( !keyword_relation_id ) {
+        fakeReq = {
+            query: { relation:'' }
+        };
+        try {
+            let insertKeywordRelationResult = await callAndCatchApiSuccess ( insertKeyword, fakeReq );
+            keyword_relation_id = insertKeywordRelationResult.insertId;
+        } catch (err) {
+            err.desc = "middlewares-insertKeyword(): database insert error ( relation )";
+            return next(err);
+        }
+    }
+
+    if ( !keyword_relation_id ) {
+        let err = new Error("keyword_relation_id cannot be null");
+        err.desc = "middlewares-insertKeywrod(): keyword_relation_id cannot be null";
+        return next(err);
+    }
+
+    // insert 進 keyword_data
     let sql = `
-        INSERT INTO keyword_data(keyword_text) VALUE (?)
+        INSERT INTO keyword_data ( keyword_text, keyword_relation_id)
+        VALUE ( ?, ? )
     `;
-    let params = [text];
+    let params = [text, keyword_relation_id];
     try {
         let [result] = await pool.query(sql, params);
         return res.apiSuccess({ insertId: result.insertId }, "Insert Success");

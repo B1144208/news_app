@@ -1,6 +1,6 @@
 module.exports = (req, res, next) => {
     
-    res.apiSuccess = (data = null, message = '成功') => {
+    res.apiSuccess = (data = null, message = 'Success') => {
         res.json({
             success: true,
             message,
