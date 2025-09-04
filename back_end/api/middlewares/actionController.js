@@ -43,9 +43,8 @@ async function insertUserAction (req, res, next) {
     /*
     @ actionType : view, comment, bookmark, share, score
     @ dataType   : news, channel, eventsorting, multipleperspectives
-    @ view, bookmark, share : none
-    @ comment : anonymous(可空), text
-    @ score   : score
+    @ comment    : anonymous(可空), text
+    @ score      : score
     */
     let { actionType, dataType } = req.params ?? {}
     let { userId, dataId, clientIp } = req.body ?? {}
@@ -128,19 +127,18 @@ async function insertUserAction (req, res, next) {
 async function updateUserAction(req, res, next) {
     /*
     @ actionType : comment, bookmark, score
-    @ dataType   : news, channel, eventsorting, multipleperspectives
-    @ comment : anonymous(可空), text
-    @ bookmark: groupcustomizeId(可空)
-    @ score   : score
+    @ targetId   : actionType 的 id
+    @ comment    : anonymous(可空), text
+    @ bookmark   : groupcustomizeId(可空)
+    @ score      : score
     */
-
     let { actionType, targetId } = req.params ?? {}
     let { anonymous, text, groupcustomizeId, score } = req.body ?? {}
 
     // 檢查必要欄位 & 格式 - id
     try {
         [ actionType, targetId, anonymous, text, groupcustomizeId, score ] = await checkRequireField ([
-            { field: 'actionType'       , data: actionType      , type: 'string'    , other: ['non_null'],  enum: ['comment', 'bookmark', 'score']  },
+            { field: 'actionType'       , data: actionType      , type: 'string'    , other: ['non_null'], enum: ['comment', 'bookmark', 'score']   },
             { field: 'targetId'         , data: targetId        , type: 'number'    , other: ['non_null']   },
             { field: 'anonymous'        , data: anonymous       , type: 'string'    , other: ['lth']        },
             { field: 'text'             , data: text            , type: 'string'    , other: ['lth']        },
@@ -157,17 +155,16 @@ async function updateUserAction(req, res, next) {
                    ( (actionType === 'score')? !score : false )
     if ( invalidField ) {
         err = new Error("Missing or Invalid required fields");
-        err.desc = "middlewares-insertUserAction(): Missing or Invalid required fields";
+        err.desc = "middlewares-updateUserAction(): Missing or Invalid required fields";
         return next(err);
     }
-
 
     let sql = `
         UPDATE user_${actionType}
     `;
     let params = [];
 
-    if ( comment ) {
+    if ( actionType==='comment' ) {
         let anonymousId = null;
         if ( anonymous ) {
             let fakeReq = {
@@ -187,15 +184,15 @@ async function updateUserAction(req, res, next) {
         `;
         params.push( anonymousId, text );
     }
-    if ( bookmark ) {
+    if ( actionType==='bookmark' ) {
         sql += `
             SET groupcustomize_id = ?
         `;
         params.push( groupcustomizeId );
     }
-    if ( score ) {
+    if ( actionType==='score' ) {
         sql += `
-            SET targt_score = ?
+            SET target_score = ?
         `;
         params.push( score );
     }
@@ -206,16 +203,48 @@ async function updateUserAction(req, res, next) {
 
     try {
         let [result] = await pool.query(sql, params);
-        return res.apiSuccess(result, "Update Success");
+        if (result.affectedRows===1) 
+            return res.apiSuccess({sucess: true}, "Update Success");
+        return res.apiSuccess({sucess: false}, "Update Fail");
     } catch (err) {
-        err.desc = "middlewares-insertUserAction(): database update error";
+        err.desc = "middlewares-updateUserAction(): database update error";
         return next(err);
     }
 }
 
 // delete
 async function deleteUserAction(req, res, next) {
-    return;
+    /*
+    @ actionType : comment, bookmark, score
+    @ targetId   : actionType 的 id
+    */
+    let { actionType, targetId } = req.params ?? {}
+
+    // 檢查必要欄位 & 格式 - id
+    try {
+        [ actionType, targetId, anonymous, text, groupcustomizeId, score ] = await checkRequireField ([
+            { field: 'actionType'       , data: actionType      , type: 'string'    , other: ['non_null'],  enum: ['comment', 'bookmark', 'score']  },
+            { field: 'targetId'         , data: targetId        , type: 'number'    , other: ['non_null']   }
+        ]);
+    } catch (err) {
+        err.desc = "middlewares-deleteUserAction(): Missing or Invalid required fields";
+        return next(err);
+    }
+
+    let sql = `
+        DELETE FROM user_${actionType}
+        WHERE ${actionType}_id = ?
+    `;
+    let params = [targetId];
+    try {
+        let [result] = await pool.query(sql, params);
+        if (result.affectedRows===1) 
+            return res.apiSuccess({sucess: true}, "Delete Success");
+        return res.apiSuccess({sucess: false}, "Delete Fail");
+    } catch (err) {
+        err.desc = "middlewares-deleteUserAction(): database delete error";
+        return next(err);
+    }
 }
 
 module.exports = {

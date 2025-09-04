@@ -19,6 +19,7 @@ router.get('/', (req, res) => {
 const userRouter = require('./user')
 //const { getClientInfo, getClientIp } = require('../utils/clientHelper')
 const anonymousRouter = require('./anonymous');
+const groupcustomizeRouter = require('./groupcustomize');
 
 const newsRouter = require('./news')
 const channelRouter = require('./channel')
@@ -38,6 +39,7 @@ const testRouter = require('./test')
 router.use('/user', userRouter)
 //router.use('/user/ip', getClientIp, userRouter)
 router.use('/anonymous', anonymousRouter);
+router.use('/groupcustomize', groupcustomizeRouter);
 
 router.use('/news', newsRouter)
 router.use('/channel', channelRouter)

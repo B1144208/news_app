@@ -25,9 +25,9 @@ router.delete('/', async (req, res, next) => {
 
 // user_action
 router.get('/:actionType/:dataType', searchUserAction);
-router.post('/:actionType/:dataType', getClientIp, insertUserAction);    // ip
-router.put('/:actionType/:dataType', updateUserAction);
-router.delete('/:actionType/:dataType', deleteUserAction);
+router.post('/:actionType/:dataType', getClientIp, insertUserAction);
+router.put('/:actionType/:targetId', updateUserAction);
+router.delete('/:actionType/:targetId', deleteUserAction);
 
 
 

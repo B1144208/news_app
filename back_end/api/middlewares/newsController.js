@@ -53,7 +53,6 @@ async function searchNews(req, res, next) {
 async function insertNews(req, res, next) {
     let { url, channel, cover_img, title, publish_date, detail, group, location, keyword } = req.body ?? {};
 
-
     try {
         // 優先檢查 url 是否已經存在
         try {
@@ -180,6 +179,16 @@ async function insertNews(req, res, next) {
 
         // 2. 插入 news_body
         let order = 10;
+        sql = `
+            INSERT INTO news_body (
+                news_id,
+                body_type,
+                body_text,
+                body_image,
+                body_order
+            ) VALUE
+        `;
+        params = [];
         for( let [index, item] of detail.entries() ) {
 
             let type = null;
@@ -203,25 +212,16 @@ async function insertNews(req, res, next) {
                 }
                 
             }
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //////////////////////////////////////////////////// 改成一條sql /////////////////////////////////////////////////////////////////
-            sql = `
-                INSERT INTO news_body (
-                    news_id,
-                    body_type,
-                    body_${type==='text'? 'text': 'image'},
-                    body_order
-                ) VALUE ( ?, ?, ?, ?)
-            `
-            params = [ news_id, type, text || img_id, order]
-            
-            try {
-                let [newsBodyResult] = await pool.query(sql, params);
-            } catch (err) {
-                err.desc = 'middlewares-insertNews(): database insert error ( body )';
-                return next(err)
-            }
+
+            sql += (index==0)? ` ( ?, ?, ?, ?, ?)`: `, ( ?, ?, ?, ?, ?)`;
+            params.push(news_id, type, text, img_id, order);
             order += 10;
+        }
+        try {
+            let [newsBodyResult] = await pool.query(sql, params);
+        } catch (err) {
+            err.desc = 'middlewares-insertNews(): database insert error ( body )';
+            return next(err);
         }
 
         // 3. 插入 news_group

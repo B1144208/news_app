@@ -8,10 +8,13 @@ module.exports = async ( req, res, next ) => {
     const user      = 'user'        in req.query;
     const favorite  = 'favorite'    in req.query;
     const anonymous = 'anonymous'   in req.query;
-    const score     = 'score'       in req.query;
-    const comment   = 'comment'     in req.query;
-    const bookmark  = 'bookmark'    in req.query;
-    const search    = 'search'      in req.query;
+    const action    = 'action'      in req.query;
+    let   view      = 'view'        in req.query;
+    let   comment   = 'comment'     in req.query;
+    let   bookmark  = 'bookmark'    in req.query;
+    let   share     = 'share'       in req.query;
+    let   score     = 'score'       in req.query;
+    let   search    = 'search'      in req.query;
 
     const news      = 'news'        in req.query;
     const channel   = 'channel'     in req.query;
@@ -29,10 +32,13 @@ module.exports = async ( req, res, next ) => {
     user        &&  ( sql += 'DELETE FROM user_profile;'                                );
     favorite    &&  ( sql += 'DELETE FROM user_favorite;'                               );
     anonymous   &&  ( sql += 'DELETE FROM user_anonymous;'                              );
-    score       &&  ( sql += 'DELETE FROM user_score;'                                  );
+    if (action) { view = true; comment = true; bookmark = true; share = true; score = true; search = true;}
+    view        &&  ( sql += 'DELETE FROM user_view;'                                   );
     comment     &&  ( sql += 'DELETE FROM user_comment;'                                );
     bookmark    &&  ( sql += 'DELETE FROM user_bookmark;'                               );
-    search      &&  ( sql += 'DELETE FROM user_search_record;'                          );
+    share       &&  ( sql += 'DELETE FROM user_share;'                                  );
+    score       &&  ( sql += 'DELETE FROM user_score;'                                  );
+    search      &&  ( sql += 'DELETE FROM user_search;'                          );
     
     news        &&  ( sql += 'DELETE FROM news_data;'                                   );
     channel     &&  ( sql += 'DELETE FROM channel_data;'                                );
@@ -50,10 +56,12 @@ module.exports = async ( req, res, next ) => {
         ALTER TABLE user_profile AUTO_INCREMENT = 1;
         ALTER TABLE user_favorite AUTO_INCREMENT = 1;
         ALTER TABLE user_anonymous AUTO_INCREMENT = 1;
-        ALTER TABLE user_bookmark AUTO_INCREMENT = 1;
+        ALTER TABLE user_view AUTO_INCREMENT = 1;
         ALTER TABLE user_comment AUTO_INCREMENT = 1;
+        ALTER TABLE user_bookmark AUTO_INCREMENT = 1;
+        ALTER TABLE user_share AUTO_INCREMENT = 1;
         ALTER TABLE user_score AUTO_INCREMENT = 1;
-        ALTER TABLE user_search_record AUTO_INCREMENT = 1;
+        ALTER TABLE user_search AUTO_INCREMENT = 1;
 
         ALTER TABLE news_data AUTO_INCREMENT = 1;
         ALTER TABLE news_body AUTO_INCREMENT = 1;

@@ -11,9 +11,10 @@ async function checkRequireField ( requireFields ) {
     @       3. non_null : 不能為空
     @       4. non_change: 只判斷是否error，正確則不回傳值
     @       5. non_string_number : 不允許 string 型態的 number
+    @       6. number_into_array: 若是 array, 則 each trim() ; 若是 number, 轉 array
     @       6. string_into_array: 若是 array, 則 each trim() ; 若是 string, 先 trim() 後再轉 array
     @       7. news_detail: detail 處理
-    @ array_filter: type ( 過濾 array 中的值 )
+    @ array_filter : type ( 過濾 array 中的值 )
     @ enum  : [] 可以包含的值
     */
     
@@ -43,6 +44,7 @@ async function checkRequireField ( requireFields ) {
         const nonNull = (hasOther && other.includes('non_null'))? true: false;
         const nonChange = (hasOther && other.includes('non_change'))? true: false;
         const nonStringNumber = (hasOther && other.includes('non_string_number'))? true: false;
+        const numberIntoArray = (hasOther && other.includes('number_into_array'))? true: false;
         const stringIntoArray = (hasOther && other.includes('string_into_array'))? true: false;
         const detail = (hasOther && other.includes('news_detail'))? true: false;
         
@@ -50,12 +52,11 @@ async function checkRequireField ( requireFields ) {
         const arrayFilter = ('array_filter' in fieldObj)? true: false;
         const hasEnum = ('enum' in fieldObj)? true: false;
 
-
         // 若資料為空且可以為空
         if ( checkDataNull ( changeData ) ) {
             if ( jump && nonNull ) continue;
             nonNull? 
-                errors.push(`'${field}' must not be null`): 
+                errors.push(`'${field}' 11 must not be null`): 
                 !nonChange && ( newData.push( changeData ) );
             continue;
         }
@@ -71,7 +72,6 @@ async function checkRequireField ( requireFields ) {
                         validType = typeof changeData === 'number' || !isNaN( changeData );
                         if ( validType ) !nonChange && ( changeData = Number(changeData) );
                     }
-                    //if( nonStringNumber ) validType = typeof changeData === 'number';
                     break;
                 case 'string':
                     validType = typeof changeData === 'string';
@@ -97,6 +97,17 @@ async function checkRequireField ( requireFields ) {
                     break;
                 case 'array': 
                     validType = Array.isArray(changeData);
+                    // number_into_array
+                    if ( numberIntoArray && !validType ) {
+                        if( nonStringNumber ) validType = typeof changeData === 'number';
+                        else {
+                            validType = typeof changeData === 'number' || !isNaN( changeData );
+                            if ( validType ) !nonChange && ( changeData = Number(changeData) );
+                        }
+                        !nonChange && ( changeData = [changeData] );
+                        validType = true;
+                    }
+
                     // string_into_array
                     if ( stringIntoArray && !validType && typeof changeData === 'string') {
                         !nonChange && ( changeData = [changeData] );
@@ -169,17 +180,17 @@ async function checkRequireField ( requireFields ) {
         }
 
         // enum
-        if ( hasEnum ) {
+        if ( hasEnum && !( !data && lth ) ) {
+
             const includeEnum = enum_value.includes( data );
-            !includeEnum && ( errors.push(`'${field}' has an error input`) );
+            ( !includeEnum && !lth ) && ( errors.push(`'${field}' has an error input`) );
         }
         
-
         // 檢查資料為空
         if ( checkDataNull ( changeData ) ) {
             if ( jump && nonNull ) continue;
             nonNull? 
-                errors.push(`'${field}' must not be null`): 
+                errors.push(`'${field}' 22 must not be null`): 
                 !nonChange && ( changeData = null );
         }
 

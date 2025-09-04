@@ -1,4 +1,3 @@
-const fs = require('fs').promises;
 const pool = require('../connect_db');
 const { checkRequireField } = require('../utils/checkHelper');
 const { callAndCatchApiSuccess } = require('../utils/fakeHelper')
@@ -69,11 +68,13 @@ async function searchChannel(req, res, next) {
     }
 }
 
+
+
 // insert
 async function insertChannel(req, res, next) {
     let { url=null, img=null, name, type=null, introduce=null } = req.body ?? {};
 
-    // 檢查必要欄位 & 格式 - name
+    // 檢查必要欄位 & 格式 - url, img, name, type, introduce
     try {
         [ url, img, name, type, introduce ] = await checkRequireField ([
             { field: 'url'          , data: url         , type: 'string' },
