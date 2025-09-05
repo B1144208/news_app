@@ -1,0 +1,12 @@
+[
+  {
+    "channel": "CTS",
+    "url": "https://news.cts.com.tw",
+    "description": "華視新聞",
+    "logo": "https://news.cts.com.tw/favicon.ico"
+  },
+  {
+    "name": "CTS",
+    "url": "https://news.cts.com.tw"
+  }
+]
