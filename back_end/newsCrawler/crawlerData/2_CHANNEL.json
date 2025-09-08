@@ -1,0 +1,51 @@
+[
+  {
+    "url": "https://www.cnn.com/business",
+    "img": "https://cdn.cnn.com/cnn/.e/img/3.0/global/misc/cnn-business-logo.png",
+    "name": "CNN Business",
+    "type": "財經新聞頻道",
+    "introduce": "CNN Business delivers the latest financial news and market analysis, covering everything from stocks and investing to personal finance and the global economy. Our team of experienced business journalists provides in-depth coverage of major companies, market trends, economic developments, job market reports, and inflation data that affect your money and financial decisions."
+  },
+  {
+    "url": "https://www.cnn.com/politics",
+    "img": "https://cdn.cnn.com/cnn/.e/img/3.0/global/misc/cnn-politics-logo.png",
+    "name": "CNN Politics",
+    "type": "政治新聞頻道",
+    "introduce": "CNN Politics provides comprehensive coverage of American politics and government, including breaking news from Washington, campaign coverage, policy analysis, and in-depth reporting on the people and institutions that shape our democracy. We cover the White House, Congress, Supreme Court, elections, and key political developments that impact the nation."
+  },
+  {
+    "url": "https://www.cnn.com/health",
+    "img": "https://cdn.cnn.com/cnn/.e/img/3.0/global/misc/cnn-health-logo.png",
+    "name": "CNN Health",
+    "type": "健康新聞頻道",
+    "introduce": "CNN Health offers the latest health and medical news, covering everything from breakthrough research and public health alerts to wellness tips and mental health resources. Our team of medical correspondents and experts provides trusted, science-based health information, including coverage of disease outbreaks, medical appointments, and healthcare policy."
+  },
+  {
+    "url": "https://www.cnn.com/world",
+    "img": "https://cdn.cnn.com/cnn/.e/img/3.0/global/misc/cnn-world-logo.png",
+    "name": "CNN World",
+    "type": "國際新聞頻道",
+    "introduce": "CNN World brings you breaking news and in-depth coverage from around the globe. Our international correspondents report on major world events, conflicts, politics, climate summits, and cultural developments that impact communities worldwide, including coverage from Europe, Asia, Middle East, and other regions."
+  },
+  {
+    "url": "https://edition.cnn.com/",
+    "img": "https://cdn.cnn.com/cnn/.e/img/3.0/global/misc/cnn-logo.png",
+    "name": "CNN",
+    "type": "國際新聞媒體",
+    "introduce": "CNN (Cable News Network) is a multinational news channel and website headquartered in Atlanta, Georgia. CNN was founded in 1980 by American media proprietor Ted Turner and Reese Schonfeld as a 24-hour cable news channel. CNN provides comprehensive news coverage including politics, business, health, world events, and breaking news from around the globe."
+  },
+  {
+    "url": "https://news.tvbs.com.tw/english",
+    "img": "https://cc.tvbs.com.tw/img/tvbs-world-taiwan-logo.png",
+    "name": "TVBS World Taiwan",
+    "type": "國際英文新聞頻道",
+    "introduce": "TVBS World Taiwan is the English-language division of TVBS News, providing comprehensive coverage of Taiwan news for international audiences. We cover weather forecasts, typhoon alerts, business developments, political affairs, and other significant events happening in Taiwan, helping the world understand Taiwan's perspectives and developments."
+  },
+  {
+    "url": "https://news.tvbs.com.tw/",
+    "img": "https://cc.tvbs.com.tw/img/tvbs-logo.png",
+    "name": "TVBS新聞網",
+    "type": "電視新聞媒體",
+    "introduce": "TVBS新聞網為聯利媒體股份有限公司所經營之網路新聞媒體，以台灣新聞媒體市佔率第一品牌之高度，展現兼具深度及廣度的新聞視野。涵蓋地方新聞、政治新聞、生活新聞、科技新聞、氣象新聞、體育新聞、娛樂新聞、財經新聞等各類別，提供即時、完整、公正的國內外新聞報導及網路直播服務。"
+  }
+]
