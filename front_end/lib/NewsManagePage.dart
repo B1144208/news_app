@@ -143,60 +143,61 @@ class _NewsManagePageState extends State<NewsManagePage> {
             colors: [Colors.blue[50]!, Colors.blue[100]!],
           ),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 標題區域
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                margin: const EdgeInsets.only(bottom: 30),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(15),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.3),
-                      spreadRadius: 2,
-                      blurRadius: 5,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.newspaper,
-                      size: 50,
-                      color: Colors.blue[700],
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      '新聞管理中心',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue[800],
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      '管理新聞的各種數據類型',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // 新聞管理綜合介面
-              Expanded(
-                child: Container(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 標題區域
+                Container(
+                  width: double.infinity,
                   padding: const EdgeInsets.all(20),
+                  margin: const EdgeInsets.only(bottom: 30),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(15),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.3),
+                        spreadRadius: 2,
+                        blurRadius: 5,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.newspaper,
+                        size: 50,
+                        color: Colors.blue[700],
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        '新聞管理中心',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue[800],
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        '管理新聞的各種數據類型',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // 新聞管理綜合介面
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  margin: const EdgeInsets.only(bottom: 20),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(15),
@@ -228,7 +229,6 @@ class _NewsManagePageState extends State<NewsManagePage> {
                         decoration: BoxDecoration(
                           color: Colors.blue[50],
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.blue[200]!),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -300,45 +300,44 @@ class _NewsManagePageState extends State<NewsManagePage> {
                     ],
                   ),
                 ),
-              ),
 
-              const SizedBox(height: 20),
-
-              // 統計信息
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(15),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.3),
-                      spreadRadius: 2,
-                      blurRadius: 5,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
+                // 統計信息
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  margin: const EdgeInsets.only(bottom: 80), // 底部留更多空間給浮動按鈕
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(15),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.3),
+                        spreadRadius: 2,
+                        blurRadius: 5,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildStatItem(
+                          '總新聞數',
+                          '0' /* TODO: 後續改為 '${newsStats['total']}' */,
+                          Icons.article),
+                      _buildStatItem(
+                          '今日新增',
+                          '0' /* TODO: 後續改為 '${newsStats['today']}' */,
+                          Icons.today),
+                      _buildStatItem(
+                          '待審核',
+                          '0' /* TODO: 後續改為 '${newsStats['pending']}' */,
+                          Icons.pending),
+                    ],
+                  ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildStatItem(
-                        '總新聞數',
-                        '0' /* TODO: 後續改為 '${newsStats['total']}' */,
-                        Icons.article),
-                    _buildStatItem(
-                        '今日新增',
-                        '0' /* TODO: 後續改為 '${newsStats['today']}' */,
-                        Icons.today),
-                    _buildStatItem(
-                        '待審核',
-                        '0' /* TODO: 後續改為 '${newsStats['pending']}' */,
-                        Icons.pending),
-                  ],
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

@@ -169,111 +169,106 @@ class _DataManagePageState extends State<DataManagePage> {
             colors: [Colors.green[50]!, Colors.green[100]!],
           ),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 標題區域
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                margin: const EdgeInsets.only(bottom: 30),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(15),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.3),
-                      spreadRadius: 2,
-                      blurRadius: 5,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.storage,
-                      size: 50,
-                      color: Colors.green[700],
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      '數據管理中心',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green[800],
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 標題區域
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  margin: const EdgeInsets.only(bottom: 30),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(15),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.3),
+                        spreadRadius: 2,
+                        blurRadius: 5,
+                        offset: const Offset(0, 3),
                       ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      '管理系統中的各種數據類型',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // 數據管理項目列表
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                    ],
+                  ),
                   child: Column(
                     children: [
-                      _buildSimpleButton('news', Icons.newspaper, Colors.blue,
-                          () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const NewsManagePage(),
-                          ),
-                        );
-                      }),
-                      const SizedBox(height: 15),
-                      _buildSimpleButton('channel', Icons.tv, Colors.purple,
-                          () {
-                        // TODO: 後續實現頻道管理功能
-                        _showComingSoon('頻道管理');
-                      }),
-                      const SizedBox(height: 15),
-                      _buildSimpleButton('image', Icons.image, Colors.orange,
-                          () {
-                        // TODO: 後續實現圖片管理功能
-                        _showComingSoon('圖片管理');
-                      }),
-                      const SizedBox(height: 15),
-                      _buildSimpleButton('group', Icons.group, Colors.teal, () {
-                        // TODO: 後續實現群組管理功能
-                        _showComingSoon('群組管理');
-                      }),
-                      const SizedBox(height: 15),
-                      _buildSimpleButton(
-                          'location', Icons.location_on, Colors.red, () {
-                        // TODO: 後續實現位置管理功能
-                        _showComingSoon('位置管理');
-                      }),
-                      const SizedBox(height: 15),
-                      _buildSimpleButton('keyword', Icons.key, Colors.indigo,
-                          () {
-                        // TODO: 後續實現關鍵字管理功能
-                        _showComingSoon('關鍵字管理');
-                      }),
-                      const SizedBox(height: 15),
-                      _buildSimpleButton(
-                          'relation', Icons.account_tree, Colors.brown, () {
-                        // TODO: 後續實現關聯管理功能
-                        _showComingSoon('關聯管理');
-                      }),
+                      Icon(
+                        Icons.storage,
+                        size: 50,
+                        color: Colors.green[700],
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        '數據管理中心',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green[800],
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        '管理系統中的各種數據類型',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
                     ],
                   ),
                 ),
-              ),
-            ],
+
+                // 數據管理項目列表
+                Column(
+                  children: [
+                    _buildSimpleButton('news', Icons.newspaper, Colors.blue,
+                        () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const NewsManagePage(),
+                        ),
+                      );
+                    }),
+                    const SizedBox(height: 15),
+                    _buildSimpleButton('channel', Icons.tv, Colors.purple, () {
+                      // TODO: 後續實現頻道管理功能
+                      _showComingSoon('頻道管理');
+                    }),
+                    const SizedBox(height: 15),
+                    _buildSimpleButton('image', Icons.image, Colors.orange, () {
+                      // TODO: 後續實現圖片管理功能
+                      _showComingSoon('圖片管理');
+                    }),
+                    const SizedBox(height: 15),
+                    _buildSimpleButton('group', Icons.group, Colors.teal, () {
+                      // TODO: 後續實現群組管理功能
+                      _showComingSoon('群組管理');
+                    }),
+                    const SizedBox(height: 15),
+                    _buildSimpleButton(
+                        'location', Icons.location_on, Colors.red, () {
+                      // TODO: 後續實現位置管理功能
+                      _showComingSoon('位置管理');
+                    }),
+                    const SizedBox(height: 15),
+                    _buildSimpleButton('keyword', Icons.key, Colors.indigo, () {
+                      // TODO: 後續實現關鍵字管理功能
+                      _showComingSoon('關鍵字管理');
+                    }),
+                    const SizedBox(height: 15),
+                    _buildSimpleButton(
+                        'relation', Icons.account_tree, Colors.brown, () {
+                      // TODO: 後續實現關聯管理功能
+                      _showComingSoon('關聯管理');
+                    }),
+                    const SizedBox(height: 20), // 底部留白
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
