@@ -5,7 +5,7 @@ const { insertChannel } = require('./channelController');
 const { insertImage, deleteImage } = require('./imageController');
 const { insertGroup } = require('./groupController');
 const { searchLocation } = require('./locationController');
-const { insertRelation, deleteRelation } = require('./relationController');
+const { insertRelation, deleteRelation } = require('./relationController') ;
 
 // search
 async function searchNews(req, res, next) {
@@ -51,7 +51,7 @@ async function searchNews(req, res, next) {
 
 // insert
 async function insertNews(req, res, next) {
-    let { url, channel, cover_img, title, publish_date, detail, group, location, keyword } = req.body ?? {};
+    let { url, channel, cover_img, title, publish_date, detail, group, location, keyword, comment } = req.body ?? {};
 
     try {
         // 優先檢查 url 是否已經存在
@@ -80,7 +80,8 @@ async function insertNews(req, res, next) {
             { field: 'detail'       , data: detail      , type: 'object'    , other: ['non_null', 'news_detail'] },
             { field: 'group'        , data: group       , type: 'array'     , other: ['string_into_array']  , array_filter: 'string' },
             { field: 'location'     , data: location    , type: 'array'     , other: ['string_into_array']  , array_filter: 'string' },
-            { field: 'keyword'      , data: keyword     , type: 'array'     , other: ['string_into_array']  , array_filter: 'string' }
+            { field: 'keyword'      , data: keyword     , type: 'array'     , other: ['string_into_array']  , array_filter: 'string' },
+            { field: 'comment'      , data: comment     , type: 'array'     , other: ['string_into_array']  , array_filter: 'string' }
         ];
         try {
             let result = await checkRequireField ( requireFields );
