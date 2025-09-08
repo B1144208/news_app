@@ -8,11 +8,24 @@ from selenium.webdriver.chrome.options import Options       # 配置 Chrome 瀏�
 
 from fake_useragent import UserAgent
 
+from pathlib import Path
+from dotenv import load_dotenv
+
+# 隨機 user-agent
 ua = UserAgent()
 headers = {
     'User-Agent': ua.random  # 随机 User-Agent
 }
 
+# CrawlerData
+class CrawlerData:
+    env_path = Path(__file__).resolve().parent.parent / ".env"   # .env path
+    load_dotenv(dotenv_path=env_path)   
+
+    def __init__(self, channel_id):
+        self.path = Path(__file__).resolve().parent.parent / os.getenv("CRAWLER_DATA_PATH")
+        self.news = channel_id + "_" + os.getenv("CRAWLER_NEWS_FILE")
+        self.channel = channel_id + "_" + os.getenv("CRAWLER_CHANNEL_FILE")
 
 def get_chrome_paths(chrome_binary_path=r"C:\Users\USER\Dropbox\PC\Desktop\chrome\chrome-win64\chrome.exe", chromedriver_path=r"C:\Users\USER\Dropbox\PC\Desktop\chrome\chromedriver-win64\chromedriver.exe"):
     return chrome_binary_path, chromedriver_path
@@ -54,11 +67,6 @@ def init_steal_driver(USER_AGENT, headless=True):
 
     print("✅ Stealth Chrome 啟動成功")
     return driver
-
-
-
-
-
 
 # 將抓到的html原始碼儲存
 def save_html_source(html_txt, filename="a_temp.html"):

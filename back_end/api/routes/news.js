@@ -2,6 +2,7 @@ const express = require('express')
 const router = express.Router()
 const pool = require('../connect_db')
 const { searchNews, insertNews, updateNews, deleteNews } = require('../middlewares/newsController');
+const { batchNews } = require('../utils/batchHelper');
 
 
 // search
@@ -10,6 +11,7 @@ router.get('/:id', searchNews);
 
 // insert
 router.post('/', insertNews);
+router.post('/batch', batchNews);
 
 // update
 router.put('/', async (req, res, next) => {
