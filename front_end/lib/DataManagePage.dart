@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'PhotoPage.dart';
+import 'ChannelPage.dart';
+import 'GroupPage.dart';
+
 // TODO: 後續需要加入HTTP請求套件
 // import 'package:http/http.dart' as http;
 // import 'dart:convert';
@@ -234,19 +238,31 @@ class _DataManagePageState extends State<DataManagePage> {
                     }),
                     const SizedBox(height: 15),
                     _buildSimpleButton('channel', Icons.tv, Colors.purple, () {
-                      // TODO: 後續實現頻道管理功能
-                      _showComingSoon('頻道管理');
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ChannelPage(),
+                        ),
+                      );
                     }),
                     const SizedBox(height: 15),
                     _buildSimpleButton('image', Icons.image, Colors.orange, () {
-                      // TODO: 後續實現圖片管理功能
-                      _showComingSoon('圖片管理');
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const PhotoPage(),
+                        ),
+                      );
                     }),
+
                     const SizedBox(height: 15),
                     _buildSimpleButton('group', Icons.group, Colors.teal, () {
-                      // TODO: 後續實現群組管理功能
-                      _showComingSoon('群組管理');
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const GroupPage()),
+                      );
                     }),
+
                     const SizedBox(height: 15),
                     _buildSimpleButton(
                         'location', Icons.location_on, Colors.red, () {
