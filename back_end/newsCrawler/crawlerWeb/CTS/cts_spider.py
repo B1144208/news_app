@@ -48,10 +48,10 @@ def fetch_news_list(limit=5):
 
         news = {
             "url": full_link,
-            "group": "CTS新聞",
+            "group": "",
             "channel": "CTS",
             "cover_img": {"src": image, "alt": ""},
-            "news_title": title,
+            "title": title,
             "publish_date": publish_date or datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "location": "",
             "detail": detail,

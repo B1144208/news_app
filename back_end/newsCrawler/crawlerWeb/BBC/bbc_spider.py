@@ -71,10 +71,10 @@ def get_news_info(url):
 
         return {
             "url": url,
-            "group": "BBC新聞",
+            "group": "",
             "channel": "BBC",
             "cover_img": cover_img,
-            "news_title": title,
+            "title": title,
             "publish_date": publish_date,
             "location": "",
             "detail": detail,

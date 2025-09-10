@@ -1,8 +1,4 @@
-import 'dart:typed_data';
-import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -14,61 +10,15 @@ class PhotoPage extends StatefulWidget {
 }
 
 class _PhotoPageState extends State<PhotoPage> {
-  PlatformFile? _pickedFile;
-  Uint8List? _webImage;
   List<dynamic> _images = []; // 搜尋結果
-  final String apiUrl = "http://localhost:3000/api/image"; // TODO: API更改位置
+  final TextEditingController _altController = TextEditingController();
+  final TextEditingController _urlController = TextEditingController();
+  final String apiUrl = "http://localhost:3000/api/image"; // API
 
-  // 選擇照片
-  Future<void> _pickImage() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-      allowMultiple: false,
-    );
-
-    if (result != null && result.files.isNotEmpty) {
-      setState(() {
-        _pickedFile = result.files.first;
-        if (kIsWeb) {
-          _webImage = _pickedFile!.bytes;
-        }
-      });
-    }
-  }
-
-  // 上傳照片
-  Future<void> _uploadImage() async {
-    if (_pickedFile == null) return;
-
-    var request = http.MultipartRequest('POST', Uri.parse(apiUrl));
-
-    if (kIsWeb) {
-      request.files.add(http.MultipartFile.fromBytes(
-        'image',
-        _webImage!,
-        filename: _pickedFile!.name,
-      ));
-    } else {
-      request.files.add(await http.MultipartFile.fromPath(
-        'image',
-        _pickedFile!.path!,
-      ));
-    }
-
-    request.fields['alt'] = 'Flutter file_picker test';
-
-    var response = await request.send();
-
-    if (response.statusCode == 200) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("照片上傳成功")),
-      );
-      _searchImages(); // 上傳後刷新列表
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("上傳失敗: ${response.statusCode}")),
-      );
-    }
+  @override
+  void initState() {
+    super.initState();
+    _searchImages();
   }
 
   // 搜尋所有照片
@@ -76,8 +26,9 @@ class _PhotoPageState extends State<PhotoPage> {
     try {
       var response = await http.get(Uri.parse(apiUrl));
       if (response.statusCode == 200) {
+        final body = json.decode(response.body);
         setState(() {
-          _images = json.decode(response.body);
+          _images = body['data'] ?? [];
         });
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -89,6 +40,41 @@ class _PhotoPageState extends State<PhotoPage> {
     }
   }
 
+  // 新增照片 (URL + 說明)
+  Future<void> _uploadImageUrl(String imageUrl) async {
+    if (imageUrl.isEmpty) return;
+
+    try {
+      var response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {"Content-Type": "application/json"},
+        body: json.encode({
+          "img": {
+            "src": imageUrl,
+            "alt": _altController.text
+          }
+        }),
+      );
+
+      final respJson = json.decode(response.body);
+
+      if (response.statusCode == 200 && respJson['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("照片新增成功")),
+        );
+        _altController.clear();
+        _urlController.clear();
+        _searchImages();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("新增失敗: ${respJson['message']}")),
+        );
+      }
+    } catch (e) {
+      print("新增錯誤: $e");
+    }
+  }
+
   // 刪除指定照片
   Future<void> _deleteImage(int id) async {
     try {
@@ -97,7 +83,7 @@ class _PhotoPageState extends State<PhotoPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("照片已刪除")),
         );
-        _searchImages(); // 刪除後刷新
+        _searchImages();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("刪除失敗: ${response.statusCode}")),
@@ -109,46 +95,42 @@ class _PhotoPageState extends State<PhotoPage> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    _searchImages(); // 頁面載入時先查一次
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("照片管理")),
+      appBar: AppBar(title: const Text("照片管理 (URL 版)")),
       body: Column(
         children: [
-          // 上傳區
-          Expanded(
-            flex: 2,
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _pickedFile == null
-                      ? const Text("尚未選擇照片")
-                      : kIsWeb
-                      ? Image.memory(_webImage!, height: 200)
-                      : Image.file(File(_pickedFile!.path!), height: 200),
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: _pickImage,
-                    child: const Text("選擇照片"),
+          // 新增區
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Column(
+              children: [
+                TextField(
+                  controller: _urlController,
+                  decoration: const InputDecoration(
+                    labelText: "照片 URL",
+                    border: OutlineInputBorder(),
                   ),
-                  ElevatedButton(
-                    onPressed: _uploadImage,
-                    child: const Text("上傳照片"),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _altController,
+                  decoration: const InputDecoration(
+                    labelText: "照片說明",
+                    border: OutlineInputBorder(),
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 10),
+                ElevatedButton(
+                  onPressed: () => _uploadImageUrl(_urlController.text),
+                  child: const Text("新增照片"),
+                ),
+              ],
             ),
           ),
           const Divider(),
           // 搜尋 & 刪除區
           Expanded(
-            flex: 3,
             child: _images.isEmpty
                 ? const Center(child: Text("目前沒有照片"))
                 : ListView.builder(
@@ -157,14 +139,16 @@ class _PhotoPageState extends State<PhotoPage> {
                 final img = _images[index];
                 return ListTile(
                   leading: Image.network(
-                    img['src'],
+                    img['image_origin_url'],
                     width: 60,
                     fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) =>
+                    const Icon(Icons.broken_image),
                   ),
-                  title: Text(img['alt'] ?? ''),
+                  title: Text(img['image_text'] ?? ''),
                   trailing: IconButton(
                     icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () => _deleteImage(img['id']),
+                    onPressed: () => _deleteImage(img['image_id']),
                   ),
                 );
               },
