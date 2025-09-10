@@ -9,6 +9,7 @@ import 'GroupPage.dart';
 
 // 連接頁面
 import 'NewsManagePage.dart';
+import 'LocationPage.dart';
 import 'config.dart';
 
 // TODO: 後續需要實現的API函數
@@ -264,10 +265,13 @@ class _DataManagePageState extends State<DataManagePage> {
                     }),
 
                     const SizedBox(height: 15),
-                    _buildSimpleButton(
-                        'location', Icons.location_on, Colors.red, () {
-                      // TODO: 後續實現位置管理功能
-                      _showComingSoon('位置管理');
+                    _buildSimpleButton('location', Icons.location_on, Colors.red, () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const LocationPage(),
+                        ),
+                      );
                     }),
                     const SizedBox(height: 15),
                     _buildSimpleButton('keyword', Icons.key, Colors.indigo, () {
