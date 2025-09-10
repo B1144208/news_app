@@ -1,0 +1,553 @@
+[
+  {
+    "url": "https://www.cnn.com/2025/08/01/economy/us-jobs-report-july",
+    "group": "Business",
+    "channel": "CNN",
+    "cover_img": {
+      "src": "https://cdn.cnn.com/cnnnext/dam/assets/250801-jobs-report-july.jpg",
+      "alt": "Job seekers at employment fair"
+    },
+    "title": "US job growth stalls: Just 73,000 jobs added in July, with 'stunning' downward revisions to recent months",
+    "publish_date": "2025/08/01 17:00",
+    "detail": [
+      {
+        "text": "By CNN Business Team"
+      },
+      {
+        "text": "The US job market slowed substantially in July and was much weaker than first estimated for prior months, suggesting President Donald Trump's trade policy may be stifling hiring."
+      },
+      {
+        "text": "The US economy added just 73,000 jobs last month, and the monthly totals for May and June were revised down by a combined 258,000 jobs. The prior two months' revisions were 'stunning,' said Diane Swonk, chief economist at KPMG."
+      },
+      {
+        "text": "May's estimated 144,000 net gain was revised down by 125,000 to 19,000; and June's preliminary tally of 147,000 was slashed by 133,000 to 14,000, according to data released Friday from the Bureau of Labor Statistics."
+      },
+      {
+        "text": "With those monumental, quarter-million-job downward revisions, the meager job gains in June were the weakest since December 2020, the last time the labor market had monthly job losses."
+      }
+    ],
+    "comment": []
+  },
+  {
+    "url": "https://www.cnn.com/2025/08/12/economy/us-cpi-consumer-inflation-july",
+    "group": "Business",
+    "channel": "CNN",
+    "cover_img": {
+      "src": "https://cdn.cnn.com/cnnnext/dam/assets/250812-inflation-report.jpg",
+      "alt": "Shopping cart in grocery store"
+    },
+    "title": "Inflation holds steady, but Trump's tariffs are boosting some prices",
+    "publish_date": "2025/08/12 14:30",
+    "detail": [
+      {
+        "text": "By CNN Business"
+      },
+      {
+        "text": "Falling gas prices helped keep overall inflation tame in July; however, a broader array of products got even more expensive last month, showing that President Donald Trump's expansive tariffs are being passed along to consumers."
+      },
+      {
+        "text": "Consumer prices rose 0.2% in July, keeping the annual inflation rate at 2.7%, according to the latest Consumer Price Index data released Tuesday by the Bureau of Labor Statistics."
+      },
+      {
+        "text": "Economists had expected inflation to heat up slightly last month, to 0.2% from June and by 2.8% annually. While tariff-exposed goods categories did see some price increases in July, the lion's share of cost pressures came from services."
+      },
+      {
+        "text": "Trump's sweeping trade policy of tacking steep tariffs on most goods that cross America's borders are widely expected to result in higher prices for businesses and consumers."
+      }
+    ],
+    "comment": []
+  },
+  {
+    "url": "https://www.cnn.com/politics/live-news/trump-administration-news-08-25-25",
+    "group": "Politics",
+    "channel": "CNN",
+    "cover_img": {
+      "src": "https://cdn.cnn.com/cnnnext/dam/assets/250825-fed-governor.jpg",
+      "alt": "Federal Reserve Governor Lisa Cook"
+    },
+    "title": "Trump said tonight he was firing Federal Reserve Governor Lisa Cook",
+    "publish_date": "2025/08/25 20:45",
+    "detail": [
+      {
+        "text": "By CNN Politics Team"
+      },
+      {
+        "text": "President Donald Trump this evening said tonight he has fired Federal Reserve Governor Lisa Cook, according to a letter addressed to her posted on his social media."
+      },
+      {
+        "text": "If it happens, it would be the first instance of a president firing a governor in the central bank's 111-year history. Cook has recently come under fire by Trump and members of his administration for allegedly committing mortgage fraud."
+      },
+      {
+        "text": "The Justice Department has said it plans to investigate those allegations. Cook, the first Black woman appointed to the Fed's Board of Governors, has not been charged with any wrongdoing."
+      },
+      {
+        "text": "Last week, she released a statement saying she would not be 'bullied' into resigning."
+      }
+    ],
+    "comment": []
+  },
+  {
+    "url": "https://www.cnn.com/politics/live-news/trump-administration-news-08-27-25",
+    "group": "Health",
+    "channel": "CNN",
+    "cover_img": {
+      "src": "https://cdn.cnn.com/cnnnext/dam/assets/250827-cdc-director.jpg",
+      "alt": "CDC Director Susan Monarez"
+    },
+    "title": "CDC Director Susan Monarez ousted after less than a month on the job",
+    "publish_date": "2025/08/27 16:20",
+    "detail": [
+      {
+        "text": "By CNN Health"
+      },
+      {
+        "text": "Dr. Susan Monarez, who was sworn in as director of the US Centers for Disease Control and Prevention on July 31, is being ousted, according to three sources familiar with the situation."
+      },
+      {
+        "text": "Her departure was quickly followed by the resignation of several high-level veteran agency officials, leaving the CDC leaderless at a perilous time."
+      },
+      {
+        "text": "Morale, which was already low after deep staff cuts this spring, plummeted after a gunman opened fire on the agency's main campus in Atlanta on August 8, pocking the buildings with hundreds of bullet holes and killing DeKalb County police officer David Rose."
+      },
+      {
+        "text": "The CDC has been facing significant challenges under the Trump administration's restructuring efforts."
+      }
+    ],
+    "comment": []
+  },
+  {
+    "url": "https://www.cnn.com/politics/live-news/trump-administration-news-08-31-25",
+    "group": "Politics",
+    "channel": "CNN",
+    "cover_img": {
+      "src": "https://cdn.cnn.com/cnnnext/dam/assets/250831-chicago-enforcement.jpg",
+      "alt": "Immigration enforcement operation in Chicago"
+    },
+    "title": "Trump administration plans to send additional immigration enforcement resources to Chicago",
+    "publish_date": "2025/08/31 12:15",
+    "detail": [
+      {
+        "text": "By CNN Politics"
+      },
+      {
+        "text": "The Trump administration plans to send additional immigration enforcement resources to Chicago this week, Homeland Security Secretary Kristi Noem said today."
+      },
+      {
+        "text": "CNN reported last week that a major enforcement operation will soon be underway in the city, and Chicago's mayor laid out plans to resist the federal crackdown yesterday."
+      },
+      {
+        "text": "'We've already had ongoing operations with ICE in Chicago and throughout Illinois and other states, making sure that we're upholding our laws, but we do intend to add more resources to those operations,' Noem said on CBS' 'Face the Nation.'"
+      },
+      {
+        "text": "Preparations are underway to send armored vehicles and surge federal agents to Chicago, with the operation expected to kick off by Friday, multiple sources told CNN last week."
+      }
+    ],
+    "comment": []
+  },
+  {
+    "url": "https://www.cnn.com/2025/06/15/politics/biden-immigration-policy",
+    "group": "Politics",
+    "channel": "CNN",
+    "cover_img": {
+      "src": "https://cdn.cnn.com/cnnnext/dam/assets/250615-border-security.jpg",
+      "alt": "US-Mexico border fence"
+    },
+    "title": "White House announces new border security measures ahead of summer migration surge",
+    "publish_date": "2025/06/15 11:30",
+    "detail": [
+      {
+        "text": "By CNN Politics Team"
+      },
+      {
+        "text": "The White House announced comprehensive border security measures today as officials prepare for the traditional summer increase in migration attempts along the southern border."
+      },
+      {
+        "text": "The new policies include enhanced screening procedures, additional personnel deployment, and expanded detention facilities to handle the expected surge."
+      },
+      {
+        "text": "Border Patrol officials report that crossing attempts typically increase by 40% during summer months due to more favorable weather conditions."
+      },
+      {
+        "text": "The administration is coordinating with Mexico and Central American countries to address root causes of migration while strengthening border enforcement capabilities."
+      }
+    ],
+    "comment": []
+  },
+  {
+    "url": "https://www.cnn.com/2025/06/22/world/climate-summit-paris",
+    "group": "World",
+    "channel": "CNN",
+    "cover_img": {
+      "src": "https://cdn.cnn.com/cnnnext/dam/assets/250622-climate-summit.jpg",
+      "alt": "Climate summit delegates in Paris"
+    },
+    "title": "Global climate summit in Paris reaches breakthrough agreement on carbon emissions",
+    "publish_date": "2025/06/22 18:45",
+    "detail": [
+      {
+        "text": "By CNN Climate Team"
+      },
+      {
+        "text": "World leaders at the Paris Climate Summit announced a landmark agreement today that sets new binding targets for carbon emission reductions across 195 countries."
+      },
+      {
+        "text": "The accord requires developed nations to cut emissions by 50% by 2030 and achieve net-zero by 2040, five years earlier than previously committed."
+      },
+      {
+        "text": "Developing countries will receive $200 billion annually in climate financing to support their transition to renewable energy sources."
+      },
+      {
+        "text": "Environmental groups praised the agreement as a significant step forward, though some critics argue the targets may still be insufficient to prevent catastrophic warming."
+      }
+    ],
+    "comment": []
+  },
+  {
+    "url": "https://www.cnn.com/2025/07/04/politics/independence-day-celebrations",
+    "group": "Politics",
+    "channel": "CNN",
+    "cover_img": {
+      "src": "https://cdn.cnn.com/cnnnext/dam/assets/250704-july4-fireworks.jpg",
+      "alt": "Fourth of July fireworks over Washington DC"
+    },
+    "title": "Trump delivers Independence Day address emphasizing American unity and strength",
+    "publish_date": "2025/07/04 20:00",
+    "detail": [
+      {
+        "text": "By CNN Politics"
+      },
+      {
+        "text": "President Donald Trump delivered his Independence Day address from the White House South Lawn, emphasizing themes of American unity and national strength before thousands of gathered supporters."
+      },
+      {
+        "text": "The president highlighted economic achievements during his administration, including job growth and manufacturing expansion, while calling for continued support of his policy agenda."
+      },
+      {
+        "text": "Trump also announced the launch of a new veterans' healthcare initiative and increased funding for military modernization programs."
+      },
+      {
+        "text": "The celebration concluded with a spectacular fireworks display over the National Mall, attended by an estimated 500,000 people."
+      }
+    ],
+    "comment": []
+  },
+  {
+    "url": "https://www.cnn.com/2025/07/18/business/tech-earnings-q2",
+    "group": "Business",
+    "channel": "CNN",
+    "cover_img": {
+      "src": "https://cdn.cnn.com/cnnnext/dam/assets/250718-tech-stocks.jpg",
+      "alt": "Tech company logos on trading floor screens"
+    },
+    "title": "Major tech companies report mixed Q2 earnings as AI investments weigh on profits",
+    "publish_date": "2025/07/18 16:30",
+    "detail": [
+      {
+        "text": "By CNN Business"
+      },
+      {
+        "text": "Major technology companies reported mixed second-quarter earnings this week, with massive investments in artificial intelligence infrastructure weighing on near-term profitability."
+      },
+      {
+        "text": "Apple, Microsoft, and Google parent Alphabet all exceeded revenue expectations but warned that AI-related capital expenditures would continue to impact margins through 2025."
+      },
+      {
+        "text": "Meta reported strong user growth across its platforms but acknowledged challenges from increased competition in the social media space."
+      },
+      {
+        "text": "Despite short-term pressures, analysts remain optimistic about the long-term potential of AI investments to drive future growth and innovation."
+      }
+    ],
+    "comment": []
+  },
+  {
+    "url": "https://www.cnn.com/2025/08/09/health/summer-heat-health-advisory",
+    "group": "Health",
+    "channel": "CNN",
+    "cover_img": {
+      "src": "https://cdn.cnn.com/cnnnext/dam/assets/250809-heat-wave.jpg",
+      "alt": "People seeking shade during extreme heat"
+    },
+    "title": "Health officials issue nationwide heat advisory as temperatures soar across US",
+    "publish_date": "2025/08/09 13:20",
+    "detail": [
+      {
+        "text": "By CNN Health"
+      },
+      {
+        "text": "Federal health officials issued a nationwide heat advisory today as dangerous temperatures exceeding 100°F are forecast across much of the United States through the weekend."
+      },
+      {
+        "text": "The Centers for Disease Control and Prevention reported a 35% increase in heat-related emergency room visits compared to the same period last year."
+      },
+      {
+        "text": "Particularly vulnerable populations include elderly individuals, young children, and those with chronic medical conditions such as heart disease and diabetes."
+      },
+      {
+        "text": "Public health officials are urging Americans to stay hydrated, limit outdoor activities during peak hours, and check on vulnerable neighbors and family members."
+      }
+    ],
+    "comment": []
+  },
+  {
+    "url": "https://news.tvbs.com.tw/english/2893978",
+    "group": "Weather",
+    "channel": "TVBS新聞網",
+    "cover_img": {
+      "src": "https://cc.tvbs.com.tw/img/upload/2025/06/06/typhoon-butterfly.jpg",
+      "alt": "Satellite image of Typhoon Butterfly approaching Taiwan"
+    },
+    "title": "First typhoon of season may approach Taiwan by June 11: CWA",
+    "publish_date": "2025/06/06 14:00",
+    "detail": [
+      {
+        "text": "Reporter TVBS News Staff"
+      },
+      {
+        "text": "Taiwan's Central Weather Administration (CWA, 中央氣象署), the island's national meteorological agency, issued a cautionary alert on Friday (June 6) as Typhoon Butterfly (蝴蝶) — the first named storm of the 2025 Pacific typhoon season — is expected to form in the coming days."
+      },
+      {
+        "text": "Meteorologists at the agency have outlined a timeline of changing conditions for the island nation of 23 million people: residents can expect relatively stable summer weather patterns with partly cloudy skies and isolated afternoon thunderstorms through Monday."
+      },
+      {
+        "text": "However, forecasters project the developing tropical system will begin influencing Taiwan's weather by Wednesday evening, bringing heightened precipitation probability to the northern and eastern coastal regions."
+      },
+      {
+        "text": "Weather officials emphasized that significant uncertainty still surrounds the tropical system's eventual trajectory, with the storm's path heavily dependent on the strength and position of the Pacific high-pressure system."
+      }
+    ],
+    "comment": []
+  },
+  {
+    "url": "https://news.tvbs.com.tw/local/2025061201",
+    "group": "地方新聞",
+    "channel": "TVBS新聞網",
+    "cover_img": {
+      "src": "https://cc.tvbs.com.tw/img/upload/2025/06/12/dragon-boat-festival.jpg",
+      "alt": "Dragon boat race in Taipei"
+    },
+    "title": "端午連假首日湧現出遊潮 國道多路段現車潮",
+    "publish_date": "2025/06/12 09:30",
+    "detail": [
+      {
+        "text": "記者陳建宇／台北報導"
+      },
+      {
+        "text": "端午連假首日，全台各地湧現出遊人潮，國道1號、3號多個路段出現車潮，其中以北部往南路段最為壅塞。"
+      },
+      {
+        "text": "高速公路局表示，上午9時起國道1號南下湖口至新竹路段車速降至時速30公里以下，預估塞車狀況將持續到中午。"
+      },
+      {
+        "text": "觀光局統計，預計連假期間將有超過600萬人次出遊，各大觀光景點已啟動疏運機制。"
+      },
+      {
+        "text": "氣象局提醒，連假期間天氣穩定，但午後山區仍有局部短暫雷雨，民眾外出請注意安全。"
+      }
+    ],
+    "comment": []
+  },
+  {
+    "url": "https://news.tvbs.com.tw/politics/2025062001",
+    "group": "政治新聞",
+    "channel": "TVBS新聞網",
+    "cover_img": {
+      "src": "https://cc.tvbs.com.tw/img/upload/2025/06/20/legislative-yuan.jpg",
+      "alt": "立法院議場"
+    },
+    "title": "立院三讀通過國防預算案 明年軍費增加8.2%",
+    "publish_date": "2025/06/20 16:45",
+    "detail": [
+      {
+        "text": "記者林志純／台北報導"
+      },
+      {
+        "text": "立法院今日三讀通過114年度國防預算案，總額達新台幣6150億元，較去年增加8.2%，創歷史新高。"
+      },
+      {
+        "text": "國防部長顧立雄表示，增加的預算主要用於強化不對稱戰力，包括採購飛彈系統、無人機及網路戰能力建置。"
+      },
+      {
+        "text": "預算案中，軍事投資佔2400億元，人員維持費2950億元，作業維持費800億元。"
+      },
+      {
+        "text": "在野黨立委質疑預算分配，認為應更重視基層官兵待遇改善，國防部承諾將持續檢討薪資結構。"
+      }
+    ],
+    "comment": []
+  },
+  {
+    "url": "https://news.tvbs.com.tw/life/2025062801",
+    "group": "生活新聞",
+    "channel": "TVBS新聞網",
+    "cover_img": {
+      "src": "https://cc.tvbs.com.tw/img/upload/2025/06/28/summer-vacation.jpg",
+      "alt": "學生們收拾書包準備放暑假"
+    },
+    "title": "暑假來臨！觀光業者推親子旅遊優惠搶客",
+    "publish_date": "2025/06/28 11:15",
+    "detail": [
+      {
+        "text": "記者王志文／台北報導"
+      },
+      {
+        "text": "隨著各級學校陸續放暑假，觀光業者紛紛推出親子旅遊優惠方案，希望在暑假旅遊旺季搶得商機。"
+      },
+      {
+        "text": "國內主要旅行社推出「親子同樂」套裝行程，包含住宿、交通及景點門票，價格較平日優惠2-3成。"
+      },
+      {
+        "text": "主題樂園也配合推出暑期活動，包括夜間煙火秀、水上樂園及DIY體驗課程等。"
+      },
+      {
+        "text": "觀光局預估，今年暑假國旅人次可望達到1200萬人次，較去年同期成長15%。"
+      }
+    ],
+    "comment": []
+  },
+  {
+    "url": "https://news.tvbs.com.tw/tech/2025070501",
+    "group": "科技新聞",
+    "channel": "TVBS新聞網",
+    "cover_img": {
+      "src": "https://cc.tvbs.com.tw/img/upload/2025/07/05/ai-summit-taipei.jpg",
+      "alt": "台北AI高峰會現場"
+    },
+    "title": "台北AI高峰會登場 聚焦生成式AI產業應用",
+    "publish_date": "2025/07/05 13:30",
+    "detail": [
+      {
+        "text": "記者蘇湘雲／台北報導"
+      },
+      {
+        "text": "2025台北AI高峰會今日在南港展覽館盛大開幕，吸引來自全球超過300家企業參與，聚焦生成式AI在各產業的創新應用。"
+      },
+      {
+        "text": "經濟部長王美花致詞表示，台灣在AI晶片製造具有領先優勢，政府將持續投入資源發展AI生態系。"
+      },
+      {
+        "text": "大會展示最新AI技術應用，包括智慧醫療、自動駕駛、智慧製造等領域的突破性進展。"
+      },
+      {
+        "text": "台積電、聯發科、廣達等台灣科技大廠均展示最新AI解決方案，吸引國際買主關注。"
+      }
+    ],
+    "comment": []
+  },
+  {
+    "url": "https://news.tvbs.com.tw/weather/2025071201",
+    "group": "氣象新聞",
+    "channel": "TVBS新聞網",
+    "cover_img": {
+      "src": "https://cc.tvbs.com.tw/img/upload/2025/07/12/summer-heat-wave.jpg",
+      "alt": "民眾在炎熱天氣下撐傘遮陽"
+    },
+    "title": "7月熱浪襲台！連續高溫上看38度 氣象局發布熱警報",
+    "publish_date": "2025/07/12 10:45",
+    "detail": [
+      {
+        "text": "記者廖宜亭／台北報導"
+      },
+      {
+        "text": "中央氣象局今日發布高溫警報，預報未來一週全台將持續出現攝氏36至38度高溫，部分地區甚至可能突破39度。"
+      },
+      {
+        "text": "氣象局表示，受到太平洋高壓籠罩影響，台灣持續晴朗炎熱天氣，僅山區午後有局部短暫雷陣雨。"
+      },
+      {
+        "text": "衛福部提醒民眾避免長時間戶外活動，多補充水分，注意防曬措施，慎防熱傷害。"
+      },
+      {
+        "text": "台電公司表示，連日高溫推升用電量，今日尖峰用電量預估將達4200萬瓩，供電燈號維持綠燈。"
+      }
+    ],
+    "comment": []
+  },
+  {
+    "url": "https://news.tvbs.com.tw/sports/2025072001",
+    "group": "體育新聞",
+    "channel": "TVBS新聞網",
+    "cover_img": {
+      "src": "https://cc.tvbs.com.tw/img/upload/2025/07/20/paris-olympics-prep.jpg",
+      "alt": "中華隊選手準備前往巴黎奧運"
+    },
+    "title": "巴黎奧運倒數！中華隊68名選手出征 目標獎牌數創新高",
+    "publish_date": "2025/07/20 14:20",
+    "detail": [
+      {
+        "text": "記者陳俊宏／台北報導"
+      },
+      {
+        "text": "2024巴黎奧運即將開幕，中華代表隊68名選手今日舉行授旗典禮，體育署長鄭世忠期許選手創下最佳成績。"
+      },
+      {
+        "text": "本屆奧運中華隊參賽項目包括羽球、桌球、舉重、射箭、游泳、田徑等16個項目，選手平均年齡24.5歲。"
+      },
+      {
+        "text": "羽球「黃金男雙」王齊麟、李洋有望衛冕金牌，舉重女神郭婞淳也被視為奪金熱門。"
+      },
+      {
+        "text": "體育署設定目標希望能獲得3面金牌，總獎牌數突破東京奧運的12面紀錄。"
+      }
+    ],
+    "comment": []
+  },
+  {
+    "url": "https://news.tvbs.com.tw/entertainment/2025072801",
+    "group": "娛樂新聞",
+    "channel": "TVBS新聞網",
+    "cover_img": {
+      "src": "https://cc.tvbs.com.tw/img/upload/2025/07/28/taiwan-film-festival.jpg",
+      "alt": "台北電影節紅毯典禮"
+    },
+    "title": "台北電影節閉幕 《青春18×2》獲最佳劇情片大獎",
+    "publish_date": "2025/07/28 21:30",
+    "detail": [
+      {
+        "text": "記者洪珮雯／台北報導"
+      },
+      {
+        "text": "第26屆台北電影節今晚舉行閉幕典禮，由藤井道人執導的《青春18×2》獲得最佳劇情片大獎，成為本屆最大贏家。"
+      },
+      {
+        "text": "最佳導演獎由《關於我和鬼變成家人的那件事》導演程偉豪獲得，最佳男主角則頒給《看海的日子》的黃秋生。"
+      },
+      {
+        "text": "本屆電影節共有來自42個國家、189部影片參展，吸引超過8萬人次觀影，創下歷史新高。"
+      },
+      {
+        "text": "影展期間舉辦多場大師講座和影人交流活動，促進台灣與國際電影產業的合作交流。"
+      }
+    ],
+    "comment": []
+  },
+  {
+    "url": "https://news.tvbs.com.tw/business/2025080401",
+    "group": "財經新聞",
+    "channel": "TVBS新聞網",
+    "cover_img": {
+      "src": "https://cc.tvbs.com.tw/img/upload/2025/08/04/taiwan-export-data.jpg",
+      "alt": "貨櫃碼頭出口貨物"
+    },
+    "title": "7月出口創23個月新高 AI晶片需求強勁帶動成長",
+    "publish_date": "2025/08/04 16:00",
+    "detail": [
+      {
+        "text": "記者蔡怡杏／台北報導"
+      },
+      {
+        "text": "財政部今日公布7月貿易統計，出口值達412.8億美元，年增23.9%，創23個月來新高，主要受惠於AI晶片強勁需求。"
+      },
+      {
+        "text": "其中電子零組件出口年增41.2%，資通與視聽產品出口也有35.6%成長，顯示科技產業復甦力道強勁。"
+      },
+      {
+        "text": "對美國出口年增28.4%，對中國大陸（含香港）出口也有18.7%成長，反映全球科技需求回溫。"
+      },
+      {
+        "text": "經濟部預估，下半年在AI應用持續擴散帶動下，台灣出口有望維持雙位數成長。"
+      }
+    ],
+    "comment": []
+  }
+]
