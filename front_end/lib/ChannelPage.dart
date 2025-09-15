@@ -12,103 +12,137 @@ class ChannelPage extends StatefulWidget {
 class _ChannelPageState extends State<ChannelPage> {
   static const String apiUrl = "http://localhost:3000/api/channel";
 
-  List<Map<String, dynamic>> channels = []; // 用 map 存 channel_id & channel_name
-  String searchQuery = "";
+  List<dynamic> channels = [];
+  int? expandedChannelId;
   final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    // 一開始不顯示任何列表
-    channels = [];
+    fetchChannels();
   }
 
-  // 取得頻道列表或搜尋
-  Future<void> fetchChannels({String? query}) async {
-    final url = query != null && query.isNotEmpty
-        ? "$apiUrl?name=$query"
-        : "$apiUrl?name=";
-    final response = await http.get(Uri.parse(url));
-
-    if (response.statusCode == 200) {
-      final jsonResponse = json.decode(response.body);
-      if (jsonResponse["success"] == true) {
+  // 取得頻道清單或搜尋
+  Future<void> fetchChannels({String? name}) async {
+    try {
+      final url = (name != null && name.isNotEmpty)
+          ? "$apiUrl?name=$name"
+          : apiUrl;
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
         setState(() {
-          if (query != null && query.isNotEmpty) {
-            // 後端搜尋只回傳 searchId，用 query 當名稱
-            channels = [
-              {
-                "channel_id": jsonResponse["data"]["searchId"],
-                "channel_name": query
-              }
-            ];
-          } else {
-            // 一開始不顯示列表
-            channels = [];
-          }
+          channels = name != null && name.isNotEmpty
+              ? [
+            {
+              "channel_id": data["data"]["searchId"],
+              "channel_name": name,
+            }
+          ]
+              : data["data"];
         });
       }
-    } else {
-      throw Exception('Failed to load channels');
+    } catch (e) {
+      debugPrint("抓取頻道失敗: $e");
     }
   }
 
-  // 新增頻道（只需名稱）
-  Future<void> addChannel(String name) async {
-    final response = await http.post(
-      Uri.parse(apiUrl),
-      headers: {"Content-Type": "application/json"},
-      body: json.encode({"name": name}),
-    );
+  // 展開/收合
+  void toggleExpand(int channelId) {
+    setState(() {
+      expandedChannelId = (expandedChannelId == channelId) ? null : channelId;
+    });
+  }
 
-    if (response.statusCode == 200) {
-      fetchChannels(query: searchQuery);
-    } else {
-      throw Exception('Failed to add channel');
+  // 搜尋
+  void searchChannels(String keyword) {
+    fetchChannels(name: keyword);
+  }
+
+  // 新增頻道到資料庫
+  Future<void> addChannelToDB(String name,
+      {String? introduction, String? url}) async {
+    try {
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {"Content-Type": "application/json"},
+        body: json.encode({
+          "name": name,
+          "introduce": introduction,
+          "url": url,
+        }),
+      );
+      if (response.statusCode == 200) {
+        fetchChannels(); // 新增後重新抓取
+      }
+    } catch (e) {
+      debugPrint("新增頻道失敗: $e");
     }
   }
 
-  // 刪除頻道
-  Future<void> deleteChannel(int id) async {
-    final response = await http.delete(Uri.parse("$apiUrl/$id"));
-
-    if (response.statusCode == 200) {
-      fetchChannels(query: searchQuery);
-    } else {
-      throw Exception('Failed to delete channel');
+  // 刪除頻道到資料庫
+  Future<void> deleteChannelFromDB(int id) async {
+    try {
+      final response = await http.delete(Uri.parse("$apiUrl/$id"));
+      if (response.statusCode == 200) {
+        fetchChannels(); // 刪除後重新抓取
+      }
+    } catch (e) {
+      debugPrint("刪除頻道失敗: $e");
     }
   }
 
-  // 彈出新增頻道輸入框
-  Future<void> showAddDialog() async {
-    String input = "";
-    final name = await showDialog<String>(
+  // 新增頻道 Dialog（可輸入名稱、介紹、網址）
+  void showAddDialog() {
+    final TextEditingController nameController = TextEditingController();
+    final TextEditingController introController = TextEditingController();
+    final TextEditingController urlController = TextEditingController();
+
+    showDialog(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text("新增頻道"),
-          content: TextField(
-            autofocus: true,
-            onChanged: (value) => input = value,
-            decoration: const InputDecoration(hintText: "輸入頻道名稱"),
+      builder: (_) => AlertDialog(
+        title: const Text("新增頻道"),
+        content: SingleChildScrollView(
+          child: Column(
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(hintText: "頻道名稱"),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: introController,
+                decoration: const InputDecoration(hintText: "頻道介紹"),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: urlController,
+                decoration: const InputDecoration(hintText: "頻道網址"),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, null),
-              child: const Text("取消"),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, input),
-              child: const Text("新增"),
-            ),
-          ],
-        );
-      },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("取消"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (nameController.text.isNotEmpty) {
+                addChannelToDB(
+                  nameController.text,
+                  introduction: introController.text,
+                  url: urlController.text,
+                );
+              }
+              Navigator.pop(context);
+            },
+            child: const Text("新增"),
+          ),
+        ],
+      ),
     );
-
-    if (name != null && name.isNotEmpty) {
-      await addChannel(name);
-    }
   }
 
   @override
@@ -116,63 +150,87 @@ class _ChannelPageState extends State<ChannelPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("頻道管理"),
-      ),
-      body: Column(
-        children: [
-          // 搜尋列
-          Padding(
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(56),
+          child: Padding(
             padding: const EdgeInsets.all(8.0),
             child: TextField(
               controller: _searchController,
+              onChanged: searchChannels,
               decoration: InputDecoration(
-                hintText: "搜尋頻道",
+                hintText: "搜尋頻道...",
                 prefixIcon: const Icon(Icons.search),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.clear),
-                  onPressed: () {
-                    _searchController.clear();
-                    searchQuery = "";
-                    channels = [];
-                    setState(() {});
-                  },
-                ),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              onChanged: (value) {
-                searchQuery = value;
-                if (value.isNotEmpty) {
-                  fetchChannels(query: searchQuery);
-                } else {
-                  setState(() {
-                    channels = [];
-                  });
-                }
-              },
             ),
           ),
-          const SizedBox(height: 5),
-          // 頻道列表
-          Expanded(
-            child: channels.isEmpty
-                ? const Center(child: Text("沒有頻道資料"))
-                : ListView.builder(
-              itemCount: channels.length,
-              itemBuilder: (context, index) {
-                final channel = channels[index];
-                return ListTile(
-                  title: Text(channel['channel_name']),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () =>
-                        deleteChannel(channel['channel_id']),
+        ),
+      ),
+      body: channels.isEmpty
+          ? const Center(child: Text("沒有頻道資料"))
+          : ListView.builder(
+        itemCount: channels.length,
+        itemBuilder: (context, index) {
+          final channel = channels[index];
+          final bool isExpanded =
+              expandedChannelId == channel["channel_id"];
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ListTile(
+                title: Text(channel["channel_name"] ?? "未命名頻道"),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () =>
+                          deleteChannelFromDB(channel["channel_id"]),
+                    ),
+                    Icon(
+                      isExpanded
+                          ? Icons.keyboard_arrow_up
+                          : Icons.keyboard_arrow_down,
+                    ),
+                  ],
+                ),
+                onTap: () => toggleExpand(channel["channel_id"]),
+              ),
+              if (isExpanded)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                          "介紹：${channel["channel_introduction"] ?? "無"}"),
+                      Text("網址：${channel["channel_url"] ?? "無"}"),
+                      Text("總觀看：${channel["total_view"] ?? 0}"),
+                      Text("總留言：${channel["total_comment"] ?? 0}"),
+                      Text("總收藏：${channel["total_bookmark"] ?? 0}"),
+                      Text("總分享：${channel["total_share"] ?? 0}"),
+                      Text(
+                          "近期觀看：${channel["total_recent_view"] ?? 0}"),
+                      Text(
+                          "近期留言：${channel["total_recent_comment"] ?? 0}"),
+                      Text(
+                          "近期收藏：${channel["total_recent_bookmark"] ?? 0}"),
+                      Text(
+                          "近期分享：${channel["total_recent_share"] ?? 0}"),
+                      Text("總熱度：${channel["total_heat"] ?? 0}"),
+                      Text("建立時間：${channel["created_at"] ?? "-"}"),
+                      Text("更新時間：${channel["updated_at"] ?? "-"}"),
+                    ],
                   ),
-                );
-              },
-            ),
-          ),
-        ],
+                ),
+              const Divider(),
+            ],
+          );
+        },
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: showAddDialog,

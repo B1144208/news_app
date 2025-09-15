@@ -10,7 +10,7 @@ async function searchGroup (req, res, next) {
     // 檢查必要欄位 & 格式 - name
     try {
         [ name ] = await checkRequireField ([
-            { field: 'name' , data: name , type: 'string' , other: ['non_null'] }
+            { field: 'name' , data: name , type: 'string'  }
         ]);
     } catch (err) {
         err.desc = "middlewares-searchGroup(): Missing or Invalid required fields";

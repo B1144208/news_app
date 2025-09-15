@@ -12,28 +12,41 @@ class GroupPage extends StatefulWidget {
 class _GroupPageState extends State<GroupPage> {
   static const String apiUrl = "http://localhost:3000/api/group"; // API
 
-  List<Map<String, dynamic>> searchResult = [];
-  final TextEditingController _searchController = TextEditingController();
-  final TextEditingController _addController = TextEditingController();
+  // 分組後的資料結構： { group_id: { group_name: [ group_detail... ] } }
+  Map<int, Map<String, List<Map<String, dynamic>>>> groupedData = {};
+  Map<int, Map<String, List<Map<String, dynamic>>>> filteredData = {};
 
-  // 搜尋單筆群組
-  Future<void> searchGroup(String name) async {
-    final response = await http.get(Uri.parse("$apiUrl?name=$name"));
+  final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _addGroupController = TextEditingController();
+
+  // 讀取所有群組與細項
+  Future<void> fetchGroups() async {
+    final response = await http.get(Uri.parse(apiUrl));
     if (response.statusCode == 200) {
-      final data = json.decode(response.body)['data'];
+      final List<dynamic> data = json.decode(response.body)['data'];
+
+      Map<int, Map<String, List<Map<String, dynamic>>>> tempGrouped = {};
+
+      for (var item in data) {
+        final id = item['group_id'];
+        final name = item['group_name'];
+        final detail = {
+          "id": item['group_detail_id'],
+          "name": item['group_detail_name']
+        };
+
+        if (!tempGrouped.containsKey(id)) {
+          tempGrouped[id] = {name: []};
+        }
+        tempGrouped[id]![name]!.add(detail);
+      }
+
       setState(() {
-        searchResult = [
-          {
-            'id': data['id'],
-            'name': name, // 目前 API 沒回傳名稱，用輸入名稱代替
-          }
-        ];
+        groupedData = tempGrouped;
+        filteredData = tempGrouped; // 預設顯示全部
       });
     } else {
-      setState(() {
-        searchResult = [];
-      });
-      throw Exception('Failed to search group');
+      throw Exception('Failed to fetch groups');
     }
   }
 
@@ -42,20 +55,48 @@ class _GroupPageState extends State<GroupPage> {
     final response = await http.post(
       Uri.parse(apiUrl),
       headers: {"Content-Type": "application/json"},
-      body: json.encode({"name": name}),
+      body: json.encode({"group_name": name}),
     );
     if (response.statusCode == 200) {
-      await searchGroup(name);
-      _addController.clear();
+      _addGroupController.clear();
+      fetchGroups(); // 重新載入
     } else {
       throw Exception('Failed to add group');
     }
   }
 
+  // 搜尋群組（依 group_name）
+  void searchGroup(String keyword) {
+    if (keyword.isEmpty) {
+      setState(() {
+        filteredData = groupedData;
+      });
+      return;
+    }
+
+    Map<int, Map<String, List<Map<String, dynamic>>>> temp = {};
+    groupedData.forEach((id, map) {
+      final groupName = map.keys.first;
+      if (groupName.contains(keyword)) {
+        temp[id] = map;
+      }
+    });
+
+    setState(() {
+      filteredData = temp;
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    fetchGroups();
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
-    _addController.dispose();
+    _addGroupController.dispose();
     super.dispose();
   }
 
@@ -76,26 +117,26 @@ class _GroupPageState extends State<GroupPage> {
                     decoration: const InputDecoration(
                       hintText: "輸入群組名稱搜尋",
                     ),
+                    onChanged: searchGroup,
                   ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.search),
                   onPressed: () {
-                    final name = _searchController.text.trim();
-                    if (name.isNotEmpty) searchGroup(name);
+                    searchGroup(_searchController.text.trim());
                   },
                 ),
               ],
             ),
           ),
-          // 新增
+          // 新增群組
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Row(
               children: [
                 Expanded(
                   child: TextField(
-                    controller: _addController,
+                    controller: _addGroupController,
                     decoration: const InputDecoration(
                       hintText: "輸入群組名稱新增",
                     ),
@@ -104,34 +145,143 @@ class _GroupPageState extends State<GroupPage> {
                 IconButton(
                   icon: const Icon(Icons.add),
                   onPressed: () {
-                    final name = _addController.text.trim();
+                    final name = _addGroupController.text.trim();
                     if (name.isNotEmpty) addGroup(name);
                   },
                 ),
               ],
             ),
           ),
-          // 搜尋結果列表
+          // 群組列表
           Expanded(
-            child: ListView.builder(
-              itemCount: searchResult.length,
-              itemBuilder: (context, index) {
-                final group = searchResult[index];
+            child: filteredData.isEmpty
+                ? const Center(child: Text("沒有找到群組"))
+                : ListView(
+              children: filteredData.entries.map((entry) {
+                final groupId = entry.key;
+                final groupName = entry.value.keys.first;
+                final details = entry.value[groupName]!;
+
                 return ListTile(
-                  title: Text(group['name']),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () {
-                      // 刪除功能尚未實作
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('刪除功能尚未實作'),
+                  title: Text(groupName),
+                  trailing: const Icon(Icons.arrow_forward_ios),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => GroupDetailPage(
+                          groupId: groupId,
+                          groupName: groupName,
+                          details: details,
+                          onRefresh: fetchGroups,
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  },
                 );
-              },
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class GroupDetailPage extends StatefulWidget {
+  final int groupId;
+  final String groupName;
+  final List<Map<String, dynamic>> details;
+  final VoidCallback onRefresh;
+
+  const GroupDetailPage({
+    super.key,
+    required this.groupId,
+    required this.groupName,
+    required this.details,
+    required this.onRefresh,
+  });
+
+  @override
+  State<GroupDetailPage> createState() => _GroupDetailPageState();
+}
+
+class _GroupDetailPageState extends State<GroupDetailPage> {
+  late List<Map<String, dynamic>> details;
+  final TextEditingController _addDetailController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    details = List.from(widget.details);
+  }
+
+  // 新增 group_detail
+  Future<void> addGroupDetail(String name) async {
+    final response = await http.post(
+      Uri.parse("${_GroupPageState.apiUrl}/detail"),
+      headers: {"Content-Type": "application/json"},
+      body: json.encode({"group_id": widget.groupId, "group_detail_name": name}),
+    );
+    if (response.statusCode == 200) {
+      setState(() {
+        details.add({"id": DateTime.now().millisecondsSinceEpoch, "name": name});
+      });
+      _addDetailController.clear();
+      widget.onRefresh(); // 回到上一頁時刷新
+    } else {
+      throw Exception('Failed to add group detail');
+    }
+  }
+
+  @override
+  void dispose() {
+    _addDetailController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(widget.groupName)),
+      body: Column(
+        children: [
+          // 新增群組細項
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _addDetailController,
+                    decoration: const InputDecoration(
+                      hintText: "輸入細項名稱新增",
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add),
+                  onPressed: () {
+                    final name = _addDetailController.text.trim();
+                    if (name.isNotEmpty) addGroupDetail(name);
+                  },
+                ),
+              ],
+            ),
+          ),
+          // 細項列表
+          Expanded(
+            child: ListView(
+              children: details.map((d) {
+                return ListTile(
+                  title: Text(d['name']),
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("選中 ${d['name']} (ID=${d['id']})")),
+                    );
+                  },
+                );
+              }).toList(),
             ),
           ),
         ],
