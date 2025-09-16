@@ -97,7 +97,7 @@ class _UniversalManagePageState extends State<UniversalManagePage> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: widget.themeColor,
+            color: Colors.grey,
             spreadRadius: 2,
             blurRadius: 8,
             offset: const Offset(0, 4),
@@ -111,7 +111,6 @@ class _UniversalManagePageState extends State<UniversalManagePage> {
             width: 64,
             height: 64,
             decoration: BoxDecoration(
-              color: widget.themeColor,
               borderRadius: BorderRadius.circular(16),
             ),
             child: Icon(
