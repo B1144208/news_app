@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
+import 'ChannelDetailPage.dart';
 
 class ViewNewsContent extends StatefulWidget {
   final Map<String, dynamic> newsData;
 
-  const ViewNewsContent({
-    super.key,
-    required this.newsData,
-  });
+  const ViewNewsContent({super.key, required this.newsData});
 
   @override
   State<ViewNewsContent> createState() => _ViewNewsContentState();
@@ -21,24 +19,9 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
 
   // 模擬留言數據
   final List<Map<String, dynamic>> _comments = [
-    {
-      'user': '用戶A',
-      'content': '這個新聞很有意思！',
-      'time': '2小時前',
-      'avatar': 'A',
-    },
-    {
-      'user': '用戶B',
-      'content': '感謝分享這個重要資訊',
-      'time': '3小時前',
-      'avatar': 'B',
-    },
-    {
-      'user': '用戶C',
-      'content': '希望能有更多這樣的報導',
-      'time': '5小時前',
-      'avatar': 'C',
-    },
+    {'user': '用戶A', 'content': '這個新聞很有意思！', 'time': '2小時前', 'avatar': 'A'},
+    {'user': '用戶B', 'content': '感謝分享這個重要資訊', 'time': '3小時前', 'avatar': 'B'},
+    {'user': '用戶C', 'content': '希望能有更多這樣的報導', 'time': '5小時前', 'avatar': 'C'},
   ];
 
   @override
@@ -108,21 +91,50 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
 
           const SizedBox(width: 8),
 
-          // 新聞頻道圖片
-          Container(
-            width: 120,
-            height: 40,
-            decoration: BoxDecoration(
-              color: Colors.black,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: const Center(
-              child: Text(
-                '頻道圖片',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
+          // 新聞台圖片 - 可點擊跳轉到頻道詳細頁面
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ChannelDetailPage(
+                    channelId: widget.newsData['channel_id'] ?? 1,
+                    channelName: widget.newsData['channel'] ?? '新聞台',
+                    channelDescription: null,
+                    channelUrl: null,
+                  ),
+                ),
+              );
+            },
+            child: Container(
+              width: 120,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(
+                  color: Colors.blue.withOpacity(0.3),
+                ), // 添加邊框提示可點擊
+              ),
+              child: const Center(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '頻道圖片',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                    SizedBox(width: 4),
+                    Icon(
+                      Icons.arrow_forward_ios,
+                      color: Colors.white70,
+                      size: 12,
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -155,10 +167,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
           // 記者信息
           Text(
             '記者名稱/綜合報導',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[700],
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey[700]),
           ),
 
           const SizedBox(height: 8),
@@ -166,10 +175,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
           // 報導時間
           Text(
             '2025年1月1日 週一 上午12:00',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
           ),
 
           const SizedBox(height: 20),
@@ -186,21 +192,17 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
               borderRadius: BorderRadius.circular(8),
               child: widget.newsData['cover_img'] != null
                   ? Image.network(
-                widget.newsData['cover_img'],
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return const Icon(
-                    Icons.image,
-                    color: Colors.grey,
-                    size: 50,
-                  );
-                },
-              )
-                  : const Icon(
-                Icons.image,
-                color: Colors.grey,
-                size: 50,
-              ),
+                      widget.newsData['cover_img'],
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Icon(
+                          Icons.image,
+                          color: Colors.grey,
+                          size: 50,
+                        );
+                      },
+                    )
+                  : const Icon(Icons.image, color: Colors.grey, size: 50),
             ),
           ),
 
@@ -229,11 +231,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
           // 新聞內容
           const Text(
             '新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容',
-            style: TextStyle(
-              fontSize: 16,
-              height: 1.6,
-              color: Colors.black87,
-            ),
+            style: TextStyle(fontSize: 16, height: 1.6, color: Colors.black87),
           ),
         ],
       ),
@@ -325,7 +323,11 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.chat_bubble_outline, size: 20, color: Colors.grey[600]),
+                  Icon(
+                    Icons.chat_bubble_outline,
+                    size: 20,
+                    color: Colors.grey[600],
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     '${_comments.length}則',
@@ -352,11 +354,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                 color: Colors.blue,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
-                Icons.smart_toy,
-                color: Colors.white,
-                size: 24,
-              ),
+              child: const Icon(Icons.smart_toy, color: Colors.white, size: 24),
             ),
           ),
 
@@ -441,7 +439,9 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
+                    border: Border(
+                      bottom: BorderSide(color: Colors.grey[300]!),
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -456,10 +456,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                       const SizedBox(width: 8),
                       Text(
                         '${_comments.length}則',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 16,
-                        ),
+                        style: TextStyle(color: Colors.grey[600], fontSize: 16),
                       ),
                       const Spacer(),
                       IconButton(
@@ -479,7 +476,8 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                   child: ListView.separated(
                     padding: const EdgeInsets.all(16),
                     itemCount: _comments.length,
-                    separatorBuilder: (context, index) => const SizedBox(height: 16),
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 16),
                     itemBuilder: (context, index) {
                       final comment = _comments[index];
                       return _buildCommentItem(comment);
@@ -526,8 +524,10 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                 const SizedBox(width: 8),
                 const Text(
                   'AI 助手',
-                  style: TextStyle(fontWeight: FontWeight.bold,
-                    color: Colors.black,),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
                 ),
                 const Spacer(),
                 IconButton(
@@ -549,7 +549,10 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(20),
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.send, color: Colors.blue),
                   onPressed: () {
@@ -615,10 +618,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                   const SizedBox(width: 8),
                   Text(
                     comment['time'],
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
                   ),
                 ],
               ),
@@ -660,7 +660,10 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                   borderRadius: BorderRadius.circular(20),
                   borderSide: BorderSide(color: Colors.grey[300]!),
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
               ),
             ),
           ),
@@ -674,11 +677,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                 color: Colors.blue,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
-                Icons.send,
-                color: Colors.white,
-                size: 20,
-              ),
+              child: const Icon(Icons.send, color: Colors.white, size: 20),
             ),
           ),
         ],
@@ -699,10 +698,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
       _commentController.clear();
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('留言已發送'),
-          duration: Duration(seconds: 1),
-        ),
+        const SnackBar(content: Text('留言已發送'), duration: Duration(seconds: 1)),
       );
     }
   }

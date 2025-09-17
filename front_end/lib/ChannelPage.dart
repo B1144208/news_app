@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'universal_template.dart';
+import 'ChannelDetailPage.dart';
 
 class ChannelPage extends StatefulWidget {
   const ChannelPage({super.key});
@@ -39,11 +40,11 @@ class _ChannelPageState extends State<ChannelPage> {
         setState(() {
           channels = name != null && name.isNotEmpty
               ? [
-            {
-              "channel_id": data["data"]["searchId"],
-              "channel_name": name,
-            }
-          ]
+                  {
+                    "channel_id": data["data"]["searchId"],
+                    "channel_name": name,
+                  },
+                ]
               : data["data"];
           searchQuery = name ?? "";
         });
@@ -71,8 +72,11 @@ class _ChannelPageState extends State<ChannelPage> {
   }
 
   // 新增頻道到資料庫
-  Future<void> addChannelToDB(String name,
-      {String? introduction, String? url}) async {
+  Future<void> addChannelToDB(
+    String name, {
+    String? introduction,
+    String? url,
+  }) async {
     try {
       final response = await http.post(
         Uri.parse(apiUrl),
@@ -143,9 +147,7 @@ class _ChannelPageState extends State<ChannelPage> {
             ),
             const SizedBox(height: 16),
             Text(
-              searchQuery.isEmpty
-                  ? '目前沒有頻道資料'
-                  : '未找到相關頻道',
+              searchQuery.isEmpty ? '目前沒有頻道資料' : '未找到相關頻道',
               style: TextStyle(
                 fontSize: 18,
                 color: Colors.grey[600],
@@ -156,10 +158,7 @@ class _ChannelPageState extends State<ChannelPage> {
               const SizedBox(height: 8),
               Text(
                 '點擊新增按鈕創建第一個頻道',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[500],
-                ),
+                style: TextStyle(fontSize: 14, color: Colors.grey[500]),
               ),
             ],
           ],
@@ -216,9 +215,7 @@ class _ChannelPageState extends State<ChannelPage> {
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Column(
         children: [
           // 頻道基本資訊
@@ -234,32 +231,22 @@ class _ChannelPageState extends State<ChannelPage> {
                 color: Colors.purple.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(
-                Icons.tv,
-                color: Colors.purple,
-                size: 24,
-              ),
+              child: const Icon(Icons.tv, color: Colors.purple, size: 24),
             ),
             title: Text(
               channel["channel_name"] ?? "未命名頻道",
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
             ),
             subtitle: channel["channel_introduction"] != null
                 ? Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                channel["channel_introduction"],
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 14,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            )
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      channel["channel_introduction"],
+                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  )
                 : null,
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
@@ -281,7 +268,17 @@ class _ChannelPageState extends State<ChannelPage> {
                 ),
               ],
             ),
-            onTap: () => toggleExpand(channel["channel_id"]),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ChannelDetailPage(
+                  channelId: channel["channel_id"],
+                  channelName: channel["channel_name"] ?? "未命名頻道",
+                  channelDescription: channel["channel_introduction"],
+                  channelUrl: channel["channel_url"],
+                ),
+              ),
+            ),
           ),
 
           // 展開的詳細資訊
@@ -319,13 +316,29 @@ class _ChannelPageState extends State<ChannelPage> {
           // 統計數據
           _buildInfoSection('統計數據', [
             _buildStatRow([
-              _buildStatChip('總觀看', '${channel["total_view"] ?? 0}', Icons.visibility),
-              _buildStatChip('總留言', '${channel["total_comment"] ?? 0}', Icons.comment),
+              _buildStatChip(
+                '總觀看',
+                '${channel["total_view"] ?? 0}',
+                Icons.visibility,
+              ),
+              _buildStatChip(
+                '總留言',
+                '${channel["total_comment"] ?? 0}',
+                Icons.comment,
+              ),
             ]),
             const SizedBox(height: 8),
             _buildStatRow([
-              _buildStatChip('總收藏', '${channel["total_bookmark"] ?? 0}', Icons.bookmark),
-              _buildStatChip('總分享', '${channel["total_share"] ?? 0}', Icons.share),
+              _buildStatChip(
+                '總收藏',
+                '${channel["total_bookmark"] ?? 0}',
+                Icons.bookmark,
+              ),
+              _buildStatChip(
+                '總分享',
+                '${channel["total_share"] ?? 0}',
+                Icons.share,
+              ),
             ]),
           ]),
 
@@ -334,13 +347,29 @@ class _ChannelPageState extends State<ChannelPage> {
           // 近期數據
           _buildInfoSection('近期數據', [
             _buildStatRow([
-              _buildStatChip('近期觀看', '${channel["total_recent_view"] ?? 0}', Icons.visibility_outlined),
-              _buildStatChip('近期留言', '${channel["total_recent_comment"] ?? 0}', Icons.comment_outlined),
+              _buildStatChip(
+                '近期觀看',
+                '${channel["total_recent_view"] ?? 0}',
+                Icons.visibility_outlined,
+              ),
+              _buildStatChip(
+                '近期留言',
+                '${channel["total_recent_comment"] ?? 0}',
+                Icons.comment_outlined,
+              ),
             ]),
             const SizedBox(height: 8),
             _buildStatRow([
-              _buildStatChip('近期收藏', '${channel["total_recent_bookmark"] ?? 0}', Icons.bookmark_outline),
-              _buildStatChip('近期分享', '${channel["total_recent_share"] ?? 0}', Icons.share_outlined),
+              _buildStatChip(
+                '近期收藏',
+                '${channel["total_recent_bookmark"] ?? 0}',
+                Icons.bookmark_outline,
+              ),
+              _buildStatChip(
+                '近期分享',
+                '${channel["total_recent_share"] ?? 0}',
+                Icons.share_outlined,
+              ),
             ]),
           ]),
 
@@ -428,8 +457,7 @@ class _ChannelPageState extends State<ChannelPage> {
 
   Widget _buildStatRow(List<Widget> children) {
     return Row(
-      children: children.map((child) =>
-          Expanded(child: child)).toList(),
+      children: children.map((child) => Expanded(child: child)).toList(),
     );
   }
 
@@ -459,10 +487,7 @@ class _ChannelPageState extends State<ChannelPage> {
               ),
               Text(
                 label,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 10, color: Colors.grey[600]),
               ),
             ],
           ),
@@ -537,7 +562,9 @@ class _ChannelPageState extends State<ChannelPage> {
               if (nameController.text.isNotEmpty) {
                 addChannelToDB(
                   nameController.text,
-                  introduction: introController.text.isEmpty ? null : introController.text,
+                  introduction: introController.text.isEmpty
+                      ? null
+                      : introController.text,
                   url: urlController.text.isEmpty ? null : urlController.text,
                 );
                 Navigator.pop(context);
@@ -565,9 +592,7 @@ class _ChannelPageState extends State<ChannelPage> {
             const Text('確認刪除'),
           ],
         ),
-        content: Text(
-          '確定要刪除頻道 "${channel["channel_name"]}" 嗎？\n\n此操作無法復原。',
-        ),
+        content: Text('確定要刪除頻道 "${channel["channel_name"]}" 嗎？\n\n此操作無法復原。'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),

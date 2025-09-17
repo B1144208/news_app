@@ -24,51 +24,57 @@ class _HomePageState extends State<HomePage> {
   final List<Map<String, dynamic>> _newsData = [
     {
       'id': 1,
+      'channel_id': 1,
       'title': '新聞標題新聞標題新聞標題新聞標題新聞標題新聞標題',
       'channel': '新聞台',
       'publish_date': '發表時間',
       'comments': '留言數',
-      'cover_img': 'https://via.placeholder.com/80x60'
+      'cover_img': 'https://via.placeholder.com/80x60',
     },
     {
       'id': 2,
+      'channel_id': 1,
       'title': '藍不滿《聽海湧》刪光公視預算 導演發聲了',
       'channel': 'NOWnews',
       'publish_date': '5小時前',
       'comments': 104,
-      'cover_img': 'https://via.placeholder.com/80x60'
+      'cover_img': 'https://via.placeholder.com/80x60',
     },
     {
       'id': 3,
+      'channel_id': 1,
       'title': '大快人心！檢座車禍竟要女大生肉償遭免職',
       'channel': '中天新聞網',
       'publish_date': '2天前',
       'comments': 92,
-      'cover_img': 'https://via.placeholder.com/80x60'
+      'cover_img': 'https://via.placeholder.com/80x60',
     },
     {
       'id': 4,
+      'channel_id': 1,
       'title': '吃飽上路！黃麟凱最後一餐「有雞腿」槍決法警已到場',
       'channel': 'Tai Sounds',
       'publish_date': '30分鐘前',
       'comments': 3,
-      'cover_img': 'https://via.placeholder.com/80x60'
+      'cover_img': 'https://via.placeholder.com/80x60',
     },
     {
       'id': 5,
+      'channel_id': 1,
       'title': '謝金燕兒子生父是誰？葛斯齊公開1線索：早說明了答案',
       'channel': '中時新聞網',
       'publish_date': '15分鐘前',
       'comments': 134,
-      'cover_img': 'https://via.placeholder.com/80x60'
+      'cover_img': 'https://via.placeholder.com/80x60',
     },
     {
       'id': 6,
+      'channel_id': 1,
       'title': '烏山頭水庫風景區春節假期 一連9天不打烊',
       'channel': '台灣好新聞',
       'publish_date': '5小時前',
       'comments': 88,
-      'cover_img': 'https://via.placeholder.com/80x60'
+      'cover_img': 'https://via.placeholder.com/80x60',
     },
   ];
 
@@ -92,9 +98,7 @@ class _HomePageState extends State<HomePage> {
             _buildQuickPlaySection(),
 
             // 新聞列表
-            Expanded(
-              child: _buildNewsList(),
-            ),
+            Expanded(child: _buildNewsList()),
           ],
         ),
       ),
@@ -122,7 +126,10 @@ class _HomePageState extends State<HomePage> {
                   backgroundColor: Colors.white,
                   foregroundColor: Colors.black,
                   elevation: 2,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   minimumSize: const Size(60, 32),
                 ),
                 child: const Text('登入', style: TextStyle(fontSize: 12)),
@@ -139,7 +146,10 @@ class _HomePageState extends State<HomePage> {
                   backgroundColor: Colors.red,
                   foregroundColor: Colors.white,
                   elevation: 2,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   minimumSize: const Size(80, 32),
                 ),
                 child: const Text('管理員', style: TextStyle(fontSize: 12)),
@@ -157,11 +167,7 @@ class _HomePageState extends State<HomePage> {
               color: Colors.grey[600],
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(
-              Icons.bookmark,
-              color: Colors.white,
-              size: 20,
-            ),
+            child: const Icon(Icons.bookmark, color: Colors.white, size: 20),
           ),
         ],
       ),
@@ -238,7 +244,10 @@ class _HomePageState extends State<HomePage> {
                         });
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
                           color: isSelected ? Colors.blue : Colors.white,
                           borderRadius: BorderRadius.circular(20),
@@ -254,7 +263,9 @@ class _HomePageState extends State<HomePage> {
                           category,
                           style: TextStyle(
                             color: isSelected ? Colors.white : Colors.black,
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
                           ),
                         ),
                       ),
@@ -295,10 +306,7 @@ class _HomePageState extends State<HomePage> {
           // 快速播放文字
           const Text(
             '快速播放',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
 
           const Spacer(),
@@ -488,14 +496,8 @@ class _HomePageState extends State<HomePage> {
           // TODO: 實現頁面跳轉
         },
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.map),
-            label: '地區新聞',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: '首頁',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.map), label: '地區新聞'),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: '首頁'),
           BottomNavigationBarItem(
             icon: Icon(Icons.library_books),
             label: '事件整理',
