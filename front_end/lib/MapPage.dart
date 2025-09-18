@@ -2,30 +2,33 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
-void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MapPage extends StatefulWidget {
+  const MapPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: WorldMapPage(),
-    );
-  }
+  State<MapPage> createState() => _MapPageState();
 }
 
-class WorldMapPage extends StatefulWidget {
-  const WorldMapPage({super.key});
-
-  @override
-  State<WorldMapPage> createState() => _WorldMapPageState();
-}
-
-class _WorldMapPageState extends State<WorldMapPage> {
+class _MapPageState extends State<MapPage> {
   final TextEditingController _searchController = TextEditingController();
+  final MapController _mapController = MapController();
+
+  double _currentZoom = 2;
+  LatLng _currentCenter = LatLng(20, 0); // 🌍 目前中心 (自己維護)
+
+  void _zoomIn() {
+    setState(() {
+      _currentZoom++;
+      _mapController.move(_currentCenter, _currentZoom);
+    });
+  }
+
+  void _zoomOut() {
+    setState(() {
+      _currentZoom--;
+      _mapController.move(_currentCenter, _currentZoom);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,23 +51,61 @@ class _WorldMapPageState extends State<WorldMapPage> {
                 fillColor: Colors.white,
               ),
               onSubmitted: (value) {
-                // 之後可以在這裡實作搜尋功能
                 debugPrint("搜尋: $value");
               },
             ),
           ),
 
-          // 🌍 地圖 (Expanded 填滿剩下空間)
+          // 🌍 地圖 + 放大縮小按鈕
           Expanded(
-            child: FlutterMap(
-              options: MapOptions(
-                initialCenter: LatLng(20, 0), // 世界中心
-                initialZoom: 2,
-              ),
+            child: Stack(
               children: [
-                TileLayer(
-                  urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-                  subdomains: const ['a', 'b', 'c'],
+                FlutterMap(
+                  mapController: _mapController,
+                  options: MapOptions(
+                    initialCenter: _currentCenter,
+                    initialZoom: _currentZoom,
+                    onMapEvent: (event) {
+                      // 📌 更新目前中心點
+                      if (event is MapEventMoveEnd) {
+                        _currentCenter = event.camera.center;
+                        _currentZoom = event.camera.zoom;
+                      }
+                    },
+                    interactionOptions: const InteractionOptions(
+                      flags: InteractiveFlag.all,
+                    ),
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate:
+                      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                      subdomains: const ['a', 'b', 'c'],
+                    ),
+                  ],
+                ),
+
+                // ➕➖ 控制按鈕 (右下角)
+                Positioned(
+                  right: 10,
+                  bottom: 10,
+                  child: Column(
+                    children: [
+                      FloatingActionButton(
+                        heroTag: "zoomIn",
+                        mini: true,
+                        onPressed: _zoomIn,
+                        child: const Icon(Icons.add),
+                      ),
+                      const SizedBox(height: 8),
+                      FloatingActionButton(
+                        heroTag: "zoomOut",
+                        mini: true,
+                        onPressed: _zoomOut,
+                        child: const Icon(Icons.remove),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),

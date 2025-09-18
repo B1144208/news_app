@@ -3,6 +3,8 @@ import 'config.dart';
 import 'LoginPage.dart';
 import 'AdminPage.dart';
 import 'ViewNewsContent.dart';
+import 'MapPage.dart';   // 加入地區新聞頁面
+import 'AIPage.dart';   // 加入事件整理頁面
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -78,31 +80,40 @@ class _HomePageState extends State<HomePage> {
     },
   ];
 
+  // 三個主要頁面
+  late final List<Widget> _pages;
+
+  @override
+  void initState() {
+    super.initState();
+    _pages = [
+      const MapPage(),     // 地區新聞
+      _buildHomePage(),   // 首頁
+      const AIPage(),     // 事件整理
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFE8E3FF),
       body: SafeArea(
-        child: Column(
-          children: [
-            // 上方工具欄
-            _buildTopToolBar(),
-
-            // 搜索欄
-            _buildSearchBar(),
-
-            // 新聞類別篩選
-            _buildCategoryFilter(),
-
-            // 快速播放功能
-            _buildQuickPlaySection(),
-
-            // 新聞列表
-            Expanded(child: _buildNewsList()),
-          ],
-        ),
+        child: _pages[_selectedIndex], // 根據索引切換頁面
       ),
       bottomNavigationBar: _buildBottomNavigationBar(),
+    );
+  }
+
+  // 首頁內容
+  Widget _buildHomePage() {
+    return Column(
+      children: [
+        _buildTopToolBar(),
+        _buildSearchBar(),
+        _buildCategoryFilter(),
+        _buildQuickPlaySection(),
+        Expanded(child: _buildNewsList()),
+      ],
     );
   }
 
@@ -209,7 +220,6 @@ class _HomePageState extends State<HomePage> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          // 三條橫槓編輯按鈕
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
@@ -225,10 +235,7 @@ class _HomePageState extends State<HomePage> {
             ),
             child: const Icon(Icons.menu, size: 20),
           ),
-
           const SizedBox(width: 12),
-
-          // 類別篩選按鈕
           Expanded(
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -263,9 +270,8 @@ class _HomePageState extends State<HomePage> {
                           category,
                           style: TextStyle(
                             color: isSelected ? Colors.white : Colors.black,
-                            fontWeight: isSelected
-                                ? FontWeight.bold
-                                : FontWeight.normal,
+                            fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.normal,
                           ),
                         ),
                       ),
@@ -298,20 +304,13 @@ class _HomePageState extends State<HomePage> {
       ),
       child: Row(
         children: [
-          // 閃電圖標
           const Icon(Icons.flash_on, color: Colors.orange, size: 24),
-
           const SizedBox(width: 8),
-
-          // 快速播放文字
           const Text(
             '快速播放',
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
-
           const Spacer(),
-
-          // 設定時間下拉選單
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
@@ -334,10 +333,7 @@ class _HomePageState extends State<HomePage> {
               },
             ),
           ),
-
           const SizedBox(width: 12),
-
-          // 確認按鈕
           ElevatedButton(
             onPressed: () {
               // TODO: 實現快速播放功能
@@ -388,7 +384,6 @@ class _HomePageState extends State<HomePage> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 新聞縮圖
                   Container(
                     width: 80,
                     height: 60,
@@ -398,15 +393,11 @@ class _HomePageState extends State<HomePage> {
                     ),
                     child: const Icon(Icons.image, color: Colors.grey),
                   ),
-
                   const SizedBox(width: 12),
-
-                  // 新聞內容
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // 新聞台
                         Text(
                           news['channel'],
                           style: TextStyle(
@@ -414,10 +405,7 @@ class _HomePageState extends State<HomePage> {
                             fontSize: 12,
                           ),
                         ),
-
                         const SizedBox(height: 4),
-
-                        // 新聞標題
                         Text(
                           news['title'],
                           style: const TextStyle(
@@ -428,10 +416,7 @@ class _HomePageState extends State<HomePage> {
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
-
                         const SizedBox(height: 8),
-
-                        // 發布時間和留言數
                         Row(
                           children: [
                             Text(
@@ -493,7 +478,6 @@ class _HomePageState extends State<HomePage> {
           setState(() {
             _selectedIndex = index;
           });
-          // TODO: 實現頁面跳轉
         },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.map), label: '地區新聞'),
