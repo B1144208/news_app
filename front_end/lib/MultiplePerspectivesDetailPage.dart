@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'EventSortingDetailPage.dart';
 
@@ -13,8 +14,8 @@ class MultiplePerspectivesDetailPage extends StatefulWidget {
 }
 
 class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDetailPage> {
-  // 模擬使用者登入狀態，null 為未登入
-  final int? _currentUserId = 1;
+  // 將模擬的使用者 ID 設為可空，並在 initState 中讀取
+  int? _currentUserId;
 
   bool _isEventSortingMode = false;
   final String _baseUrl = 'http://localhost:3000/api/MultiplePerspectives';
@@ -24,7 +25,19 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
   @override
   void initState() {
     super.initState();
-    _viewDetailsFuture = _fetchViewDetails();
+    // 優先載入使用者 ID，再執行其他資料抓取
+    _loadUserId().then((_) {
+      _viewDetailsFuture = _fetchViewDetails();
+      setState(() {}); // 觸發 UI 更新
+    });
+  }
+
+  // 新增函式: 從本機儲存中讀取使用者 ID
+  Future<void> _loadUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _currentUserId = prefs.getInt('userId');
+    });
   }
 
   Future<dynamic> _fetchViewDetails() async {

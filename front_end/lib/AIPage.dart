@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart'; // 引入套件
 
-// 詳細頁面
+// 引入詳細頁面
 import 'EventSortingDetailPage.dart';
 import 'MultiplePerspectivesDetailPage.dart';
 
@@ -14,8 +15,8 @@ class AIPage extends StatefulWidget {
 }
 
 class _AIPageState extends State<AIPage> {
-  // 模擬使用者登入狀態，null 為未登入
-  final int? _currentUserId = 1;
+  // 將模擬的使用者 ID 設為可空，並在 initState 中讀取
+  int? _currentUserId;
 
   // true: 事件整理, false: 多方看法
   bool _isEventSortingMode = true;
@@ -31,7 +32,23 @@ class _AIPageState extends State<AIPage> {
   @override
   void initState() {
     super.initState();
-    _fetchData();
+    _loadUserId().then((_) {
+      // 確保在使用者 ID 載入後才去抓取其他資料
+      _fetchData();
+    });
+  }
+
+  // 新增函式: 從本機儲存中讀取使用者 ID
+  Future<void> _loadUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getInt('userId'); // 假設您將使用者 ID 儲存為 'userId'
+
+    setState(() {
+      _currentUserId = userId;
+    });
+    // 這裡可以模擬登入或登出，方便測試
+    // await prefs.setInt('userId', 1); // 模擬登入
+    // await prefs.remove('userId'); // 模擬登出
   }
 
   void _fetchData() {
