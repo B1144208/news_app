@@ -14,99 +14,26 @@ const BACKEND_DIR = path.resolve(CURRENT_DIR, '..', '..');  // utils -> api -> b
 require('dotenv').config({path: path.resolve(BACKEND_DIR, '.env')});
 const CRAWLER_PATH = path.resolve( BACKEND_DIR, process.env.CRAWLER_DATA_PATH);
 
-async function batchChannel(req, res, next) {
-
-    let { file_name, file_path=CRAWLER_PATH } = req.body ?? {};
-
-    // 檢查必要欄位 & 格式 - file_name
-    try {
-        [ file_name ] = await checkRequireField ([
-            { field: 'file_name' , data: file_name , type: 'string' , other: ['non_null'] },
-            { field: 'file_path' , data: file_path , type: 'string' , other: ['non_null'] }
-        ]);
-    } catch (err) {
-        err.desc = "utils-batchChannel(): Missing or Invalid required fields";
-        return next(err);
-    }
-
-    let full_path = path.resolve( file_path, String( file_name ).trim() );
-
-    let text, data;
-    try {
-        text = await fs.readFile(full_path, 'utf-8');
-        data = JSON.parse(text);
-    } catch (err) {
-        err.desc = "utils-batchChannel(): readFile failed";
-        return next(err);
-    }
-
-    let err_data = [];
-    for ( let i=0; data[i]; i++) {
-        try {
-            let fakeReq = {
-                body: {
-                    url: data[i].url || null,
-                    img: data[i].img || null,
-                    name: data[i].name,
-                    type: data[i].type || null,
-                    introduce: String(data[i].introduce).trim() || null
-                }
-            }
-            let insertChannelResult = await callAndCatchApiSuccess ( insertChannel, fakeReq );
-
-        } catch (err) {
-            err_data.push(data[i]);
-        }
-    }
-    
-    // 將錯誤資料存入 CHANNEL_ERR_DATA.json 中
-    if (err_data.length!==0) {
-        try {
-            await saveDataToJson ( err_data, process.env.CRAWLER_ERR_CHANNEL_FILE );
-        } catch (err) {
-            err.desc = "utils-batchChannel(): save Data To Json Error";
-            return next(err);
-        }
-    }
-
-    // 清空 json 中的資料
-    try {
-        await saveDataToJson ( null, file_name, 1 );
-    } catch (err) {
-        err.desc = "utils-batchChannel(): Clean Json Data Error";
-        return next(err);
-    }
-    return res.apiSuccess({}, "Batch Insert Channel Success");
-}
 
 async function batchNews(req, res, next) {
-    let { file_name, file_path=CRAWLER_PATH } = req.body ?? {};
+    let { data } = req.body ?? {};
 
     // 檢查必要欄位 & 格式 - file_name
     try {
-        [ file_name ] = await checkRequireField ([
-            { field: 'file_name' , data: file_name , type: 'string' , other: ['non_null'] },
-            { field: 'file_path' , data: file_path , type: 'string' , other: ['non_null'] }
-        ]);
+        [ data ] = await checkRequireField ([
+            { field: 'data'     , data: data        , type: 'array' }
+        ], "utils-batchChannel()");
     } catch (err) {
-        err.desc = "utils-batchChannel(): Missing or Invalid required fields";
         return next(err);
     }
 
-    let full_path = path.resolve( file_path, String( file_name ).trim() );
-
-    let text, data;
-    try {
-        text = await fs.readFile(full_path, 'utf-8');
-        data = JSON.parse(text);
-    } catch (err) {
-        err.desc = "utils-batchChannel(): readFile failed";
-        return next(err);
-    }
+    if ( data == null )
+        return res.apiSuccess({}, "Batch Insert News Success");
 
     // ai 生成 group, location, keyword
     // ------------------------------------------------------------------------------------------------------------
     
+    // 儲存錯誤資料
     let err_data = [];
     for ( let i=0; data[i]; i++) {
         try {
@@ -135,19 +62,58 @@ async function batchNews(req, res, next) {
         try {
             await saveDataToJson ( err_data, process.env.CRAWLER_ERR_NEWS_FILE );
         } catch (err) {
-            err.desc = "utils-batchChannel(): save Data To Json Error";
+            err.desc = "utils-batchChannel(): save Error Data To Json Error";
             return next(err);
         }
     }
+    return res.apiSuccess({}, "Batch Insert News Success");
+}
 
-    // 清空 json 中的資料
+async function batchChannel(req, res, next) {
+
+    let { data } = req.body ?? {};
+
+    // 檢查必要欄位 & 格式 - file_name
     try {
-        await saveDataToJson ( null, file_name, 1 );
+        [ data ] = await checkRequireField ([
+            { field: 'data'     , data: data        , type: 'array' }
+        ], "utils-batchChannel()");
     } catch (err) {
-        err.desc = "utils-batchChannel(): Clean Json Data Error";
         return next(err);
     }
-    return res.apiSuccess({}, "Batch Insert Channel Success");
+
+    if ( data == null )
+        return res.apiSuccess({}, "Batch Insert News Success");
+
+    // 儲存錯誤資料
+    let err_data = [];
+    for ( let i=0; data[i]; i++) {
+        try {
+            let fakeReq = {
+                body: {
+                    url: data[i].url || null,
+                    img: data[i].img || null,
+                    name: data[i].name,
+                    type: data[i].type || null,
+                    introduce: String(data[i].introduce).trim() || null
+                }
+            }
+            let insertChannelResult = await callAndCatchApiSuccess ( insertChannel, fakeReq );
+        } catch (err) {
+            err_data.push(data[i]);
+        }
+    }
+    
+    // 將錯誤資料存入 ERR_CHANNEL_DATA.json 中
+    if (err_data.length!==0) {
+        try {
+            await saveDataToJson ( err_data, process.env.CRAWLER_ERR_CHANNEL_FILE );
+        } catch (err) {
+            err.desc = "utils-batchChannel(): save Error Data To Json Error";
+            return next(err);
+        }
+    }
+    return res.apiSuccess({}, "Batch Insert News Success");
 }
 
 async function saveDataToJson ( file_data, file_name = 'output.json', clean = 0, file_path = CRAWLER_PATH ) {

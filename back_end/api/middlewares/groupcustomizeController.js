@@ -15,7 +15,6 @@ async function searchGroupcustomize (req, res, next) {
     let kind = req.params?.kind;
     let { userId, name, groupId } = req.body ?? {};
 
-    console.log(`search kind: ${kind}`);
     // 檢查必要欄位 & 格式 - kind, userId, name
     try {
         [ kind, userId, name ] = await checkRequireField ([

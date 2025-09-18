@@ -5,12 +5,13 @@ import readchar
 # 確保當前目錄下的模組可以被正確導入（支援 newsCrawler/FTV_Crawler 等子模組）
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# crawlerData Object
-from newsCrawler.utils import CrawlerData
+# crawlerData
+from newsCrawler.object import CrawlerData
 
-# 載入模組
+# 載入新聞網站模組
 from newsCrawler.crawlerWeb.FTV_Crawler import ftv_crawler
 
+# 選擇 channel
 def ask_choice(prompt="Please input the channel_id [1-4]: "):
     valid = {"1", "2", "3", "4"}
     while True:
@@ -25,8 +26,7 @@ def ask_choice(prompt="Please input the channel_id [1-4]: "):
         else:
             print("\nOnly access number [1-4], please input again.")
 
-if __name__ == "__main__":
-
+def run():
     # 選擇 channel_id
     choice = ask_choice()
     if choice is None:
@@ -45,3 +45,6 @@ if __name__ == "__main__":
             print("todo: channel 4")
         case _:
             print("unexpected choice")
+
+if __name__ == "__main__":
+    run()

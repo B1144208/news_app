@@ -270,7 +270,7 @@ async function insertNews(req, res, next) {
                         fakeReq = {
                             query: { name: each_location }
                         };
-                        searchLocationResult = await callAndCatchApiSuccess ( searchLocation, fakeReq );
+                        let searchLocationResult = await callAndCatchApiSuccess ( searchLocation, fakeReq );
                         ( {type: location_type, id: location_id } = searchLocationResult );
                     } catch (err) {
                         console.warn('[Search Location Failed]', err.message);

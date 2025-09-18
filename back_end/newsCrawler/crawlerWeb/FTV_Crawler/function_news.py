@@ -4,70 +4,54 @@ import json
 import time
 import random
 
-from typing import Optional
+from typing import Optional, List, Dict
 from urllib.parse import urljoin
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
-
-from newsCrawler import utils
-from . import function_channel
-
-
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from fake_useragent import UserAgent
 
-def change_fake_ua(driver):
 
-    driver.quit()
-
-    # 初始化 Chrome 浏览器选项
-    options = Options()
-    
-    # 使用 fake_useragent 生成随机的 User-Agent
-    ua = UserAgent()
-    user_agent = ua.random  # 随机生成一个 User-Agent
-    
-    # 设置随机的 User-Agent
-    options.add_argument(f"user-agent={user_agent}")
-    
-    # 创建 WebDriver 实例
-    driver = webdriver.Chrome(options=options)
-    
-    # 动态修改 User-Agent（可选）
-    driver.execute_cdp_cmd('Network.setUserAgentOverride', {
-        "userAgent": user_agent  # 使用刚才生成的随机 User-Agent
-    })
-    
-    print("Driver initialized with User-Agent:", user_agent)
-    return driver
+from newsCrawler import utils
+from newsCrawler.utils import errorlog
+from . import function_channel
+from newsCrawler.object import CrawlerData, CrawlerQueue, ErrorLog
 
 # 定義函式
 """
 流程函式: start_news_collection -> extract_news_urls -> get_news_information
 """ 
-def start_news_collection(BASE_URL, driver):
-    """ TODO: 擷取全部的 GROUP 與 SUB_URL 傳給 extract_news_urls() ( 主頁入口處 ) """
-    """       呼叫後最後會獲得全部的 news_information """
+def start_news_collection(BASE_URL: str, crawlerData, newsQueue, errLog, driver):
+    """ TODO: 擷取 BASE_URL 的全部 ( SUB_URL, GROUP ) 傳給 extract_news_urls() """
     ...
 def extract_news_urls(BASE_URL, SUB_URL, GROUP, driver):
     """ TODO: 擷取 SUB_URL 的全部 NEWS_URL 傳給 get_news_information() """
-    """       擷取一個 SUB_URL 就馬上傳給 get_news_information() """
     ...
 def get_news_information(NEWS_URLS: list[str], driver: WebDriver, GROUP: Optional[str] = None) -> list[dict]:
     """ TODO: 擷取 NEWS_URL 的全部新聞資訊，並存成 JSON 格式的 list """
     ...
 
-
-# ==== 以下為實作細節 ====
+# ==== 實作細節 ====
 # 擷取各分類連結 (新聞擷取起點)
-def start_news_collection(BASE_URL, crawler_data, driver):
+"""def start_news_collection(BASE_URL: str, crawlerData, newsQueue, errLog, driver):"""
+def start_news_collection(BASE_URL: str, crawlerData, newsQueue, driver):
 
-    global crawlerData
-    crawlerData = crawler_data
+    # push-fn
+    errorlog("push-fn", start_news_collection, [
+        {"BASE_URL": BASE_URL}
+    ])
+
+    """errLog.push_fn(start_news_collection, {
+        "BASE_URL": BASE_URL,
+        "crawlerData": crawlerData,
+        "newsQueue": newsQueue,
+        "errLog": errLog,
+        "driver": driver,
+    })"""
+    
 
     print("🚀 開始載入首頁：", BASE_URL)
     driver.get(BASE_URL)
@@ -77,7 +61,6 @@ def start_news_collection(BASE_URL, crawler_data, driver):
 
     # 使用 BeautifulSoup 擷取 HTML
     soup = BeautifulSoup(driver.page_source, "html.parser")
-    # utils.save_html_source(str(soup))
 
     # 擷取分類連結
     menu_nav = soup.find("div", id="menuNav")
@@ -85,102 +68,173 @@ def start_news_collection(BASE_URL, crawler_data, driver):
     
     previous_pref = None
 
-    for li in menu_items:
-        href = li.get("href")
-        group = li.get_text(strip=True)
-
-        if not href:
-            continue    # 忽略 href 為空
-
-        # 標準化網址
-        href = utils.normalize_url(BASE_URL, href)
+    try :
+        SUB_URL = []
         
-        if(href==previous_pref):
-            continue
-        
-        previous_pref = href
-        extract_news_urls(BASE_URL, href, group, driver)
+        for li in menu_items:
+            href = li.get("href")
+            group = li.get_text(strip=True)
 
-    return
-
-# 擷取分類之新聞連結
-def extract_news_urls(BASE_URL, SUB_URL, GROUP, driver):
-    
-    if "author" in SUB_URL:
-        return
-    if GROUP in ["首頁", "即時", "體育", "財經", "長照", "英語新聞", "數位專題"]:
-        return
-    if GROUP in ["即時"]:
-        return
-
-    driver.get(SUB_URL)
-    WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.CLASS_NAME, "news-block"))
-    )
-
-    soup = BeautifulSoup(driver.page_source, "html.parser")
-    # utils.save_html_source(str(soup), "b_temp.html")
-
-    print(f"開始擷取{GROUP}分類:", BASE_URL)
-    
-    
-    # 擷取總頁數
-    page_info = soup.find("span", class_="pagiNum")
-    if not page_info or "/" not in page_info.text:
-        print(f"❌ : <{GROUP}分類> 無法取得總頁數")
-        return []
-    try:
-        _, total_page = page_info.text.strip().split(":")
-        _, total_page = map(int, total_page.strip().split("/"))
-    except Exception as e:
-        print(f"❌ : <{GROUP}分類> 總頁數解析錯誤")
-    
-    
-    for page in range(1, total_page + 1):
-
-        page_url = f"{SUB_URL}/{str(page)}"
-        #driver = change_fake_ua(driver)
-        driver.get(page_url)
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.CLASS_NAME, "pagiNum"))
-        )
-        soup = BeautifulSoup(driver.page_source, "html.parser")
-
-        # 擷取新聞連結
-        news_urls = []
-        news_block = soup.find_all("div", class_="news-block")
-        for block in news_block:
-            href = block.find("a", class_ = "img-block").get("href")
-            
             if not href:
-                continue
+                continue    # 忽略 href 為空
 
             # 標準化網址
             href = utils.normalize_url(BASE_URL, href)
+            
+            if(href==previous_pref):
+                continue
+            previous_pref = href
 
-            news_urls.append(href)
-        if news_urls:
-            get_news_information(news_urls, driver, GROUP=GROUP)
 
-        time.sleep(random.uniform(2, 4))
-        print(f"✅: 擷取完成 {GROUP}分類 : 第 {page} 頁")
+            article = {
+                "url": href,
+                "group": group
+            }
+            SUB_URL.append(article)
+
+        # push SUB_URL
+        errorlog("set-data", "SUB_URL", SUB_URL)
+
+    except Exception as e:
+        return
     
-    print(f"<{GROUP}類別> 新聞擷取完成")
+    # pop-fn
+    errorlog("pop-fn")
+    """errLog.pop_fn()"""
+
+    extract_news_urls(BASE_URL, SUB_URL, crawlerData, newsQueue, driver)
+    return
+
+# 擷取分類之新聞連結
+"""def extract_news_urls(BASE_URL: str, SUB_URL: List[Dict], crawlerData, newsQueue, errLog, driver, breakPage = 1):"""
+def extract_news_urls(BASE_URL: str, SUB_URL: List[Dict], crawlerData, newsQueue, driver, breakPage = 1):
+    
+    # push-fn
+    errorlog("push-fn", extract_news_urls, [
+        {"BASE_URL" : BASE_URL  },
+        {"SUB_URL"  : SUB_URL   },
+        {"breakPage": breakPage }
+    ])
+
+    """errLog.push_fn(extract_news_urls, {
+        "BASE_URL": BASE_URL,
+        "SUB_URL": SUB_URL,
+        "crawlerData": crawlerData,
+        "newsQueue": newsQueue,
+        "errLog": errLog,
+        "driver": driver,
+        "breakPage": breakPage
+    })"""
+    
+
+    for suburl_item in SUB_URL:
+        url = suburl_item["url"]
+        group = suburl_item["group"]
+
+        # 略過特殊網頁
+        if "author" in url:
+            continue
+        if group in ["首頁", "即時", "體育", "財經", "長照", "英語新聞", "數位專題"]:
+            continue
+        if group in ["即時"]:
+            continue
+
+        driver.get(url)
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CLASS_NAME, "news-block"))
+        )
+        soup = BeautifulSoup(driver.page_source, "html.parser")
+
+        print(f"開始擷取{group}分類:", BASE_URL)
+
+        # 擷取總頁數
+        page_info = soup.find("span", class_="pagiNum")
+        if not page_info or "/" not in page_info.text:
+            print(f"❌ : <{group}分類> 無法取得總頁數")
+            return []
+        try:
+            _, total_page = page_info.text.strip().split(":")
+            _, total_page = map(int, total_page.strip().split("/"))
+        except Exception as e:
+            print(f"❌ : <{group}分類> 總頁數解析錯誤")
+
+
+        for page in range(breakPage, total_page + 1):
+            # update errLog data: breakPage
+            errorlog("set-data", "breakPage", breakPage)
+            """errLog.set_data("breakPage", breakPage)"""
+
+            # 啟動 driver
+            page_url = f"{url}/{str(page)}"
+            driver.get(page_url)
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CLASS_NAME, "pagiNum"))
+            )
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+            # 擷取新聞連結
+            news_urls = []
+            news_block = soup.find_all("div", class_="news-block")
+            for block in news_block:
+                href = block.find("a", class_ = "img-block").get("href")
+                if not href:
+                    continue
+
+                # 標準化網址
+                href = utils.normalize_url(BASE_URL, href)
+                news_urls.append(href)
+
+            if news_urls:
+                get_news_information(news_urls, crawlerData, newsQueue, driver, GROUP=group)
+
+            time.sleep(random.uniform(2, 4))
+            print(f"✅: 擷取完成 {group}分類 : 第 {page} 頁")
+        
+        print(f"<{group}類別> 新聞擷取完成")
+        
+        # update errLog data: SUB_URL
+        errorlog("pop-data", "SUB_URL")
+        """errLog.pop_data("SUB_URL")"""
+    
+    # pop-fn
+    errorlog("pop-fn")
+    """errLog.pop_fn()"""
+
     return
 
 
+
 # 擷取新聞完整資訊
-def get_news_information(NEWS_URLS: list[str], driver: WebDriver, GROUP: Optional[str] = None, CHANNEL: Optional[str] = None) -> list[dict]:
-    
+"""def get_news_information(NEWS_URLS: List[str], crawlerData, newsQueue, driver, errLog, GROUP: Optional[str] = None, CHANNEL: Optional[str] = None) -> List[Dict]:"""
+def get_news_information(NEWS_URLS: List[str], crawlerData, newsQueue, driver, GROUP: Optional[str] = None, CHANNEL: Optional[str] = None) -> List[Dict]:
+
+    # push-fn
+    errorlog("push-fn", get_news_information, [
+        {"NEWS_URLS": NEWS_URLS },
+        {"GROUP"    : GROUP     },
+        {"CHANNEL"  : CHANNEL   }
+    ])
+    """errLog.push_fn(get_news_information, {
+        "NEWS_URLS": NEWS_URLS,
+        "crawlerData": crawlerData,
+        "newsQueue": newsQueue,
+        "errLog": errLog,
+        "driver": driver,
+        "GROUP": GROUP,
+        "CHANNEL": CHANNEL
+    })
+    """
+
+
+
     # 獲取已有的 news_url
-    news_data = utils.load_json(crawlerData.news)
-    existing_urls = {item["url"] for item in news_data if "url" in item}
-    data = []
+    #news_data = utils.load_json(crawlerData.news)
+    #existing_urls = {item["url"] for item in news_data if "url" in item}
+
     for url in NEWS_URLS:
 
         # 如果已經有該新聞，則跳過
-        if url in existing_urls:
-            continue
+        #if url in existing_urls:
+        #    continue
 
         article = {}
         driver.get(url)
@@ -233,7 +287,7 @@ def get_news_information(NEWS_URLS: list[str], driver: WebDriver, GROUP: Optiona
 
         # 標題
         news_title = soup.find("h1", class_="text-center border-0").get_text(strip=True)
-        article["news_title"] = news_title
+        article["title"] = news_title
 
         # 發布時間
         publish_date = soup.find("span", class_="date").get_text(strip=True)
@@ -298,7 +352,6 @@ def get_news_information(NEWS_URLS: list[str], driver: WebDriver, GROUP: Optiona
                         }
                     })
         article["detail"] = detail
-
         
         # 關鍵字
         keyword = []
@@ -310,11 +363,21 @@ def get_news_information(NEWS_URLS: list[str], driver: WebDriver, GROUP: Optiona
 
         # 去除重複與空值
         keyword = list(set(keyword))
+        article["keyword"] = keyword
 
-        data.append(article)
+        # 評論
+        article["comment"] = None
 
-    utils.save_data_to_json(data, output_file=crawlerData.news)
-    return data
+        # push Queue
+        newsQueue.push_one(article)
 
+        # update errLog data: NEWS_URLS
+        errorlog("pop-data", "NEWS_URLS")
+        """errLog.pop_data("NEWS_URLS")"""
 
+    # pop-fn
+    errorlog("pop-fn")
+    """errLog.pop_fn()"""
+
+    return
 
