@@ -33,7 +33,7 @@ def run( crawler_data ):
     )
     
     # create ErrorLog
-    ErrorLog (
+    errLog = ErrorLog (
         name = "FTV-errLog",
         path = Path(__file__).resolve().parent,
         fn_map = [
@@ -58,6 +58,7 @@ def run( crawler_data ):
 
     driver.quit()
 
+    errLog.clean_json()
     print("========== FTV_NEWS 擷取完成 ==========\n")
     return
 

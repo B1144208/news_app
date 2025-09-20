@@ -499,4 +499,5 @@ class ErrorLog:
             # 6) 成功後移除堆疊最後一項，繼續處理前一項
             #self.fn.pop()
 
+        self.clean_json()
         print("[ErrorLog] 所有排程函式皆已成功執行。")

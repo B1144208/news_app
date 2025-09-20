@@ -334,6 +334,8 @@ def errorlog( action: str, param1: Any = None, param2: Any = None, file_path:Opt
         if not isinstance(key, str):
             raise TypeError("pop_list 需要 param1 為字串 key")
         data[key].pop(0)
+        if len(data[key])==0:
+            del data[param1]
 
     elif act=="delete_data":
         try:
