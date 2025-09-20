@@ -34,8 +34,9 @@ def init_steal_driver(USER_AGENT, headless=True):
         options.add_argument("--headless=new")
     options.add_argument("--log-level=3")       # 只顯示錯誤訊息
     options.add_argument("--disable-logging")   # 關掉日誌
-    options.add_argument("--disable-gpu")
-    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-gpu")       # 關閉 gpu
+    options.add_argument("--no-sandbox")        # 關閉沙盒
+    options.add_argument("--disable-software-rasterizer")   # 禁用軟體渲染
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument(f"--user-agent={USER_AGENT}")
@@ -159,7 +160,7 @@ def call_news_api( data: Optional[List] = None, channel_id: Optional[str] = None
     # channel_id: json
 
     if not data and not channel_id:
-        return 
+        return False
     
     try:
         # API URL
@@ -222,6 +223,9 @@ def call_channel_api( data: Optional[List] = None, channel_id: Optional[str] = N
     # input: data or channel_id
     # data: list
     # channel_id: json
+
+    if not data and not channel_id:
+        return False
     
     # API URL
     url = BASE_URL + "/api/channel/batch"
@@ -271,12 +275,7 @@ def call_channel_api( data: Optional[List] = None, channel_id: Optional[str] = N
         print("❌ 請求過程中發生錯誤:", str(e))
 
 def errorlog( action: str, param1: Any = None, param2: Any = None, file_path:Optional[Path] = None, file_name="__errorlog__.json"):
-    
-    print("==========================")
-    print(f"action:{action}")
-    print(f"param1:{param1}")
-    print(f"param2:{param2}")
-    print("==========================")
+
     if not file_path:
         # 使用 inspect 來獲取當前函式的調用堆疊
         frame = inspect.currentframe()  # 獲取當前堆疊的框架
@@ -307,7 +306,7 @@ def errorlog( action: str, param1: Any = None, param2: Any = None, file_path:Opt
     data: Dict[str, Any] = errlog_obj["data"]
 
     # 再修改
-    # set_data, set_many_data, push_fn, pop_fn
+    # set_data, set_many_data, pop_list, delete_data, push_fn, pop_fn
     act = action.replace("-", "_").lower()
 
     if act == "set_data":
@@ -330,11 +329,17 @@ def errorlog( action: str, param1: Any = None, param2: Any = None, file_path:Opt
         else:
             raise TypeError("set_many_data 需要 Dict[str, Any] 或 Iterable[Tuple[str, Any]]")
     
-    elif act=="pop_data":
+    elif act=="pop_list":
         key = param1
         if not isinstance(key, str):
-            raise TypeError("set_data 需要 param1 為字串 key")
+            raise TypeError("pop_list 需要 param1 為字串 key")
         data[key].pop(0)
+
+    elif act=="delete_data":
+        try:
+            del data[param1]
+        except Exception as e:
+            return
 
     elif act=="push_fn":
         fn_name = param1.__name__ if callable(param1) else str(param1)

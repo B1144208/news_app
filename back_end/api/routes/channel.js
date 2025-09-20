@@ -8,7 +8,7 @@ router.get('/', searchChannel);
 
 // insert
 router.post('/', insertChannel);
-router.post('/batch', batchChannel);
+router.post('/batch', express.json({ limit: '10mb' }), batchChannel);
 
 // update
 router.put('/', async (req, res, next) => {

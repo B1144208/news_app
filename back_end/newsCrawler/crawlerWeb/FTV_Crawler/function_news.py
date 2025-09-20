@@ -24,34 +24,24 @@ from newsCrawler.object import CrawlerData, CrawlerQueue, ErrorLog
 """
 流程函式: start_news_collection -> extract_news_urls -> get_news_information
 """ 
-def start_news_collection(BASE_URL: str, crawlerData, newsQueue, errLog, driver):
+def start_news_collection(BASE_URL: str, crawlerData, newsQueue, driver) -> List[Dict]:
     """ TODO: 擷取 BASE_URL 的全部 ( SUB_URL, GROUP ) 傳給 extract_news_urls() """
     ...
-def extract_news_urls(BASE_URL, SUB_URL, GROUP, driver):
+def extract_news_urls(BASE_URL: str, SUB_URL: List[Dict], crawlerData, newsQueue, driver, breakPage) -> None:
     """ TODO: 擷取 SUB_URL 的全部 NEWS_URL 傳給 get_news_information() """
     ...
-def get_news_information(NEWS_URLS: list[str], driver: WebDriver, GROUP: Optional[str] = None) -> list[dict]:
+def get_news_information(NEWS_URLS: List[str], crawlerData, newsQueue, driver, GROUP: str, CHANNEL: str) -> List[Dict]:
     """ TODO: 擷取 NEWS_URL 的全部新聞資訊，並存成 JSON 格式的 list """
     ...
 
 # ==== 實作細節 ====
 # 擷取各分類連結 (新聞擷取起點)
-"""def start_news_collection(BASE_URL: str, crawlerData, newsQueue, errLog, driver):"""
 def start_news_collection(BASE_URL: str, crawlerData, newsQueue, driver):
 
     # push-fn
     errorlog("push-fn", start_news_collection, [
         {"BASE_URL": BASE_URL}
     ])
-
-    """errLog.push_fn(start_news_collection, {
-        "BASE_URL": BASE_URL,
-        "crawlerData": crawlerData,
-        "newsQueue": newsQueue,
-        "errLog": errLog,
-        "driver": driver,
-    })"""
-    
 
     print("🚀 開始載入首頁：", BASE_URL)
     driver.get(BASE_URL)
@@ -100,15 +90,14 @@ def start_news_collection(BASE_URL: str, crawlerData, newsQueue, driver):
     
     # pop-fn
     errorlog("pop-fn")
-    """errLog.pop_fn()"""
 
     extract_news_urls(BASE_URL, SUB_URL, crawlerData, newsQueue, driver)
     return
 
 # 擷取分類之新聞連結
-"""def extract_news_urls(BASE_URL: str, SUB_URL: List[Dict], crawlerData, newsQueue, errLog, driver, breakPage = 1):"""
 def extract_news_urls(BASE_URL: str, SUB_URL: List[Dict], crawlerData, newsQueue, driver, breakPage = 1):
     
+    print(f"extract_news_urls: breakPage:{breakPage}")
     # push-fn
     errorlog("push-fn", extract_news_urls, [
         {"BASE_URL" : BASE_URL  },
@@ -116,27 +105,19 @@ def extract_news_urls(BASE_URL: str, SUB_URL: List[Dict], crawlerData, newsQueue
         {"breakPage": breakPage }
     ])
 
-    """errLog.push_fn(extract_news_urls, {
-        "BASE_URL": BASE_URL,
-        "SUB_URL": SUB_URL,
-        "crawlerData": crawlerData,
-        "newsQueue": newsQueue,
-        "errLog": errLog,
-        "driver": driver,
-        "breakPage": breakPage
-    })"""
-    
-
     for suburl_item in SUB_URL:
         url = suburl_item["url"]
         group = suburl_item["group"]
 
         # 略過特殊網頁
         if "author" in url:
+            errorlog("pop-list", "SUB_URL")
             continue
-        if group in ["首頁", "即時", "體育", "財經", "長照", "英語新聞", "數位專題"]:
+        if group in ["首頁", "即時", "熱門", "體育", "財經", "長照", "英語新聞", "數位專題"]:
+            errorlog("pop-list", "SUB_URL")
             continue
         if group in ["即時"]:
+            errorlog("pop-list", "SUB_URL")
             continue
 
         driver.get(url)
@@ -160,9 +141,6 @@ def extract_news_urls(BASE_URL: str, SUB_URL: List[Dict], crawlerData, newsQueue
 
 
         for page in range(breakPage, total_page + 1):
-            # update errLog data: breakPage
-            errorlog("set-data", "breakPage", breakPage)
-            """errLog.set_data("breakPage", breakPage)"""
 
             # 啟動 driver
             page_url = f"{url}/{str(page)}"
@@ -183,6 +161,14 @@ def extract_news_urls(BASE_URL: str, SUB_URL: List[Dict], crawlerData, newsQueue
                 href = utils.normalize_url(BASE_URL, href)
                 news_urls.append(href)
 
+            # update errLog data: breakPage
+            errorlog("set-data", "breakPage", breakPage + 1)
+
+            # update errLog data: SUB_URL, breakPage
+            if page==total_page:
+                errorlog("delete-data", "breakPage")
+                errorlog("pop-list", "SUB_URL")
+
             if news_urls:
                 get_news_information(news_urls, crawlerData, newsQueue, driver, GROUP=group)
 
@@ -191,20 +177,14 @@ def extract_news_urls(BASE_URL: str, SUB_URL: List[Dict], crawlerData, newsQueue
         
         print(f"<{group}類別> 新聞擷取完成")
         
-        # update errLog data: SUB_URL
-        errorlog("pop-data", "SUB_URL")
-        """errLog.pop_data("SUB_URL")"""
+        
     
     # pop-fn
     errorlog("pop-fn")
-    """errLog.pop_fn()"""
 
     return
 
-
-
 # 擷取新聞完整資訊
-"""def get_news_information(NEWS_URLS: List[str], crawlerData, newsQueue, driver, errLog, GROUP: Optional[str] = None, CHANNEL: Optional[str] = None) -> List[Dict]:"""
 def get_news_information(NEWS_URLS: List[str], crawlerData, newsQueue, driver, GROUP: Optional[str] = None, CHANNEL: Optional[str] = None) -> List[Dict]:
 
     # push-fn
@@ -213,28 +193,8 @@ def get_news_information(NEWS_URLS: List[str], crawlerData, newsQueue, driver, G
         {"GROUP"    : GROUP     },
         {"CHANNEL"  : CHANNEL   }
     ])
-    """errLog.push_fn(get_news_information, {
-        "NEWS_URLS": NEWS_URLS,
-        "crawlerData": crawlerData,
-        "newsQueue": newsQueue,
-        "errLog": errLog,
-        "driver": driver,
-        "GROUP": GROUP,
-        "CHANNEL": CHANNEL
-    })
-    """
-
-
-
-    # 獲取已有的 news_url
-    #news_data = utils.load_json(crawlerData.news)
-    #existing_urls = {item["url"] for item in news_data if "url" in item}
 
     for url in NEWS_URLS:
-
-        # 如果已經有該新聞，則跳過
-        #if url in existing_urls:
-        #    continue
 
         article = {}
         driver.get(url)
@@ -372,12 +332,10 @@ def get_news_information(NEWS_URLS: List[str], crawlerData, newsQueue, driver, G
         newsQueue.push_one(article)
 
         # update errLog data: NEWS_URLS
-        errorlog("pop-data", "NEWS_URLS")
-        """errLog.pop_data("NEWS_URLS")"""
+        errorlog("pop-list", "NEWS_URLS")
 
     # pop-fn
     errorlog("pop-fn")
-    """errLog.pop_fn()"""
 
     return
 

@@ -28,11 +28,12 @@ def run( crawler_data ):
     newsQueue = CrawlerQueue (
         name = "FTV",
         kind = "news",
-        crawler_data = crawlerData
+        crawler_data = crawlerData,
+        save_into_json = True
     )
     
-    # create errLog
-    errLog = ErrorLog (
+    # create ErrorLog
+    ErrorLog (
         name = "FTV-errLog",
         path = Path(__file__).resolve().parent,
         fn_map = [
@@ -41,36 +42,16 @@ def run( crawler_data ):
             [get_news_information, ["NEWS_URLS", "crawlerData", "newsQueue", "driver", "GROUP", "CHANNEL"]]
         ],
         # 先傳 json 無法儲存的資料，新建的 crawlerData, newsQueue, driver
-        init_data = [
-            ["crawlerData", crawlerData, False],
-            ["newsQueue"  , newsQueue  , False],
-            ["driver"     , driver     , False]
-        ],
+        init_data = {
+            "crawlerData": crawlerData,
+            "newsQueue": newsQueue,
+            "driver": driver
+        },
         entry = partial(start_news_collection, FTV_Main_url, crawlerData, newsQueue, driver)
     )
 
-    """init_data = [
-            ["FTV_Main_url", FTV_Main_url],
-            ["crawlerData", crawlerData, False],
-            ["newsQueue"  , newsQueue  , False],
-            ["driver"     , driver     , False]
-        ],"""
-
-    """errLog = ErrorLog (
-        name = "FTV-errLog",
-        path = Path(__file__).resolve().parent,
-        fn_map = [start_news_collection, extract_news_urls, get_news_information],
-        # 先傳 json 無法儲存的資料，新建的 crawlerData, newsQueue, driver
-        init_data = [
-            ["crawlerData", crawlerData, True, False],
-            ["newsQueue"  , newsQueue  , True, False],
-            ["driver"     , driver     , True, False]
-        ],
-        entry = partial(start_news_collection, FTV_Main_url, crawlerData, newsQueue, errLog, driver)
-    )"""
-
     # 首頁入口
-    #start_news_collection(FTV_Main_url, crawlerData, newsQueue, errLog, driver)
+    #start_news_collection(FTV_Main_url, crawlerData, newsQueue, driver)
 
     # 專欄作者入口
     #function_channel.start_channel_collection(FTV_Main_url, "authors", driver)
@@ -79,7 +60,6 @@ def run( crawler_data ):
 
     print("========== FTV_NEWS 擷取完成 ==========\n")
     return
-
 
 
 

@@ -11,7 +11,7 @@ router.get('/:id', searchNews);
 
 // insert
 router.post('/', insertNews);
-router.post('/batch', batchNews);
+router.post('/batch', express.json({ limit: '10mb' }), batchNews);
 
 // update
 router.put('/', async (req, res, next) => {

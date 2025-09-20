@@ -11,11 +11,7 @@ from newsCrawler.object import CrawlerData
 # 載入新聞網站模組
 from newsCrawler.crawlerWeb.FTV_Crawler import ftv_crawler
 
-<<<<<<< HEAD:back_end/newsCrawler/__main__.py
 # 選擇 channel
-=======
-
->>>>>>> cc1bffd05345c476b85f17991a97fb935a625af2:back_end/newsCrawler/main.py
 def ask_choice(prompt="Please input the channel_id [1-4]: "):
     valid = {"1", "2", "3", "4"}
     while True:

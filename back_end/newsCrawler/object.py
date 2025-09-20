@@ -34,11 +34,11 @@ class CrawlerQueue:
 
     """
     一個可重用、可自動備份的佇列封裝：
-    - push_one / push_many：放資料
-    - pop / try_pop：取資料（阻塞 / 非阻塞）
-    - snapshot / drain：快照或清空導出
-    - start_autobackup / stop_autobackup：背景自動備份到 JSON
-    - 自動攔截 SIGINT / SIGTERM 與 atexit，在退出前備份
+    - push_one / push_many : 放資料
+    - pop / try_pop : 取資料（阻塞 / 非阻塞）
+    - snapshot / drain : 快照或清空導出
+    - start_autobackup / stop_autobackup : 背景自動備份到 JSON
+    - 自動攔截 SIGINT / SIGTERM 與 atexit, 在退出前備份
     """
 
     def __init__(
@@ -47,7 +47,8 @@ class CrawlerQueue:
         kind: Literal["news", "channel"],
         crawler_data: CrawlerData,
         interval_sec: int = 300,        # 每 5 分鐘自動備份
-        progress_every: int = 50,       # 每 50 筆資料就呼叫 api
+        progress_every: int = 10,       # 每 10 筆資料就呼叫 api
+        save_into_json: bool = False
     ):
         self.Q = Queue(maxsize=5000)
         self.name = name + "-" + kind
@@ -57,6 +58,7 @@ class CrawlerQueue:
         self.backup_file = crawler_data.news if kind=="news" else crawler_data.channel
         self.interval_sec = max ( 1, interval_sec)
         self.progress_every = max ( 1, progress_every)
+        self.save_into_json = save_into_json
         
         self._bk_thread: Optional[threading.Thread] = None
         self._bk_stop = threading.Event()
@@ -66,8 +68,9 @@ class CrawlerQueue:
         self.start_autobackup()
 
         # 註冊優雅退出備份
+        
         atexit.register(self._graceful_backup)                  # 程式正常退出，呼叫備份
-        signal.signal(signal.SIGINT, self._signal_handler)      # Ctrl + C
+        #signal.signal(signal.SIGINT, self._signal_handler)     # Ctrl + C
         signal.signal(signal.SIGTERM, self._signal_handler)     # Kill
     
     # ========== 基本操作 ==========
@@ -123,7 +126,7 @@ class CrawlerQueue:
                 break
         return taken
     
-    def save_json ( self, items: list, path: Optional[str] = None, file: Optional[str] = None ) -> None:
+    def save_json ( self, items: list, path: Optional[str] = None, file: Optional[str] = None, p=None ) -> None:
         """ 儲存 data 到 json """
         path = path or self.backup_path
         file = file or self.backup_file
@@ -182,27 +185,30 @@ class CrawlerQueue:
                         data = self._safe_snapshot()
                         if data:
                             try:
-                                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                                    # executor 提交任務
-                                    future = executor.submit (
-                                        call_news_api if self.kind=="news" else call_channel_api,
-                                        data 
-                                    )
-                                    # 等待超過 30s
-                                    success = future.result(timeout=30)
+
+                                # -------------------------------------------------------------------------
+                                if not self.save_into_json:
+                                    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                                        # executor 提交任務
+                                        future = executor.submit (
+                                            call_news_api if self.kind=="news" else call_channel_api,
+                                            data 
+                                        )
+                                        # 等待超過 30s
+                                        success = future.result(timeout=30)
                                     
                                 if success:
                                     self._consume_n(len(data))
                                 else:
-                                    self.save_json(data)
+                                    self.save_json(data, p=1)
 
                             except concurrent.futures.TimeoutError:
                                 print(f"[{self.name}] API call time out after 30s")
-                                self.save_json(data)
+                                self.save_json(data, p=2)
                             
                             except Exception as e:
                                 print(f"[{self.name}] API call exception: {e}")
-                                self.save_json(data)
+                                self.save_json(data, p=3)
 
                         # 清除備份旗標
                         self._is_backup_in_progress.clear()
@@ -231,7 +237,7 @@ class CrawlerQueue:
 
                 snap = self.snapshot()
                 if snap:
-                    self.save_json(snap)
+                    self.save_json(snap, p=4)
                 # 停掉自動備份執行緒
                 self.stop_autobackup()
 
@@ -241,217 +247,8 @@ class CrawlerQueue:
             print(f"[{self.name}] graceful backup error: {e}")
     
     def _signal_handler ( self, signum, frame ):
-        print(f"[{self.name}] received signal {signum}, doing graceful backup...")
         self._graceful_backup()
         sys.exit()
-
-
-"""
-# ErrorLog 封裝
-class ErrorLog:
-    def __init__(
-        self,
-        name: str,
-        path: str,
-        fn_map: List[Callable[..., Any]],
-        file: str = "__errorlog__.json",
-        init_data: Optional[List] = [],
-        entry = None
-    ):
-        self.name = name
-        self.path = path
-        self.file = file
-        self.full_path = Path(path) / file
-        self.fn_map: Dict[str, Callable[..., Any]] = {}
-        self.fn: List[Dict[str, Any]] = []
-        self.data: Dict[str, Any] = {}
-        self.data_ignore: List[str] = []
-
-        # 建立 fn_map
-        self.create_fn_map(fn_map)
-
-        # 建立 初始資料
-        print(f"==== init_data: {init_data} ====")
-        if not len(init_data) == 0:
-            self.set_many_data(init_data)
-
-        print(f"==== data: {self.data} ====")
-        read_success = self.read_json()
-        if read_success:
-            self.run_fn()
-        else:
-            self.clean_json()
-            entry()
-
-    
-    # ========== Fn 操作 ( Stack ) ==========
-    def push_fn ( self, fn: Callable[..., Any], params: Optional[Dict[str, Any]] = None ):
-        self.fn.append({"fn_name":fn.__name__, "params": list(params.keys()) if params else []})
-        print(f"push {self.fn[-1]["fn_name"]}")
-        if params:
-            for key, value in params.items():
-                #print(f"*****{key}: {value}({type(value)})*****")
-                self.set_data(key, value, False)
-
-        self.save_json()
-        return
-    
-    def pop_fn( self ):
-        self.fn.pop()
-        self.save_json()
-        return
-    
-    def create_fn_map ( self, fn_list: List ):
-        self.fn_map = {}
-        for fn in fn_list:
-            self.fn_map[fn.__name__] = fn
-        return
-    
-    # ========== data 操作 ( Queue ) ==========
-    def set_data ( self, data_name: str, new_data: Any, ignore: bool=False, save_json: bool=True ):
-
-        print(f"=========\n{data_name}: {new_data}({type(new_data)})")
-        self.data[data_name] = deque(new_data) if isinstance (new_data, list) else new_data
-        print(f"\n{data_name}: {self.data[data_name]}({type(self.data[data_name])})\n=========")
-        if ignore and data_name not in self.data_ignore:
-            self.data_ignore.append(data_name)
-
-        if save_json:
-            self.save_json()
-        return
-    
-    def set_many_data ( self, set_data_list ):
-        for item in set_data_list:
-            self.set_data(item[0], item[1], None or item[2], None or item[3])
-        return
-    
-    def pop_data ( self, data_name: str ):
-        print(f"=========\npop_data [{data_name}]: {self.data[data_name]}({type(self.data[data_name])})")
-        self.data[data_name].popleft()
-        print(f"\npop_data [{data_name}]: {self.data[data_name]}({type(self.data[data_name])})\n=========")
-        self.save_json()
-        return
-    
-    # ========== 儲存 / 讀取 json ==========
-    def save_json ( self ):
-        err_log = {}
-        err_log["fn"] = self.fn
-        err_log["data"] = json.dumps(self.data, default=self.json_dumps_default, ensure_ascii=False, indent=2)
-        save_data_to_json( err_log, self.path, self.file, overwrite=True)
-        return
-
-    def read_json ( self ) -> bool:
-        # 讀取 __errorlog__
-        try:
-            with self.full_path.open("r", encoding="utf-8") as f:
-                err_log = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
-            self.save_json()
-            return False
-        except Exception as e:
-            print(f"read_json error: {e}")
-            self.save_json()
-            return False
-        
-        # fn, data 如果不存在或型態錯誤，就重建 err_log
-        fn = err_log.get("fn")
-        data = err_log.get("data")
-        data = json.loads(data)
-        if not isinstance ( fn, list ):
-            self.save_json()
-            return False
-        if not isinstance ( data, dict ):
-            self.save_json()
-            return False
-
-        # data 轉換資料型態
-        for key, value in data.items():
-            if key not in self.data_ignore:
-                data[key] = self.json_loads_default_hook(value, errLog=self)
-            else:
-                data[key] = self.data[key]
-
-        self.fn = fn
-        self.data = data
-        return False if len(self.fn)==0 else True
-    
-    def clean_json( self ):
-        save_data_to_json( {}, self.path, self.file, overwrite=True)
-
-
-    # ========== json 序列 & 反序列轉換 ==========
-    def json_dumps_default(self, obj, **kwargs):
-        # deque, CrawlerData, CrawlerQueue
-        if isinstance(obj, deque):
-            return {
-                "__type__": "deque",
-                "items": list(obj)
-            }
-        elif isinstance(obj, ErrorLog):
-            return {
-                "__type__": "ErrorLog"
-            }
-        elif isinstance(obj, dict):
-            return {
-                "__type__": "dict",
-                "items": str(obj)
-            }
-        return None
-    
-    def json_loads_default_hook(self, dct, errLog):
-
-        if dct is None:
-            return None
-        
-        try:
-            obj_type = dct.get("__type__")
-
-            if obj_type == "deque":
-                return deque(dct["items"])
-            elif obj_type == "ErrorLog":
-                return errLog
-            elif obj_type == "dict":
-                return json.loads(dct["items"])
-            return
-
-        except Exception as e:
-            return self
-        
-
-    # 呼叫所有函式
-    def run_fn ( self ):
-
-        print("----------------------------------------------------")
-
-        for item in reversed ( self.fn ):
-            print(f"item: {item}\n")
-            print("----------------------------------------------------")
-            try:
-                print("========== 1 ==========")
-                fn_name = item["fn_name"]
-                if fn_name not in self.fn_map:
-                    print(f"[ErrorLog] fn_map 不包含此 fn_name: {fn_name}")
-                    continue
-                print("========== 2 ==========")
-                fn = self.fn_map[fn_name]
-                kwargs = { name: self.data[name] for name in item["params"] if name in self.data }
-                print("========== 3 ==========")
-            except Exception as e:
-                print("+++++++++++++ 1 +++++++++++++")
-                print(f"[ErrorLog] 函式 {fn.__name__} 執行失敗: {e}")
-
-            try:
-                print("========== 4 ==========")
-                self.pop_fn()
-                print("========== 5 ==========")
-                fn(**kwargs)
-                print("========== 6 ==========")
-            except Exception as e:
-                print("+++++++++++++ 2 +++++++++++++")
-                print(f"[ErrorLog] 函式 {fn.__name__} 執行失敗: {e}")
-
-        return
-"""
 
 # ErrorLog 封裝
 class ErrorLog:
@@ -468,16 +265,17 @@ class ErrorLog:
         self.path = path
         self.file = file
         self.full_path = Path(path) / file
-        self.fn_map: Dict[Dict] = []        # Dict { fn, params }
-        self.fn: List[str] = []      # fn_name
+        self.fn_map: Dict[Dict] = []    # Dict { fn, params }
+        self.fn: List[str] = []         # fn_name
         self.data: Dict = {}
 
         # 建立 fn_map
         self.create_fn_map(fn_map)
 
         # 建立 初始資料
-        self.set_many_data(init_data)
+        self.set_many_data(init_data, save_json=False)
 
+        # 讀取 json
         read_success = self.read_json()
         if read_success:
             self.run_fn()
@@ -489,19 +287,15 @@ class ErrorLog:
     # ========== Fn 操作 ( Stack ) ==========
     def push_fn ( self, fn: Callable[..., Any] ):
         self.fn.append(fn.__name__)
+        self.save_json()
         return
     
     def pop_fn( self ):
         self.fn.pop()
+        self.save_json()
         return
     
     def create_fn_map ( self, fn_map: List ):
-        """
-            "fn_name": {
-                "fn": function,
-                "params": List[str]
-            }, ...
-        """
         if fn_map is None or len(fn_map) == 0:
             self.fn_map = []
             return
@@ -524,18 +318,39 @@ class ErrorLog:
             self.save_json()
         return
     
-    def set_many_data ( self, set_data_list ):
-        if isinstance(set_data_list, list) or not len(set_data_list)==0:
-            for item in set_data_list:
-                self.set_data(item[0], item[1], None or item[2])
+    def set_many_data ( self, many_data, save_json: bool=True ):
+        if isinstance(many_data, dict):
+            for key in many_data.keys():
+                value = many_data[key]
+                self.set_data(key, value, save_json=False)
+        if save_json:
+            self.save_json()
         return
+    
+    def pop_list ( self, list_name, save_json: bool=True ):
+        self.data[list_name].pop(0)
+        if save_json:
+            self.save_json()
+        return
+
+    def delete_data ( self, data_name: str, save_json: bool=True ):
+        del self.data[data_name]
+        if save_json:
+            self.save_json()
+        return
+
 
     # ========== 儲存 / 讀取 json ==========
     def save_json ( self ):
-        err_log = {}
-        err_log["fn"] = self.fn
-        err_log["data"] = json.dumps(self.data, default=self.json_dumps_default, ensure_ascii=False, indent=2)
-        save_data_to_json( err_log, self.path, self.file, overwrite=True)
+        save_data = {
+            "fn": self.fn,
+            "data": self._filter_unserializable(self.data)
+        }
+        self.full_path.parent.mkdir(parents=True, exist_ok=True)  # 確保目錄存在
+
+        with open(self.full_path, "w", encoding="utf-8") as f:
+            json.dump(save_data, f, ensure_ascii=False, indent=2)
+
         return
 
     def read_json ( self ) -> bool:
@@ -544,7 +359,6 @@ class ErrorLog:
             with self.full_path.open("r", encoding="utf-8") as f:
                 err_log = json.load(f)
         except (FileNotFoundError, json.JSONDecodeError):
-            # 重建
             self.save_json()
             return False
         except Exception as e:
@@ -556,24 +370,17 @@ class ErrorLog:
         # fn, data 如果不存在或型態錯誤，就重建 err_log
         fn = err_log.get("fn")
         data = err_log.get("data")
-        data = json.loads(data)
+
         if not isinstance ( fn, list ):
             self.save_json()
             return False
         if not isinstance ( data, dict ):
             self.save_json()
             return False
-
-        """
-        # data 轉換資料型態
-        for key, value in data.items():
-            if key not in self.data_ignore:
-                data[key] = self.json_loads_default_hook(value)
-            else:
-                data[key] = self.data[key]"""
-
+        
         self.fn = fn
-        self.data = data
+        self.set_many_data(data)
+        
         return False if len(self.fn)==0 else True
     
     def clean_json( self ):
@@ -581,29 +388,60 @@ class ErrorLog:
 
 
     # ========== json 序列 & 反序列轉換 ==========
+    def _serialize_object(self, obj):
+        """
+        不可序列化的物件，直接返回None
+        """
+        return None
+    
+    def _filter_unserializable(self, d):
+        """
+        遞迴過濾掉不可序列化的 key:value
+        """
+        if not isinstance(d, dict):
+            return d
+        
+        if isinstance(d, dict):
+            new_dict = {}
+            for k, v in d.items():
+                # dict : 傳送 filter
+                if isinstance(v, dict):
+                    filtered_v = self._filter_unserializable(v)
+                    if filtered_v:
+                        new_dict[k] = filtered_v
+                # list : for 遞迴
+                elif isinstance(v, list):
+                    new_list = []
+                    for item in v:
+                        # dict
+                        if isinstance(item, dict):
+                            filter_item = self._filter_unserializable(item)
+                            if filter_item:
+                                new_list.append(filter_item)
+                        else:
+                            try:
+                                json.dumps(item)
+                                new_list.append(item)
+                            except TypeError:
+                                pass
+                    new_dict[k] = new_list
+                # other
+                else:
+                    try:
+                        json.dumps(v)
+                        new_dict[k] = v
+                    except TypeError:
+                        pass
+            return new_dict
+        return d
+    
     def json_dumps_default(self, obj, **kwargs):
         # deque, CrawlerData, CrawlerQueue
-        
-        """if isinstance(obj, dict):
-            return {
-                "__type__": "dict",
-                "items": str(obj)
-            }"""
         return None
     
     def json_loads_default_hook(self, dct):
-
         if dct is None:
             return None
-        
-        """try:
-            obj_type = dct.get("__type__")
-            if obj_type == "dict":
-                return json.loads(dct["items"])
-            return
-
-        except Exception as e:
-            return self"""
         return None
         
 
@@ -612,9 +450,9 @@ class ErrorLog:
         
         # 1) 空檢查
         if not isinstance(self.fn, list) or len(self.fn) == 0:
-            return 
-
-         # 2) 逐一從尾端處理，直到無可執行項
+            return
+        
+        # 2) 逐一從尾端處理，直到無可執行項
         while self.fn:
             fn_name = self.fn[-1]  # 取最後一項
             if not isinstance(fn_name, str):
@@ -630,7 +468,8 @@ class ErrorLog:
                 continue
 
             func = entry.get("fn")
-            params = entry.get("params", [])
+            params = entry.get("param", [])
+
             if not callable(func):
                 print(f"[ErrorLog] fn_map['{fn_name}']['fn'] 不是可呼叫物件，將略過並移除。")
                 self.fn.pop()
@@ -639,46 +478,25 @@ class ErrorLog:
                 print(f"[ErrorLog] fn_map['{fn_name}']['params'] 應為 List[str]，實際為 {type(params)}，將略過並移除。")
                 self.fn.pop()
                 continue
-
+            
             # 4) 從 self.data 收集參數
-            missing = [p for p in params if p not in self.data]
+            """missing = [p for p in params if p not in self.data]
             if missing:
                 print(f"[ErrorLog] 函式 {fn_name} 缺少參數：{missing}。此次不執行，保留以待資料齊全。")
-                # 不 pop，直接結束這次 run，等待之後資料補齊再跑
-                return
+                return"""
 
-            kwargs = {p: self.data[p] for p in params}
+            kwargs = {p: self.data[p] for p in params if p in self.data}
 
             # 5) 呼叫函式
             try:
+                self.pop_fn()
                 func(**kwargs)
             except Exception as e:
                 print(f"[ErrorLog] 函式 {fn_name} 執行失敗：{e}。")
-                self.fn.pop()   # pop 掉錯誤執行
+                #self.fn.pop()   # pop 掉錯誤執行
                 return
 
             # 6) 成功後移除堆疊最後一項，繼續處理前一項
             #self.fn.pop()
 
         print("[ErrorLog] 所有排程函式皆已成功執行。")
-
-        """for item in reversed ( self.fn ):
-            print(f"item: {item}\n")
-            try:
-                
-                fn_name = item["fn_name"]
-                if fn_name not in self.fn_map:
-                    print(f"[ErrorLog] fn_map 不包含此 fn_name: {fn_name}")
-                    continue
-                fn = self.fn_map[fn_name]
-                kwargs = { name: self.data[name] for name in item["params"] if name in self.data }
-            except Exception as e:
-                print(f"[ErrorLog] 函式 {fn.__name__} 執行失敗: {e}")
-
-            try:
-                self.pop_fn()
-                fn(**kwargs)
-            except Exception as e:
-                print(f"[ErrorLog] 函式 {fn.__name__} 執行失敗: {e}")
-
-        return"""
