@@ -185,20 +185,21 @@ class CrawlerQueue:
                         data = self._safe_snapshot()
                         if data:
                             try:
-
-                                # -------------------------------------------------------------------------
-                                if not self.save_into_json:
-                                    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                                        # executor 提交任務
-                                        future = executor.submit (
-                                            call_news_api if self.kind=="news" else call_channel_api,
-                                            data 
-                                        )
-                                        # 等待超過 30s
-                                        success = future.result(timeout=30)
-                                    
+                                
+                                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                                    # executor 提交任務
+                                    future = executor.submit (
+                                        call_news_api if self.kind=="news" else call_channel_api,
+                                        data 
+                                    )
+                                    # 等待超過 30s
+                                    success = future.result(timeout=30)
+                                
                                 if success:
                                     self._consume_n(len(data))
+
+                                    if self.save_into_json:
+                                        self.save_json(data, p=1)
                                 else:
                                     self.save_json(data, p=1)
 

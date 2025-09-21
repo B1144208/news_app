@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import readchar
 
 # 確保當前目錄下的模組可以被正確導入（支援 newsCrawler/FTV_Crawler 等子模組）
@@ -36,7 +37,17 @@ def run():
 
     match choice:
         case '1':
-            ftv_crawler.run(crawlerData)
+            #ftv_crawler.run(crawlerData)
+            try:
+                while(1):
+                    try:
+                        ftv_crawler.run(crawlerData)
+                    except Exception as e:
+                        pass
+
+                    time.sleep(60)
+            except KeyboardInterrupt:
+                print("收到中斷訊號，停止爬蟲。")
         case '2':
             print("todo: channel 2")
         case '3':

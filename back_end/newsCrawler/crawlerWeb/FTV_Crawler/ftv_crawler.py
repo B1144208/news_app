@@ -29,7 +29,8 @@ def run( crawler_data ):
         name = "FTV",
         kind = "news",
         crawler_data = crawlerData,
-        save_into_json = True
+        save_into_json = True,
+        progress_every=1
     )
     
     # create ErrorLog
@@ -58,7 +59,6 @@ def run( crawler_data ):
 
     driver.quit()
 
-    errLog.clean_json()
     print("========== FTV_NEWS 擷取完成 ==========\n")
     return
 
