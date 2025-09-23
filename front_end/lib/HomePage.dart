@@ -3,8 +3,9 @@ import 'config.dart';
 import 'LoginPage.dart';
 import 'AdminPage.dart';
 import 'ViewNewsContent.dart';
-import 'MapPage.dart';   // 加入地區新聞頁面
-import 'AIPage.dart';   // 加入事件整理頁面
+import 'MapPage.dart';
+import 'AIPage.dart';
+import 'SearchPage.dart'; // 導入你的搜尋頁面
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -14,15 +15,14 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  int _selectedIndex = 1; // 預設選中首頁
+  int _selectedIndex = 1;
   String _selectedCategory = '熱門';
   String _selectedDuration = '15分鐘';
-  final TextEditingController _searchController = TextEditingController();
+  // 移除 _searchController，因為搜尋邏輯會移到 SearchPage
 
   final List<String> _categories = ['熱門', '娛樂', '天氣', '國際', '運動'];
   final List<String> _durations = ['15分鐘', '30分鐘', '45分鐘', '1小時'];
 
-  // 模擬新聞數據
   final List<Map<String, dynamic>> _newsData = [
     {
       'id': 1,
@@ -80,16 +80,15 @@ class _HomePageState extends State<HomePage> {
     },
   ];
 
-  // 三個主要頁面
   late final List<Widget> _pages;
 
   @override
   void initState() {
     super.initState();
     _pages = [
-      const MapPage(),     // 地區新聞
-      _buildHomePage(),   // 首頁
-      const AIPage(),     // 事件整理
+      const MapPage(),
+      _buildHomePage(),
+      const AIPage(),
     ];
   }
 
@@ -98,18 +97,17 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: const Color(0xFFE8E3FF),
       body: SafeArea(
-        child: _pages[_selectedIndex], // 根據索引切換頁面
+        child: _pages[_selectedIndex],
       ),
       bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
 
-  // 首頁內容
   Widget _buildHomePage() {
     return Column(
       children: [
         _buildTopToolBar(),
-        _buildSearchBar(),
+        _buildSearchBar(), // 這裡的SearchBar已經修改
         _buildCategoryFilter(),
         _buildQuickPlaySection(),
         Expanded(child: _buildNewsList()),
@@ -117,13 +115,12 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // 上方工具欄
   Widget _buildTopToolBar() {
+    // ... (這部分程式碼沒有變化，保持不變)
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          // 左側登入和管理員按鈕
           Row(
             children: [
               ElevatedButton(
@@ -170,7 +167,6 @@ class _HomePageState extends State<HomePage> {
 
           const Spacer(),
 
-          // 右側收藏按鈕
           Container(
             width: 40,
             height: 40,
@@ -185,37 +181,46 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // 搜索欄
+  // 修改後的搜索欄
   Widget _buildSearchBar() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(25),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
-            spreadRadius: 1,
-            blurRadius: 3,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: TextField(
-        controller: _searchController,
-        decoration: const InputDecoration(
-          hintText: '搜尋',
-          hintStyle: TextStyle(color: Colors.grey),
-          prefixIcon: Icon(Icons.search, color: Colors.grey),
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const SearchPage()),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(25),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.3),
+              spreadRadius: 1,
+              blurRadius: 3,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.search, color: Colors.grey),
+            SizedBox(width: 10),
+            Text(
+              '搜尋',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  // 新聞類別篩選
   Widget _buildCategoryFilter() {
+    // ... (這部分程式碼沒有變化，保持不變)
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
@@ -286,8 +291,8 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // 快速播放功能
   Widget _buildQuickPlaySection() {
+    // ... (這部分程式碼沒有變化，保持不變)
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -350,8 +355,8 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // 新聞列表
   Widget _buildNewsList() {
+    // ... (這部分程式碼沒有變化，保持不變)
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       child: ListView.builder(
@@ -454,8 +459,8 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // 底部導航欄
   Widget _buildBottomNavigationBar() {
+    // ... (這部分程式碼沒有變化，保持不變)
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -493,7 +498,8 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
-    _searchController.dispose();
+    // 由於我們移除 _searchController，這裡也不再需要 dispose
+    // _searchController.dispose();
     super.dispose();
   }
 }

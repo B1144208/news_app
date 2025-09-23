@@ -1,6 +1,4 @@
-
-
-async function checkRequireField ( requireFields ) {
+async function checkRequireField ( requireFields, funcName="Unknown Function" ) {
     /*
     @ Check Require Field
     @ field, data: necessary raw
@@ -17,7 +15,6 @@ async function checkRequireField ( requireFields ) {
     @ array_filter : type ( 過濾 array 中的值 )
     @ enum  : [] 可以包含的值
     */
-    
     
     let errors = [];
     let newData = [];
@@ -167,7 +164,8 @@ async function checkRequireField ( requireFields ) {
         // array_filter
         if ( arrayFilter ) {
             if ( type !== 'array' ) {
-                err = new Error (`utils-checkRequireField(): array_filter has a invalid use, type need array`);
+                err = new Error (`array_filter has a invalid use, type need array`);
+                err.desc = `${funcName}: checkRequireField Error`;
                 throw err;
             }
             let requireFields = [];
@@ -181,7 +179,6 @@ async function checkRequireField ( requireFields ) {
 
         // enum
         if ( hasEnum && !( !data && lth ) ) {
-
             const includeEnum = enum_value.includes( data );
             ( !includeEnum && !lth ) && ( errors.push(`'${field}' has an error input`) );
         }
@@ -190,7 +187,7 @@ async function checkRequireField ( requireFields ) {
         if ( checkDataNull ( changeData ) ) {
             if ( jump && nonNull ) continue;
             nonNull? 
-                errors.push(`'${field}' 22 must not be null`): 
+                errors.push(`'${field}' must not be null`): 
                 !nonChange && ( changeData = null );
         }
 
@@ -199,7 +196,8 @@ async function checkRequireField ( requireFields ) {
     };
 
     if ( errors.length !==0 ) {
-        err = new Error (`utils-checkRequireField(): check Error\n${errors}`);
+        err = new Error (`checkRequireField Check Error\n${errors.join('\n')}`);
+        err.desc = `${funcName}: checkRequireField Error`;
         throw err;
     }
 

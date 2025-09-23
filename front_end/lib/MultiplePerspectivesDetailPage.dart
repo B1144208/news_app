@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fl_chart/fl_chart.dart'; // 新增 fl_chart 套件
 
 import 'EventSortingDetailPage.dart';
 
@@ -14,9 +15,7 @@ class MultiplePerspectivesDetailPage extends StatefulWidget {
 }
 
 class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDetailPage> {
-  // 將模擬的使用者 ID 設為可空，並在 initState 中讀取
   int? _currentUserId;
-
   bool _isEventSortingMode = false;
   final String _baseUrl = 'http://localhost:3000/api/MultiplePerspectives';
   final String _userActionBaseUrl = 'http://localhost:3000/api/user_action';
@@ -25,14 +24,12 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
   @override
   void initState() {
     super.initState();
-    // 優先載入使用者 ID，再執行其他資料抓取
     _loadUserId().then((_) {
       _viewDetailsFuture = _fetchViewDetails();
-      setState(() {}); // 觸發 UI 更新
+      setState(() {});
     });
   }
 
-  // 新增函式: 從本機儲存中讀取使用者 ID
   Future<void> _loadUserId() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -60,7 +57,6 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
     }
   }
 
-  // 新增使用者行為記錄的 API 呼叫函式
   Future<void> _insertUserAction(String actionType, String dataType, {String? text, int? score}) async {
     final url = '$_userActionBaseUrl/insert/$actionType/$dataType';
     final body = {
@@ -70,9 +66,8 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
       'score': score,
     };
 
-    // 'view' 和 'share' 使用 clientIp，不需 userId
     if (actionType == 'view' || actionType == 'share') {
-      body['clientIp'] = '127.0.0.1'; // 請替換為真實 IP
+      body['clientIp'] = '127.0.0.1';
       body.remove('userId');
     }
 
@@ -109,10 +104,10 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
         title: const Text('多方看法', style: TextStyle(color: Colors.black)),
         actions: [
           Switch(
-            value: !_isEventSortingMode,
+            value: _isEventSortingMode,
             onChanged: (bool value) {
               setState(() {
-                _isEventSortingMode = !value;
+                _isEventSortingMode = value;
               });
               if (_isEventSortingMode) {
                 Navigator.pushReplacement(
@@ -139,6 +134,9 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
             return const Center(child: Text('找不到多方看法資料。'));
           } else {
             final view = snapshot.data;
+            final List<dynamic> viewpoints = view['viewpoints'] ?? [];
+            final List<dynamic> discussions = view['discussions'] ?? [];
+
             return SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -148,13 +146,19 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: Row(
                       children: [
-                        Text(view['multipleperspectives_title'] ?? '', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        Expanded(
+                          child: Text(
+                            view['multipleperspectives_title'] ?? '',
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                        ),
                         const Spacer(),
                       ],
                     ),
                   ),
-                  _buildViewpointSection(),
-                  _buildChartSection(),
+                  _buildViewpointSection(viewpoints),
+                  _buildChartSection(viewpoints),
+                  _buildDiscussionSection(discussions),
                 ],
               ),
             );
@@ -180,7 +184,7 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
     );
   }
 
-  Widget _buildViewpointSection() {
+  Widget _buildViewpointSection(List<dynamic> viewpoints) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -196,12 +200,29 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
             ],
           ),
         ),
-        _buildExpansionCard('1. 批評左派政策', ['a. 削減消防經費：左派政策過度削減消防資源，導致救災能力不足。', 'b. 環保政策導致火災：批評過度環保要求（如不允許清理枯木）加劇野火風險。', 'c. 多元化政策影響消防隊能力：認為DEI政策妨礙了消防隊選拔精英，降低救災效率。', 'd. 推責給氣候變遷：認為政府將問題歸咎於氣候變遷，逃避管理責任。']),
-        _buildExpansionCard('2. 氣候變遷影響', ['a. 極端氣候導致災害：認為加州乾旱及極端風力是野火高風險的重要因素。', 'b. 全球化議題：部分評論強調氣候變遷導致極端天氣事件增多，加劇火災頻率。', 'c. 政治化氣候議題的批評：認為氣候變遷不應成為政治議題，而是全球共同關注的現實問題。']),
-        _buildExpansionCard('3. 支持右派觀點', ['...']),
-        _buildExpansionCard('4. 災後影響與哀悼', ['...']),
-        _buildExpansionCard('5. 不偏不倚的客觀分析', ['...']),
-        _buildExpansionCard('6. 幽默或諷刺言論', ['...']),
+        if (viewpoints.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Text('沒有觀點資料。', style: TextStyle(color: Colors.grey)),
+          )
+        else
+          ...viewpoints.map((point) {
+            final title = point['title'] as String? ?? '';
+            final content = point['content'] as String? ?? '';
+
+            // 處理 percent 型態，無論是 num 或 String 都可轉換
+            double percent = 0.0;
+            if (point['percent'] is num) {
+              percent = (point['percent'] as num).toDouble();
+            } else if (point['percent'] is String) {
+              percent = double.tryParse(point['percent']!) ?? 0.0;
+            }
+
+            return _buildExpansionCard(
+              '${title} (${(percent * 100).toStringAsFixed(0)}%)',
+              [content],
+            );
+          }).toList(),
       ],
     );
   }
@@ -220,7 +241,59 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
     );
   }
 
-  Widget _buildChartSection() {
+  Widget _buildChartSection(List<dynamic> viewpoints) {
+    List<PieChartSectionData> sections = [];
+    final List<Color> colors = [
+      Colors.blue.shade300,
+      Colors.green.shade300,
+      Colors.red.shade300,
+      Colors.purple.shade300,
+      Colors.orange.shade300,
+      Colors.teal.shade300,
+      Colors.indigo.shade300,
+      Colors.pink.shade300,
+    ];
+
+    if (viewpoints.isNotEmpty) {
+      double totalPercent = 0;
+      for (var point in viewpoints) {
+        if (point['percent'] is num) {
+          totalPercent += (point['percent'] as num).toDouble();
+        } else if (point['percent'] is String) {
+          totalPercent += double.tryParse(point['percent']!) ?? 0.0;
+        }
+      }
+
+      for (int i = 0; i < viewpoints.length; i++) {
+        final point = viewpoints[i];
+        final title = point['title'] as String? ?? '未知';
+        double percent = 0.0;
+        if (point['percent'] is num) {
+          percent = (point['percent'] as num).toDouble();
+        } else if (point['percent'] is String) {
+          percent = double.tryParse(point['percent']!) ?? 0.0;
+        }
+
+        final value = (totalPercent > 0) ? (percent / totalPercent * 100) : 0;
+
+        sections.add(
+          PieChartSectionData(
+            color: colors[i % colors.length],
+            value: value.toDouble(),
+            title: '${(percent * 100).toStringAsFixed(0)}%',
+            radius: 80,
+            titleStyle: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              shadows: [Shadow(color: Colors.black, blurRadius: 2)],
+            ),
+            showTitle: true,
+          ),
+        );
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -232,13 +305,58 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
           padding: const EdgeInsets.all(16.0),
           child: Container(
             height: 250,
-            width: double.infinity,
-            color: Colors.grey.shade200,
-            alignment: Alignment.center,
-            child: const Text('這裡可以放置圓餅圖或其他圖表', style: TextStyle(color: Colors.grey)),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.2),
+                  spreadRadius: 2,
+                  blurRadius: 5,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: viewpoints.isEmpty
+                ? const Center(child: Text('沒有足夠資料來生成圖表。'))
+                : PieChart(
+              PieChartData(
+                sections: sections,
+                sectionsSpace: 2,
+                centerSpaceRadius: 40,
+                borderData: FlBorderData(show: false),
+              ),
+            ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildDiscussionSection(List<dynamic> discussions) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '留言討論區',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          if (discussions.isEmpty)
+            const Text('目前沒有留言。', style: TextStyle(color: Colors.grey))
+          else
+            ...discussions.map((d) {
+              return Card(
+                margin: const EdgeInsets.symmetric(vertical: 4.0),
+                child: ListTile(
+                  title: Text(d['content'] ?? '無內容'),
+                ),
+              );
+            }).toList(),
+        ],
+      ),
     );
   }
 

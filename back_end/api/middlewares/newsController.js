@@ -10,13 +10,15 @@ const { insertRelation, deleteRelation } = require('./relationController') ;
 // search
 async function searchNews(req, res, next) {
     let id = req.params?.id;
-    let { url } = req.body ?? {};
+    let { url, locationId, locationType } = req.query ?? {};
 
-    // 檢查必要欄位 & 格式 - id, url
+    // 檢查必要欄位 & 格式
     try {
-        [ id, url ] = await checkRequireField ([
-            { field: 'id'   , data: id  , type: 'number'    , other: ['lth'] },
-            { field: 'url'  , data: url , type: 'string'    , other: ['lth'] }
+        [ id, url, locationId, locationType ] = await checkRequireField ([
+            { field: 'id'           , data: id           , type: 'number' , other: ['lth'] },
+            { field: 'url'          , data: url          , type: 'string' , other: ['lth'] },
+            { field: 'locationId'   , data: locationId   , type: 'number' , other: ['lth'] },
+            { field: 'locationType' , data: locationType , type: 'string' , other: ['lth'] }
         ]);
     } catch (err) {
         err.desc = "middlewares-searchNews(): Missing or Invalid required fields";
@@ -24,28 +26,50 @@ async function searchNews(req, res, next) {
     }
 
     let sql = `
-        SELECT * 
-        FROM news_data 
-        WHERE 1
-    `
-    let params = []
-    if ( id ) {
-        sql += `
-            AND news_id=?
-        `
-        params.push( id );
-    } else if ( url ) {
-        sql += `
-            AND origin_url=?
-        `
-        params.push( url );
+        SELECT
+            nd.*,
+            GROUP_CONCAT(DISTINCT ls.state_name_en) AS state_names,
+            GROUP_CONCAT(DISTINCT lc.country_name_en) AS country_names
+        FROM
+            news_data AS nd
+        LEFT JOIN
+            news_location AS nl ON nd.news_id = nl.news_id
+        LEFT JOIN
+            location_states AS ls ON nl.location_state_id = ls.state_id
+        LEFT JOIN
+            location_countries AS lc ON nl.location_country_id = lc.country_id
+        WHERE
+            1
+    `;
+    let params = [];
+
+    if (id) {
+        sql += ` AND nd.news_id = ?`;
+        params.push(id);
     }
+    else if (url) {
+        sql += ` AND nd.origin_url = ?`;
+        params.push(url);
+    }
+    // 直接使用前端傳來的地點 ID 和類型
+    else if (locationId) {
+        if (locationType === 'state') {
+            sql += ` AND nl.location_state_id = ?`;
+            params.push(locationId);
+        } else if (locationType === 'country') {
+            sql += ` AND nl.location_country_id = ?`;
+            params.push(locationId);
+        }
+    }
+
+    sql += ` GROUP BY nd.news_id`;
+
     try {
         let [result] = await pool.query(sql, params);
         return res.apiSuccess(result, 'Search Success');
     } catch (err) {
-        err.desc = 'middlewares-searchNews(): database search error'
-        return next(err)
+        err.desc = 'middlewares-searchNews(): database search error';
+        return next(err);
     }
 }
 
@@ -270,7 +294,7 @@ async function insertNews(req, res, next) {
                         fakeReq = {
                             query: { name: each_location }
                         };
-                        searchLocationResult = await callAndCatchApiSuccess ( searchLocation, fakeReq );
+                        let searchLocationResult = await callAndCatchApiSuccess ( searchLocation, fakeReq );
                         ( {type: location_type, id: location_id } = searchLocationResult );
                     } catch (err) {
                         console.warn('[Search Location Failed]', err.message);

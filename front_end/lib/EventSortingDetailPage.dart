@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'MultiplePerspectivesDetailPage.dart';
+import 'config.dart';
 
 class EventSortingDetailPage extends StatefulWidget {
   final int id;
@@ -14,26 +15,28 @@ class EventSortingDetailPage extends StatefulWidget {
 }
 
 class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
-  // 將模擬的使用者 ID 設為可空，並在 initState 中讀取
   int? _currentUserId;
-
   bool _isEventSortingMode = true;
-  final String _baseUrl = 'http://localhost:3000/api/EventSorting';
-  final String _userActionBaseUrl = 'http://localhost:3000/api/user_action';
-  final String _imageBaseUrl = 'http://localhost:3000/images';
-  late Future<dynamic> _eventDetailsFuture;
+
+  // 定義 API 基礎 URL
+  final String _eventSortingUrl = '$baseUrl/api/EventSorting';
+  final String _userActionUrl = '$baseUrl/api/user_action';
+  final String _imageUrl = '$baseUrl/api/image'; // 這裡使用取得所有圖片的API
+
+  late Future<Map<String, dynamic>> _eventDetailsAndImagesFuture;
+
+  // 儲存所有圖片資料的列表，以便比對
+  List<dynamic> _allImages = [];
 
   @override
   void initState() {
     super.initState();
-    // 優先載入使用者 ID，再執行其他資料抓取
     _loadUserId().then((_) {
-      _eventDetailsFuture = _fetchEventDetails();
-      setState(() {}); // 觸發 UI 更新
+      _eventDetailsAndImagesFuture = _fetchEventDetailsAndImages();
+      _insertUserAction('view', 'eventsorting');
     });
   }
 
-  // 新增函式: 從本機儲存中讀取使用者 ID
   Future<void> _loadUserId() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -41,45 +44,62 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
     });
   }
 
-  // 取得事件資料的函式，包含圖片 URL 的兩階段獲取邏輯
-  Future<dynamic> _fetchEventDetails() async {
-    final eventUri = Uri.parse(_baseUrl).replace(queryParameters: {'id': widget.id.toString()});
+  // 新增的合併資料獲取函式
+  Future<Map<String, dynamic>> _fetchEventDetailsAndImages() async {
+    final eventUri = Uri.parse(_eventSortingUrl).replace(queryParameters: {'id': widget.id.toString()});
+    final imagesUri = Uri.parse(_imageUrl);
 
     try {
+      // 1. 同時發送兩個 API 請求
       final eventResponse = await http.get(eventUri);
+      final imagesResponse = await http.get(imagesUri);
 
-      if (eventResponse.statusCode == 200) {
-        final eventData = json.decode(eventResponse.body);
-        if (eventData['data'].isNotEmpty) {
-          final event = eventData['data'][0];
-
-          final imageId = event['eventsorting_image'];
-          if (imageId is int) {
-            final imageUri = Uri.parse(_imageBaseUrl).replace(queryParameters: {'id': imageId.toString()});
-            final imageResponse = await http.get(imageUri);
-
-            if (imageResponse.statusCode == 200) {
-              final imageData = json.decode(imageResponse.body);
-              if (imageData['data'] != null && imageData['data']['image_origin_url'] is String) {
-                event['eventsorting_image_url'] = imageData['data']['image_origin_url'];
-              }
-            }
-          }
-          return event;
-        } else {
-          return null;
-        }
-      } else {
+      // 檢查事件資料的回應
+      if (eventResponse.statusCode != 200) {
         throw Exception('Failed to load event details');
+      }
+
+      // 檢查圖片資料的回應
+      if (imagesResponse.statusCode == 200) {
+        final imagesData = json.decode(imagesResponse.body);
+        _allImages = imagesData['data'] ?? [];
+      } else {
+        print('Warning: Failed to load all images. Status code: ${imagesResponse.statusCode}');
+        _allImages = []; // 確保即使失敗也能繼續執行
+      }
+
+      final eventData = json.decode(eventResponse.body);
+      if (eventData['data'].isNotEmpty) {
+        return eventData['data'][0];
+      } else {
+        throw Exception('Event not found');
       }
     } catch (e) {
       throw Exception('Failed to connect to API: $e');
     }
   }
 
-  // 新增使用者行為記錄的 API 呼叫函式
+  // 根據 ID 找到對應的圖片 URL
+  String _findImageUrlById(int imageId) {
+    if (_allImages.isEmpty) {
+      return '';
+    }
+    try {
+      final image = _allImages.firstWhere(
+            (img) => img['image_id'] == imageId,
+        // 如果找不到，返回一個空地圖或 null
+        orElse: () => null,
+      );
+      return image?['image_origin_url'] ?? '';
+    } catch (e) {
+      print('Error finding image with ID $imageId: $e');
+      return '';
+    }
+  }
+
+  // 原有的使用者行為記錄函式不變
   Future<void> _insertUserAction(String actionType, String dataType, {String? text, int? score}) async {
-    final url = '$_userActionBaseUrl/$actionType/$dataType';
+    final url = '$_userActionUrl/$actionType/$dataType';
     final body = {
       'userId': _currentUserId,
       'dataId': widget.id,
@@ -87,9 +107,8 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
       'score': score,
     };
 
-    // 'view' 和 'share' 使用 clientIp，不需 userId
     if (actionType == 'view' || actionType == 'share') {
-      body['clientIp'] = '127.0.0.1'; // 請替換為真實 IP
+      body['clientIp'] = '127.0.0.1';
       body.remove('userId');
     }
 
@@ -113,6 +132,7 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // ... (省略不變的 Scaffold 和 AppBar 部分)
       backgroundColor: Colors.grey.shade100,
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -126,10 +146,10 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
         title: const Text('事件整理', style: TextStyle(color: Colors.black)),
         actions: [
           Switch(
-            value: _isEventSortingMode,
+            value: !_isEventSortingMode,
             onChanged: (bool value) {
               setState(() {
-                _isEventSortingMode = value;
+                _isEventSortingMode = !value;
               });
               if (!_isEventSortingMode) {
                 Navigator.pushReplacement(
@@ -145,8 +165,8 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
           const SizedBox(width: 16),
         ],
       ),
-      body: FutureBuilder(
-        future: _eventDetailsFuture,
+      body: FutureBuilder<Map<String, dynamic>>(
+        future: _eventDetailsAndImagesFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -155,9 +175,12 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
           } else if (!snapshot.hasData) {
             return const Center(child: Text('找不到事件資料。'));
           } else {
-            final event = snapshot.data;
+            final event = snapshot.data!;
             final List timelineItems = event['eventsorting_background'] ?? [];
-            final mainImageUrl = event['eventsorting_image_url'];
+            final mainImageId = event['eventsorting_image'];
+
+            // 根據 ID 找到對應的 URL
+            final mainImageUrl = _findImageUrlById(mainImageId);
 
             return SingleChildScrollView(
               child: Column(
@@ -184,7 +207,7 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
                     padding: const EdgeInsets.all(16.0),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12.0),
-                      child: _buildMainImage(mainImageUrl),
+                      child: _buildMainImage(mainImageUrl), // 直接傳入 URL 字串
                     ),
                   ),
                   _buildSummaryCard(event['eventsorting_summary'] ?? ''),
@@ -198,6 +221,100 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
       bottomNavigationBar: _buildBottomActions(),
     );
   }
+
+  // 由於現在直接傳入 URL，_buildMainImage 和 _buildImage 函式需要調整
+  Widget _buildMainImage(String? imageUrl) {
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      return Image.network(
+        imageUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return _buildPlaceholderImage(400, 200);
+        },
+      );
+    }
+    return _buildPlaceholderImage(400, 200);
+  }
+
+  Widget _buildTimelineSection(List items) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Text('新聞脈絡整理', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        ),
+        if (items.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text('無相關新聞脈絡資料。'),
+          ),
+        ...items.map((item) {
+          // 處理新聞脈絡中的圖片 ID
+          final timelineImageId = item['image'];
+          final timelineImageUrl = _findImageUrlById(timelineImageId is int ? timelineImageId : -1);
+
+          return _buildTimelineItem(
+              item['time'] ?? '',
+              item['title'] ?? '',
+              item['description'] ?? '',
+              item['source'] ?? '',
+              timelineImageUrl // 傳入 URL
+          );
+        }).toList(),
+      ],
+    );
+  }
+
+  Widget _buildTimelineItem(String time, String title, String description, String source, String imageUrl) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 60,
+            child: Text(time, style: const TextStyle(color: Colors.grey)),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                if (description.isNotEmpty) Text(description, style: const TextStyle(fontSize: 14)),
+                Text(source, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8.0),
+            child: _buildImage(imageUrl), // 直接傳入 URL 字串
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 處理新聞脈絡圖片的輔助函式
+  Widget _buildImage(String imageUrl) {
+    if (imageUrl.isNotEmpty) {
+      return Image.network(
+        imageUrl,
+        width: 60,
+        height: 60,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return _buildPlaceholderImage(60, 60);
+        },
+      );
+    }
+    return _buildPlaceholderImage(60, 60);
+  }
+
+  // 剩下的函式 (例如 _buildDisclaimer, _buildSummaryCard 等) 保持不變
+  // ... (此處省略以保持程式碼簡潔)
 
   Widget _buildDisclaimer() {
     return Padding(
@@ -240,116 +357,6 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
     );
   }
 
-  Widget _buildTimelineSection(List items) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Text('新聞脈絡整理', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        ),
-        if (items.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Text('無相關新聞脈絡資料。'),
-          ),
-        ...items.map((item) {
-          return _buildTimelineItem(
-              item['time'] ?? '',
-              item['title'] ?? '',
-              item['description'] ?? '',
-              item['source'] ?? '',
-              item['image'] ?? ''
-          );
-        }).toList(),
-      ],
-    );
-  }
-
-  Widget _buildTimelineItem(String time, String title, String description, String source, dynamic imagePath) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 60,
-            child: Text(time, style: const TextStyle(color: Colors.grey)),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                if (description.isNotEmpty) Text(description, style: const TextStyle(fontSize: 14)),
-                Text(source, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8.0),
-            child: _buildImage(imagePath),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 處理主圖圖片的輔助函式
-  Widget _buildMainImage(dynamic imageValue) {
-    String? imageUrl;
-    if (imageValue is int) {
-      // 如果回傳的是數字 (圖片 ID)，則拼接 URL
-      imageUrl = '$_imageBaseUrl?id=$imageValue';
-    } else if (imageValue is String) {
-      // 如果回傳的是 URL 字串，直接使用
-      imageUrl = imageValue;
-    }
-
-    if (imageUrl != null) {
-      return Image.network(
-        imageUrl,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return _buildPlaceholderImage(400, 200);
-        },
-      );
-    }
-    // 如果值是 null 或其他無法處理的類型，顯示佔位圖片
-    return _buildPlaceholderImage(400, 200);
-  }
-
-  // 處理新聞脈絡圖片的輔助函式
-  Widget _buildImage(dynamic imagePath) {
-    if (imagePath != null && imagePath is String) {
-      if (imagePath.startsWith('http')) {
-        return Image.network(
-          imagePath,
-          width: 60,
-          height: 60,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return _buildPlaceholderImage(60, 60);
-          },
-        );
-      } else {
-        return Image.asset(
-          imagePath,
-          width: 60,
-          height: 60,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return _buildPlaceholderImage(60, 60);
-          },
-        );
-      }
-    }
-    return _buildPlaceholderImage(60, 60);
-  }
-
-  // 新增一個共用的佔位圖片函式
   Widget _buildPlaceholderImage(double width, double height) {
     return Container(
       width: width,

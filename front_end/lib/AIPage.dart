@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart'; // 引入套件
 // 引入詳細頁面
 import 'EventSortingDetailPage.dart';
 import 'MultiplePerspectivesDetailPage.dart';
+import 'config.dart';
 
 class AIPage extends StatefulWidget {
   const AIPage({super.key});
@@ -15,7 +16,6 @@ class AIPage extends StatefulWidget {
 }
 
 class _AIPageState extends State<AIPage> {
-  // 將模擬的使用者 ID 設為可空，並在 initState 中讀取
   int? _currentUserId;
 
   // true: 事件整理, false: 多方看法
@@ -23,38 +23,32 @@ class _AIPageState extends State<AIPage> {
   late Future<List<dynamic>> _eventsortingFuture;
   late Future<List<dynamic>> _multiplePerspectivesFuture;
 
-  // 收藏狀態，鍵為事件 ID，值為是否收藏
+
   Map<int, bool> _bookmarkStatus = {};
 
-  // 後端 API 基礎 URL
-  final String _baseUrl = 'http://localhost:3000/api';
+  // 後端 API 基礎 URL，現在從 config.dart 中讀取
+  final String _baseUrl = baseUrl;
 
   @override
   void initState() {
     super.initState();
     _loadUserId().then((_) {
-      // 確保在使用者 ID 載入後才去抓取其他資料
       _fetchData();
     });
   }
 
-  // 新增函式: 從本機儲存中讀取使用者 ID
   Future<void> _loadUserId() async {
     final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getInt('userId'); // 假設您將使用者 ID 儲存為 'userId'
+    final userId = prefs.getInt('userId');
 
     setState(() {
       _currentUserId = userId;
     });
-    // 這裡可以模擬登入或登出，方便測試
-    // await prefs.setInt('userId', 1); // 模擬登入
-    // await prefs.remove('userId'); // 模擬登出
   }
 
   void _fetchData() {
     _eventsortingFuture = _searchEventsorting();
     _multiplePerspectivesFuture = _searchMultipleperspectives();
-    // 只有在登入狀態下才查詢收藏列表
     if (_currentUserId != null) {
       _fetchBookmarks();
     }
@@ -66,7 +60,7 @@ class _AIPageState extends State<AIPage> {
     if (id != null) {
       queryParams['id'] = id.toString();
     }
-    final uri = Uri.parse('$_baseUrl/EventSorting').replace(queryParameters: queryParams);
+    final uri = Uri.parse('$_baseUrl/api/EventSorting').replace(queryParameters: queryParams);
 
     try {
       final response = await http.get(uri);
@@ -87,7 +81,7 @@ class _AIPageState extends State<AIPage> {
     if (id != null) {
       queryParams['id'] = id.toString();
     }
-    final uri = Uri.parse('$_baseUrl/MultiplePerspectives').replace(queryParameters: queryParams);
+    final uri = Uri.parse('$_baseUrl/api/MultiplePerspectives').replace(queryParameters: queryParams);
 
     try {
       final response = await http.get(uri);
@@ -102,12 +96,11 @@ class _AIPageState extends State<AIPage> {
     }
   }
 
-  // 新增函式: 獲取使用者的收藏列表
+  // 獲取使用者的收藏列表
   Future<void> _fetchBookmarks() async {
     if (_currentUserId == null) return;
 
-    // 這裡我們假設後端有一個 API 可以查詢某個使用者所有的收藏
-    final url = '$_baseUrl/user_action/bookmark/eventsorting?userId=$_currentUserId';
+    final url = '$_baseUrl/api/user_action/bookmark/eventsorting?userId=$_currentUserId';
 
     try {
       final response = await http.get(Uri.parse(url));
@@ -116,7 +109,6 @@ class _AIPageState extends State<AIPage> {
         final List bookmarks = data['data'];
         final Map<int, bool> newBookmarkStatus = {};
         for (var item in bookmarks) {
-          // 假設後端回傳的資料中，收藏的事件 ID 欄位名為 'eventsorting_id'
           if (item['eventsorting_id'] != null) {
             newBookmarkStatus[item['eventsorting_id']] = true;
           }
@@ -130,7 +122,7 @@ class _AIPageState extends State<AIPage> {
     }
   }
 
-  // 新增函式: 處理收藏的新增或刪除
+  // 處理收藏的新增或刪除
   Future<void> _toggleBookmark(int eventId) async {
     if (_currentUserId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -141,8 +133,8 @@ class _AIPageState extends State<AIPage> {
 
     final isBookmarked = _bookmarkStatus[eventId] ?? false;
     final url = isBookmarked
-        ? '$_baseUrl/user_action/delete/bookmark/$eventId' // 假設後端有刪除 API
-        : '$_baseUrl/user_action/insert/bookmark/eventsorting';
+        ? '$_baseUrl/api/user_action/delete/bookmark/$eventId'
+        : '$_baseUrl/api/user_action/insert/bookmark/eventsorting';
 
     final body = {
       'userId': _currentUserId,
@@ -160,7 +152,6 @@ class _AIPageState extends State<AIPage> {
 
       if (response.statusCode == 200) {
         setState(() {
-          // 切換收藏狀態
           _bookmarkStatus[eventId] = !isBookmarked;
         });
         ScaffoldMessenger.of(context).showSnackBar(
@@ -227,10 +218,10 @@ class _AIPageState extends State<AIPage> {
                     },
                   ),
                   Switch(
-                    value: _isEventSortingMode,
+                    value: !_isEventSortingMode,
                     onChanged: (bool value) {
                       setState(() {
-                        _isEventSortingMode = value;
+                        _isEventSortingMode = !value;
                       });
                     },
                     activeColor: Colors.blue,
@@ -345,8 +336,6 @@ class _AIPageState extends State<AIPage> {
                   itemCount: views.length,
                   itemBuilder: (context, index) {
                     final view = views[index];
-                    // 在這裡我們暫時不處理多方看法的收藏，因為後端 API 不支援
-                    // 為了簡化，我們只針對事件整理做收藏功能
                     return _buildNewsCard(
                       title: view['multipleperspectives_title'],
                       content: '看法統整',
@@ -380,8 +369,8 @@ class _AIPageState extends State<AIPage> {
     required String details,
     bool isMultiplePerspectives = false,
     required VoidCallback onTap,
-    required VoidCallback onBookmarkTap, // 新增收藏點擊事件
-    bool isBookmarked = false, // 新增是否收藏的狀態
+    required VoidCallback onBookmarkTap,
+    bool isBookmarked = false,
   }) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

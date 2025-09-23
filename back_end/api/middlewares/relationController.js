@@ -67,10 +67,12 @@ async function searchRelation (req, res, next) {
                 throw err;
             }
         });
+
         try {
             await Promise.all(searchTasks);
             return res.apiSuccess( [...relationSet], "Search Success");
         } catch(err) {
+            err.desc = "middlewares-searchRelation(): searchTasks error";
             return next(err);
         }
 
@@ -119,7 +121,48 @@ async function insertRelation (req, res, next) {
 
     // 插入 relation_keyword
     try {
-        const insertionTasks = keyword.map ( async (item) => {
+        
+        // 先清洗 + 去重 + 排序
+        const items = [...new Set(
+        keyword.filter(x => typeof x === 'string')
+                .map(x => x.trim())
+                .filter(Boolean)
+        )].sort((a,b) => a.localeCompare(b));
+        
+        try {
+            for (const item of items) {
+
+                // 取得 keyword_id
+                let keyword_id;
+                try {
+                    const fakeReq = { query: { text: item } };
+                    const insertKeywordResult = await callAndCatchApiSuccess(insertKeyword, fakeReq);
+                    keyword_id = insertKeywordResult.insertId;
+                } catch (err) {
+                    err.desc = "middlewares - insertRelation(): database insert error - ( keyword - keyword )";
+                    return next(err);
+                }
+
+                // insert 到 relation_keyword
+                const sql = `
+                    INSERT IGNORE INTO relation_keyword(relation_id, keyword_id)
+                    VALUES (?, ?)
+                `;
+                const params = [relation_id, keyword_id];
+                try {
+                    let [result] = await pool.query(sql, params);
+                } catch (err) {
+                    err.desc = "middlewares - insertRelation(): database insert error - ( keyword - relation_keyword )";
+                    return next(err);
+                }
+            }
+        } catch (err) {
+            err.desc = "middleware-insertRelation(): insert relation loop error";
+            return next(err);
+        }
+
+
+        /*const insertionTasks = keyword.map ( async (item) => {
         
             if ( !item || typeof item !== 'string') return;
 
@@ -133,7 +176,8 @@ async function insertRelation (req, res, next) {
                 keyword_id = insertKeywordResult.insertId;
             } catch(err) {
                 err.desc = "middlewares - insertRelation(): database insert error - ( keyword - keyword )";
-                throw err;
+                return next(err)
+                // throw err;
             }
 
             // 插入 realtion_keyword
@@ -149,9 +193,10 @@ async function insertRelation (req, res, next) {
                 throw err;
             }
         });
-        await Promise.all(insertionTasks);
+        await Promise.all(insertionTasks);*/
         
     } catch (err) {
+        err.desc = "middleware-insertRelation(): insertionTasks error"
         return next(err);
     }
 
