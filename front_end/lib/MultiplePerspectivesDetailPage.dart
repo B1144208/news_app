@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:fl_chart/fl_chart.dart'; // 新增 fl_chart 套件
+import 'package:fl_chart/fl_chart.dart';
 
 import 'EventSortingDetailPage.dart';
 
