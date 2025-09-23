@@ -1,22 +1,17 @@
 {
   "fn": [
-    "extract_news_urls",
-    "get_news_information"
+    "extract_news_urls"
   ],
   "data": {
     "BASE_URL": "https://www.ftvnews.com.tw",
     "SUB_URL": [
       {
-        "url": "https://www.ftvnews.com.tw",
-        "group": "首頁"
-      },
-      {
-        "url": "https://www.ftvnews.com.tw/realtime",
-        "group": "即時"
-      },
-      {
         "url": "https://www.ftvnews.com.tw/tag/快新聞",
         "group": "快新聞"
+      },
+      {
+        "url": "https://www.ftvnews.com.tw/tag/樺加沙",
+        "group": "樺加沙颱風"
       },
       {
         "url": "https://www.ftvnews.com.tw/popular",
@@ -175,36 +170,6 @@
         "group": "曹興誠"
       }
     ],
-    "breakPage": 1,
-    "NEWS_URLS": [
-      "https://www.ftvnews.com.tw/news/detail/2025918w0306",
-      "https://www.ftvnews.com.tw/news/detail/2025918w0305",
-      "https://www.ftvnews.com.tw/news/detail/2025918w0268",
-      "https://www.ftvnews.com.tw/news/detail/2025918w0265",
-      "https://www.ftvnews.com.tw/news/detail/2025918w0263",
-      "https://www.ftvnews.com.tw/news/detail/2025918w0232",
-      "https://www.ftvnews.com.tw/news/detail/2025918c10m1",
-      "https://www.ftvnews.com.tw/news/detail/2025918w0230",
-      "https://www.ftvnews.com.tw/news/detail/2025918w0224",
-      "https://www.ftvnews.com.tw/news/detail/2025918w0222",
-      "https://www.ftvnews.com.tw/news/detail/2025918w0204",
-      "https://www.ftvnews.com.tw/news/detail/2025918w0186",
-      "https://www.ftvnews.com.tw/news/detail/2025918w0180",
-      "https://www.ftvnews.com.tw/news/detail/2025918w0182",
-      "https://www.ftvnews.com.tw/news/detail/2025918w0179",
-      "https://www.ftvnews.com.tw/news/detail/2025918w0151",
-      "https://www.ftvnews.com.tw/news/detail/2025918w0148",
-      "https://www.ftvnews.com.tw/news/detail/2025918w0150",
-      "https://www.ftvnews.com.tw/news/detail/2025918w0127",
-      "https://www.ftvnews.com.tw/news/detail/2025918w0117",
-      "https://www.ftvnews.com.tw/news/detail/2025918w0125",
-      "https://www.ftvnews.com.tw/news/detail/2025918w0118",
-      "https://www.ftvnews.com.tw/news/detail/2025918w0096",
-      "https://www.ftvnews.com.tw/news/detail/2025918w0099",
-      "https://www.ftvnews.com.tw/news/detail/2025918w0092",
-      "https://www.ftvnews.com.tw/news/detail/2025918w0076"
-    ],
-    "GROUP": "快新聞",
-    "CHANNEL": null
+    "breakPage": 1
   }
 }

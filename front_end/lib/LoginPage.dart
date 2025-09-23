@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'config.dart';
 import 'SignupPage.dart';
 import 'HomePage.dart';
-//import 'AdminPage.dart';
+import 'AdminPage.dart';
 
 
 // 判斷登入帳號密碼是否正確

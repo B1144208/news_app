@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import readchar
 
 # 確保當前目錄下的模組可以被正確導入（支援 newsCrawler/FTV_Crawler 等子模組）
@@ -11,11 +12,7 @@ from newsCrawler.object import CrawlerData
 # 載入新聞網站模組
 from newsCrawler.crawlerWeb.FTV_Crawler import ftv_crawler
 
-<<<<<<< HEAD:back_end/newsCrawler/__main__.py
 # 選擇 channel
-=======
-
->>>>>>> cc1bffd05345c476b85f17991a97fb935a625af2:back_end/newsCrawler/main.py
 def ask_choice(prompt="Please input the channel_id [1-4]: "):
     valid = {"1", "2", "3", "4"}
     while True:
@@ -40,7 +37,17 @@ def run():
 
     match choice:
         case '1':
-            ftv_crawler.run(crawlerData)
+            #ftv_crawler.run(crawlerData)
+            try:
+                while(1):
+                    try:
+                        ftv_crawler.run(crawlerData)
+                    except Exception as e:
+                        pass
+
+                    time.sleep(60)
+            except KeyboardInterrupt:
+                print("收到中斷訊號，停止爬蟲。")
         case '2':
             print("todo: channel 2")
         case '3':
