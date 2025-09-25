@@ -21,7 +21,7 @@ def ask_choice(prompt="Please input the channel_id [1-4]: "):
         print(ch)
         if ch in valid:
             return ch
-        elif ch in ("\x03", "x1b"): # Ctrl+C, Esc
+        elif ch in ("\x03", "x1b"): # Ctrl+C, Esc 
             print ("Canceled")
             return None
         else:
