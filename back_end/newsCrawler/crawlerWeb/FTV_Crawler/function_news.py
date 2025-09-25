@@ -316,13 +316,16 @@ def get_news_information(NEWS_URLS: List[str], crawlerData, newsQueue, driver, G
         # 關鍵字
         keyword = []
         news_tag = soup.find("div", class_="news-tag")
-        news_tag = news_tag.find_all("li")
-        for ky in news_tag:
-            key = ky.find("a").text.strip()
-            keyword.append(key)
-
-        # 去除重複與空值
-        keyword = list(set(keyword))
+        if news_tag:
+            news_tag = news_tag.find_all("li")
+            for ky in news_tag:
+                key = ky.find("a").text.strip()
+                keyword.append(key)
+            # 去除重複與空值
+            keyword = list(set(keyword))
+        
+        if len(keyword)==0:
+            keyword = None
         article["keyword"] = keyword
 
         # 評論

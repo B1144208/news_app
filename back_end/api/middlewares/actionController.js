@@ -5,7 +5,7 @@ const { searchAnonymous, insertAnonymous } = require('./anonymousController');
 // search
 async function searchUserAction (req, res, next) {
     /*
-    @ actionType: comment, bookmark
+    @ actionType: bookmark, comment, score
     @ dataType  : news, channel, eventsorting, multipleperspectives
     */
     let { actionType, dataType } = req.params ?? {}
@@ -14,7 +14,7 @@ async function searchUserAction (req, res, next) {
     // 檢查必要欄位 & 格式 - id
     try {
         [ actionType, dataType, userId ] = await checkRequireField ([
-            { field: 'actionType'   , data: actionType  , type: 'string'    , other: ['non_null'],  enum: ['comment', 'bookmark']                                    },
+            { field: 'actionType'   , data: actionType  , type: 'string'    , other: ['non_null'],  enum: ['bookmark', 'comment', 'score']                                    },
             { field: 'dataType'     , data: dataType    , type: 'string'    , other: ['non_null'],  enum: ['news', 'channel', 'eventsorting','multipleperspectives'] },
             { field: 'userId'       , data: userId      , type: 'number'    , other: ['non_null']                                                                    }
         ]);
@@ -41,7 +41,7 @@ async function searchUserAction (req, res, next) {
 // insert
 async function insertUserAction (req, res, next) {
     /*
-    @ actionType : view, comment, bookmark, share, score
+    @ actionType : view, share, bookmark, comment, score
     @ dataType   : news, channel, eventsorting, multipleperspectives
     @ comment    : anonymous(可空), text
     @ score      : score
@@ -53,7 +53,7 @@ async function insertUserAction (req, res, next) {
     // 檢查必要欄位 & 格式 - actionType, dataType, userId, dataId, clientIp, anonymous, text, score
     try {
         [ actionType, dataType, userId, dataId, anonymous, text, score ] = await checkRequireField ([
-            { field: 'actionType'   , data: actionType  , type: 'string'    , other: ['non_null'],  enum: ['view', 'comment', 'bookmark', 'share', 'score']          },
+            { field: 'actionType'   , data: actionType  , type: 'string'    , other: ['non_null'],  enum: ['view', 'share', 'bookmark', 'comment', 'score']          },
             { field: 'dataType'     , data: dataType    , type: 'string'    , other: ['non_null'],  enum: ['news', 'channel', 'eventsorting','multipleperspectives'] },
             { field: 'userId'       , data: userId      , type: 'number'    , other: ['lth']                    },
             { field: 'dataId'       , data: dataId      , type: 'number'    , other: ['non_null']               },
@@ -75,6 +75,12 @@ async function insertUserAction (req, res, next) {
     if ( invalidField ) {
         err = new Error("Missing or Invalid required fields");
         err.desc = "middlewares-insertUserAction(): Missing or Invalid required fields";
+        return next(err);
+    }
+    
+    if ( score && ( score <=0 || score>5 ) ) {
+        err = new Error("Missing or Invalid required fields");
+        err.desc = "middlewares-insertUserAction(): score need to range in (1, 5)";
         return next(err);
     }
 

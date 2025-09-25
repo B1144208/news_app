@@ -20,7 +20,7 @@ async function searchAnonymous (req, res, next) {
     // general search
     let sql = `
         SELECT * 
-        FROM anonymous_name
+        FROM anonymous_data
         WHERE 1
     `;
     let params = [];
@@ -77,7 +77,7 @@ async function insertAnonymous (req, res, next) {
 
     // 再 insert
     let sql = `
-        INSERT INTO anonymous_name ( anonymous_name )
+        INSERT INTO anonymous_data ( anonymous_name )
         VALUES (?)
     `;
     let params = [ name ];

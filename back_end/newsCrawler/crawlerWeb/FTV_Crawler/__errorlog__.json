@@ -1,102 +1,11 @@
 {
   "fn": [
-    "extract_news_urls"
+    "extract_news_urls",
+    "get_news_information"
   ],
   "data": {
     "BASE_URL": "https://www.ftvnews.com.tw",
     "SUB_URL": [
-      {
-        "url": "https://www.ftvnews.com.tw/tag/快新聞",
-        "group": "快新聞"
-      },
-      {
-        "url": "https://www.ftvnews.com.tw/tag/樺加沙",
-        "group": "樺加沙颱風"
-      },
-      {
-        "url": "https://www.ftvnews.com.tw/popular",
-        "group": "熱門"
-      },
-      {
-        "url": "https://www.ftvnews.com.tw/tag/政治",
-        "group": "政治"
-      },
-      {
-        "url": "https://www.ftvnews.com.tw/tag/社會",
-        "group": "社會"
-      },
-      {
-        "url": "https://www.ftvnews.com.tw/tag/娛樂",
-        "group": "娛樂"
-      },
-      {
-        "url": "https://www.ftvnews.com.tw/tag/時尚",
-        "group": "時尚"
-      },
-      {
-        "url": "https://www.ftvnews.com.tw/tag/熱門網搜",
-        "group": "熱門網搜"
-      },
-      {
-        "url": "https://sport.ftvnews.com.tw",
-        "group": "體育"
-      },
-      {
-        "url": "https://www.ftvnews.com.tw/tag/pleague",
-        "group": "P.League"
-      },
-      {
-        "url": "https://www.ftvnews.com.tw/tag/hbl",
-        "group": "HBL"
-      },
-      {
-        "url": "https://finance.ftvnews.com.tw",
-        "group": "財經"
-      },
-      {
-        "url": "https://www.ftvnews.com.tw/tag/財經",
-        "group": "財經總覽"
-      },
-      {
-        "url": "https://www.ftvnews.com.tw/tag/房地產",
-        "group": "房市"
-      },
-      {
-        "url": "https://www.ftvnews.com.tw/tag/汽車",
-        "group": "汽車"
-      },
-      {
-        "url": "https://health.ftvnews.com.tw",
-        "group": "長照"
-      },
-      {
-        "url": "https://www.ftvnews.com.tw/tag/生活",
-        "group": "生活"
-      },
-      {
-        "url": "https://www.ftvnews.com.tw/tag/運勢",
-        "group": "運勢"
-      },
-      {
-        "url": "https://www.ftvnews.com.tw/tag/健康",
-        "group": "健康"
-      },
-      {
-        "url": "https://www.ftvnews.com.tw/tag/美食",
-        "group": "美食"
-      },
-      {
-        "url": "https://www.ftvnews.com.tw/tag/寵物",
-        "group": "寵物"
-      },
-      {
-        "url": "https://www.ftvnews.com.tw/tag/旅遊",
-        "group": "旅遊"
-      },
-      {
-        "url": "https://www.ftvnews.com.tw/tag/氣象",
-        "group": "氣象"
-      },
       {
         "url": "https://www.ftvnews.com.tw/tag/歷史",
         "group": "歷史"
@@ -170,6 +79,39 @@
         "group": "曹興誠"
       }
     ],
-    "breakPage": 1
+    "GROUP": "歷史",
+    "CHANNEL": null,
+    "breakPage": 24,
+    "NEWS_URLS": [
+      "https://www.ftvnews.com.tw/news/detail/2023a05w0122",
+      "https://www.ftvnews.com.tw/news/detail/2023a05w0118",
+      "https://www.ftvnews.com.tw/news/detail/2023a05w0114",
+      "https://www.ftvnews.com.tw/news/detail/2023a05w0110",
+      "https://www.ftvnews.com.tw/news/detail/2023a03w0311",
+      "https://www.ftvnews.com.tw/news/detail/2023a03w0307",
+      "https://www.ftvnews.com.tw/news/detail/2023a03w0122",
+      "https://www.ftvnews.com.tw/news/detail/2023928w0312",
+      "https://www.ftvnews.com.tw/news/detail/2023928w0310",
+      "https://www.ftvnews.com.tw/news/detail/2023928w0308",
+      "https://www.ftvnews.com.tw/news/detail/2023928w0305",
+      "https://www.ftvnews.com.tw/news/detail/2023928w0291",
+      "https://www.ftvnews.com.tw/news/detail/2023928w0165",
+      "https://www.ftvnews.com.tw/news/detail/2023926w0111",
+      "https://www.ftvnews.com.tw/news/detail/2023926w0101",
+      "https://www.ftvnews.com.tw/news/detail/2023925w0347",
+      "https://www.ftvnews.com.tw/news/detail/2023925w0346",
+      "https://www.ftvnews.com.tw/news/detail/2023925w0327",
+      "https://www.ftvnews.com.tw/news/detail/2023925w0334",
+      "https://www.ftvnews.com.tw/news/detail/2023925w0224",
+      "https://www.ftvnews.com.tw/news/detail/2023911w0237",
+      "https://www.ftvnews.com.tw/news/detail/2023909w0084",
+      "https://www.ftvnews.com.tw/news/detail/2023906w0188",
+      "https://www.ftvnews.com.tw/news/detail/2023823w0270",
+      "https://www.ftvnews.com.tw/news/detail/2023823w0196",
+      "https://www.ftvnews.com.tw/news/detail/2023807w0120",
+      "https://www.ftvnews.com.tw/news/detail/2023804w0092",
+      "https://www.ftvnews.com.tw/news/detail/2023725w0274",
+      "https://www.ftvnews.com.tw/news/detail/2023715w0145"
+    ]
   }
 }
