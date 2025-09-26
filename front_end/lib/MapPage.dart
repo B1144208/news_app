@@ -4,6 +4,8 @@ import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:math';
+// 如果您還沒有創建 BookmarkPage.dart，請將這行註釋掉
+// import 'BookmarkPage.dart';
 
 // 新聞資料模型
 class News {
@@ -50,13 +52,28 @@ class _MapPageState extends State<MapPage> {
 
   Map<String, dynamic>? _selectedLocation;
   bool _isPanelVisible = false;
-  // 新增新聞列表變數
   List<News> _newsList = [];
+
+  // === 多級下拉選單相關狀態變數 ===
+  String? _selectedRegion;
+  String? _selectedCountry;
+  String? _selectedState;
+
+  List<String> _regions = [];
+  List<String> _countries = [];
+  List<String> _states = [];
+  // ===================================
 
   @override
   void initState() {
     super.initState();
     _fetchLocations();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchLocations() async {
@@ -67,6 +84,14 @@ class _MapPageState extends State<MapPage> {
         setState(() {
           _locations = data['data'];
           _isLoading = false;
+
+          // 初始化 Regions 列表
+          _regions = _locations
+              .map((loc) => loc['region_name_zh_tw'] as String)
+              .where((region) => region.isNotEmpty)
+              .toSet()
+              .toList();
+          _regions.sort();
         });
       } else {
         setState(() {
@@ -96,17 +121,29 @@ class _MapPageState extends State<MapPage> {
     });
   }
 
+  // === 核心邏輯：根據關鍵字搜尋並定位地圖 ===
   void _searchLocation(String query) async {
     if (query.isEmpty) {
       return;
     }
 
+    final lowerCaseQuery = query.toLowerCase();
+
     // 從本地快取中搜尋
     final foundLocation = _locations.firstWhere(
-          (location) =>
-      (location['country_name_zh_tw'] as String).contains(query) ||
-          (location['country_name_en'] as String).contains(query) ||
-          (location['state_name_en'] as String? ?? '').contains(query),
+          (location) {
+        // 確保 location 的屬性是 String 且不為 null
+        final zhTwMatch = (location['country_name_zh_tw'] as String? ?? '').contains(query) ||
+            (location['state_name_zh_tw'] as String? ?? '').contains(query);
+
+        // 英文搜尋：將地點名稱轉換為小寫後再與小寫查詢字串比對
+        final enCountryName = (location['country_name_en'] as String? ?? '').toLowerCase();
+        final enStateName = (location['state_name_en'] as String? ?? '').toLowerCase();
+
+        final enMatch = enCountryName.contains(lowerCaseQuery) || enStateName.contains(lowerCaseQuery);
+
+        return zhTwMatch || enMatch;
+      },
       orElse: () => null,
     );
 
@@ -114,9 +151,12 @@ class _MapPageState extends State<MapPage> {
       LatLng markerLatLng;
       final stateLat = double.tryParse(foundLocation['state_center_latitude'].toString());
       final stateLon = double.tryParse(foundLocation['state_center_longitude'].toString());
+
+      // 如果有州/省的中心點，優先使用
       if (stateLat != null && stateLon != null) {
         markerLatLng = LatLng(stateLat, stateLon);
       } else {
+        // 否則使用國家的中心點
         markerLatLng = LatLng(
           double.parse(foundLocation['country_center_latitude'].toString()),
           double.parse(foundLocation['country_center_longitude'].toString()),
@@ -133,8 +173,10 @@ class _MapPageState extends State<MapPage> {
       );
     }
   }
+  // ========================================================
 
   void _handleMapTap(TapPosition tapPosition, LatLng latlng) {
+    // 這裡的邏輯是找出點擊點最近的地點，並進行定位和新聞載入
     final nearestLocation = _findNearestLocation(latlng);
     if (nearestLocation != null) {
       LatLng markerLatLng;
@@ -185,6 +227,7 @@ class _MapPageState extends State<MapPage> {
     Map<String, dynamic>? nearestLocation;
 
     for (var location in _locations) {
+      // 邏輯保持不變...
       LatLng? locationLatLng;
 
       final stateLat = double.tryParse(location['state_center_latitude'].toString());
@@ -212,7 +255,6 @@ class _MapPageState extends State<MapPage> {
     return nearestLocation;
   }
 
-  // 新增新聞 API 呼叫函式
   Future<List<News>> _fetchNewsByLocation(String locationType, int locationId) async {
     try {
       final response = await http.get(
@@ -231,7 +273,6 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
-  // 修改 _updateMapWithLocation 函式，新增新聞獲取邏輯
   void _updateMapWithLocation(Map<String, dynamic> locationData, LatLng markerLatLng) async {
     final lat = double.tryParse(locationData['country_center_latitude'].toString());
     final lon = double.tryParse(locationData['country_center_longitude'].toString());
@@ -273,7 +314,191 @@ class _MapPageState extends State<MapPage> {
     });
   }
 
+  // ===================================
+  // 三級聯動下拉選單邏輯
+  // ===================================
+
+  void _onRegionChanged(String? newRegion) {
+    setState(() {
+      _selectedRegion = newRegion;
+
+      // 重置並更新 Country 列表
+      _selectedCountry = null;
+      _selectedState = null;
+      _states = [];
+
+      if (newRegion != null) {
+        _countries = _locations
+            .where((loc) => loc['region_name_zh_tw'] == newRegion)
+            .map((loc) => loc['country_name_zh_tw'] as String)
+            .toSet()
+            .toList();
+        _countries.sort();
+      } else {
+        _countries = [];
+      }
+
+      _searchController.clear();
+      _isPanelVisible = false;
+      _markers = [];
+    });
+  }
+
+  void _onCountryChanged(String? newCountry) {
+    setState(() {
+      _selectedCountry = newCountry;
+
+      // 重置並更新 State 列表
+      _selectedState = null;
+
+      if (newCountry != null) {
+        _states = _locations
+            .where((loc) =>
+        loc['country_name_zh_tw'] == newCountry &&
+            (loc['state_name_en'] as String? ?? '').isNotEmpty)
+            .map((loc) => loc['state_name_en'] as String)
+            .toSet()
+            .toList();
+        _states.sort();
+      } else {
+        _states = [];
+      }
+
+      _searchController.clear();
+      _isPanelVisible = false;
+      _markers = [];
+    });
+  }
+
+  void _onStateChanged(String? newState) {
+    setState(() {
+      _selectedState = newState;
+    });
+
+    _searchController.clear();
+  }
+
+  // 處理點擊「定位/搜尋」按鈕的邏輯
+  void _handleDropdownSearch() {
+    String? searchTarget;
+
+    if (_selectedState != null) {
+      // 優先搜尋 State
+      searchTarget = _selectedState;
+    } else if (_selectedCountry != null) {
+      // 如果沒有 State，則搜尋 Country
+      searchTarget = _selectedCountry;
+    }
+
+    if (searchTarget != null) {
+      _searchLocation(searchTarget);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('請先選擇國家或州/省。'))
+      );
+    }
+  }
+
+  // ===================================
+  // UI 構建輔助函式
+  // ===================================
+
+  Widget _buildDropdown(
+      String hintText,
+      String? selectedValue,
+      List<String> items,
+      ValueChanged<String?> onChanged,
+      bool isEnabled,
+      ) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+        decoration: BoxDecoration(
+          color: isEnabled ? Colors.white : Colors.grey[200],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            hint: Text(hintText),
+            value: selectedValue,
+            isExpanded: true,
+            icon: const Icon(Icons.arrow_drop_down),
+            onChanged: isEnabled ? onChanged : null,
+            items: items.map<DropdownMenuItem<String>>((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Text(value, overflow: TextOverflow.ellipsis),
+              );
+            }).toList(),
+
+            disabledHint: Text(hintText, style: TextStyle(color: Colors.grey[400])),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDropdownFilters() {
+    return Padding(
+      padding: const EdgeInsets.only(left: 8.0, right: 8.0, bottom: 8.0),
+      child: Row(
+        children: [
+          _buildDropdown(
+            '地區',
+            _selectedRegion,
+            _regions,
+            _onRegionChanged,
+            true,
+          ),
+          const SizedBox(width: 8),
+
+          _buildDropdown(
+            '國家',
+            _selectedCountry,
+            _countries,
+            _onCountryChanged,
+            _selectedRegion != null,
+          ),
+          const SizedBox(width: 8),
+
+          _buildDropdown(
+            '州/省',
+            _selectedState,
+            _states,
+            _onStateChanged,
+            _selectedCountry != null,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchButton() {
+    // 只有當 Country 或 State 有選擇時，按鈕才啟用
+    final isEnabled = _selectedCountry != null || _selectedState != null;
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 8.0, right: 8.0, bottom: 8.0),
+      child: ElevatedButton.icon(
+        onPressed: isEnabled ? _handleDropdownSearch : null,
+        icon: const Icon(Icons.location_searching),
+        label: Text(_selectedState != null ? '定位到州/省' : '定位到國家'),
+        style: ElevatedButton.styleFrom(
+          minimumSize: const Size(double.infinity, 50),
+          backgroundColor: Colors.blue,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+    );
+  }
+
+
   Widget _buildRightPanel() {
+    // 邏輯保持不變...
     if (_selectedLocation == null) {
       return const SizedBox.shrink();
     }
@@ -357,18 +582,43 @@ class _MapPageState extends State<MapPage> {
     );
   }
 
+  // ===================================
+  // 主要 Build 函式
+  // ===================================
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('世界地圖')),
+      // === 頂部 AppBar 與書籤圖標 ===
+      appBar: AppBar(
+        title: const Text('世界地圖'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.bookmark),
+            onPressed: () {
+              // Navigator.push(
+              //   context,
+              //   MaterialPageRoute(builder: (context) => const BookmarkPage()),
+              // );
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('書籤功能待實作')),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
+      // =================================
+
       body: Column(
         children: [
+          // 搜尋欄
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: '搜尋地點...',
+                hintText: '輸入地點名稱（中/英）搜尋...',
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -379,6 +629,17 @@ class _MapPageState extends State<MapPage> {
               onSubmitted: _searchLocation,
             ),
           ),
+
+          // === 下拉選單和搜尋按鈕區塊 ===
+          if (!_isLoading && _error == null)
+            Column(
+              children: [
+                _buildDropdownFilters(), // 三個下拉選單
+                _buildSearchButton(),    // 定位按鈕
+              ],
+            ),
+          // ==============================
+
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
@@ -415,6 +676,7 @@ class _MapPageState extends State<MapPage> {
                           MarkerLayer(markers: _markers),
                         ],
                       ),
+                      // 縮放按鈕
                       Positioned(
                         right: 10,
                         bottom: 10,
