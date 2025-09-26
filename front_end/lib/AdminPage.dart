@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'config.dart';
 import 'DataManagePage.dart';
 import 'UserManagePage.dart';
+import 'ErrorlogPage.dart';
 
 class AdminPage extends StatefulWidget {
   const AdminPage({super.key});
@@ -89,7 +90,7 @@ class _AdminPageState extends State<AdminPage> {
                   ),
                 ),
 
-                // 管理選項卡片
+                // 管理選項卡片 - 三個並排
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -124,6 +125,25 @@ class _AdminPageState extends State<AdminPage> {
                           context,
                           MaterialPageRoute(
                             builder: (context) => const UserManagePage(),
+                          ),
+                        );
+                      },
+                    ),
+
+                    const SizedBox(width: 30),
+
+                    // ErrorLog 管理卡片
+                    _buildManageCard(
+                      context: context,
+                      title: '錯誤日誌管理',
+                      subtitle: 'Error Log Management',
+                      icon: Icons.error_outline,
+                      color: Colors.red,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ErrorlogPage(),
                           ),
                         );
                       },
@@ -182,8 +202,8 @@ class _AdminPageState extends State<AdminPage> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 180,
-        height: 200,
+        width: 180,    // 調整寬度 (原本是180)
+        height: 200,   // 調整高度 (原本是200)
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(15),
@@ -214,8 +234,9 @@ class _AdminPageState extends State<AdminPage> {
             const SizedBox(height: 15),
             Text(
               title,
+              textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: Colors.grey[800],
               ),
@@ -223,6 +244,7 @@ class _AdminPageState extends State<AdminPage> {
             const SizedBox(height: 5),
             Text(
               subtitle,
+              textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.grey[600],
