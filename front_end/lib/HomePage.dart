@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'config.dart';
 import 'LoginPage.dart';
 import 'AdminPage.dart';
 import 'ViewNewsContent.dart';
 import 'MapPage.dart';
 import 'AIPage.dart';
-import 'SearchPage.dart'; // 導入你的搜尋頁面
+import 'SearchPage.dart';
+import 'BookmarkPage.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -18,67 +21,15 @@ class _HomePageState extends State<HomePage> {
   int _selectedIndex = 1;
   String _selectedCategory = '熱門';
   String _selectedDuration = '15分鐘';
-  // 移除 _searchController，因為搜尋邏輯會移到 SearchPage
 
   final List<String> _categories = ['熱門', '娛樂', '天氣', '國際', '運動'];
   final List<String> _durations = ['15分鐘', '30分鐘', '45分鐘', '1小時'];
 
-  final List<Map<String, dynamic>> _newsData = [
-    {
-      'id': 1,
-      'channel_id': 1,
-      'title': '新聞標題新聞標題新聞標題新聞標題新聞標題新聞標題',
-      'channel': '新聞台',
-      'publish_date': '發表時間',
-      'comments': '留言數',
-      'cover_img': 'https://via.placeholder.com/80x60',
-    },
-    {
-      'id': 2,
-      'channel_id': 1,
-      'title': '藍不滿《聽海湧》刪光公視預算 導演發聲了',
-      'channel': 'NOWnews',
-      'publish_date': '5小時前',
-      'comments': 104,
-      'cover_img': 'https://via.placeholder.com/80x60',
-    },
-    {
-      'id': 3,
-      'channel_id': 1,
-      'title': '大快人心！檢座車禍竟要女大生肉償遭免職',
-      'channel': '中天新聞網',
-      'publish_date': '2天前',
-      'comments': 92,
-      'cover_img': 'https://via.placeholder.com/80x60',
-    },
-    {
-      'id': 4,
-      'channel_id': 1,
-      'title': '吃飽上路！黃麟凱最後一餐「有雞腿」槍決法警已到場',
-      'channel': 'Tai Sounds',
-      'publish_date': '30分鐘前',
-      'comments': 3,
-      'cover_img': 'https://via.placeholder.com/80x60',
-    },
-    {
-      'id': 5,
-      'channel_id': 1,
-      'title': '謝金燕兒子生父是誰？葛斯齊公開1線索：早說明了答案',
-      'channel': '中時新聞網',
-      'publish_date': '15分鐘前',
-      'comments': 134,
-      'cover_img': 'https://via.placeholder.com/80x60',
-    },
-    {
-      'id': 6,
-      'channel_id': 1,
-      'title': '烏山頭水庫風景區春節假期 一連9天不打烊',
-      'channel': '台灣好新聞',
-      'publish_date': '5小時前',
-      'comments': 88,
-      'cover_img': 'https://via.placeholder.com/80x60',
-    },
-  ];
+  List<Map<String, dynamic>> _newsData = [];
+  Map<int, String> _channelNames = {}; // 存儲頻道名稱
+  Map<int, String> _imageUrls = {}; // 存儲圖片URL
+  bool _isLoading = false;
+  String? _error;
 
   late final List<Widget> _pages;
 
@@ -90,6 +41,137 @@ class _HomePageState extends State<HomePage> {
       _buildHomePage(),
       const AIPage(),
     ];
+    _initializeData();
+  }
+
+  // 初始化數據 - 依序獲取所有必要的資料
+  Future<void> _initializeData() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      // 1. 先獲取頻道資料
+      await _fetchChannels();
+      // 2. 獲取圖片資料
+      await _fetchImages();
+      // 3. 最後獲取新聞資料
+      await _fetchNews();
+    } catch (error) {
+      setState(() {
+        _error = '載入資料時發生錯誤: $error';
+        _isLoading = false;
+      });
+    }
+  }
+
+  // 獲取頻道資料
+  Future<void> _fetchChannels() async {
+    try {
+      final response = await http.get(
+        Uri.parse('http://localhost:3000/api/channel'),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          List<dynamic> channels = responseData['data'];
+          for (var channel in channels) {
+            _channelNames[channel['channel_id']] = channel['channel_name'] ?? '未知頻道';
+          }
+        }
+      }
+    } catch (error) {
+      print('獲取頻道資料失敗: $error');
+    }
+  }
+
+  // 獲取圖片資料
+  Future<void> _fetchImages() async {
+    try {
+      final response = await http.get(
+        Uri.parse('http://localhost:3000/api/image'),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          List<dynamic> images = responseData['data'];
+          for (var image in images) {
+            _imageUrls[image['image_id']] = image['image_origin_url'] ?? '';
+          }
+        }
+      }
+    } catch (error) {
+      print('獲取圖片資料失敗: $error');
+    }
+  }
+
+  // 獲取新聞資料
+  Future<void> _fetchNews() async {
+    try {
+      final response = await http.get(
+        Uri.parse('http://localhost:3000/api/news'),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          List<dynamic> newsList = responseData['data'];
+
+          setState(() {
+            _newsData = newsList.map<Map<String, dynamic>>((news) {
+              return {
+                'id': news['news_id'],
+                'title': news['news_title'] ?? '無標題',
+                'channel': _channelNames[news['channel_id']] ?? '未知頻道',
+                'publish_date': _formatDate(news['news_date']),
+                'comments': news['total_comment'] ?? 0,
+                'cover_img': _imageUrls[news['cover_image']],
+                // 保留原始資料供詳情頁使用
+                'channel_id': news['channel_id'],
+                'news_date': news['news_date'],
+                'cover_image_id': news['cover_image'],
+              };
+            }).toList();
+            _isLoading = false;
+          });
+        } else {
+          throw Exception(responseData['message'] ?? '獲取新聞失敗');
+        }
+      } else {
+        throw Exception('伺服器錯誤: ${response.statusCode}');
+      }
+    } catch (error) {
+      setState(() {
+        _error = '載入新聞時發生錯誤: $error';
+        _isLoading = false;
+      });
+    }
+  }
+
+  // 格式化日期
+  String _formatDate(String? dateString) {
+    if (dateString == null) return '未知時間';
+
+    try {
+      final DateTime newsDate = DateTime.parse(dateString);
+      final DateTime now = DateTime.now();
+      final Duration difference = now.difference(newsDate);
+
+      if (difference.inMinutes < 60) {
+        return '${difference.inMinutes}分鐘前';
+      } else if (difference.inHours < 24) {
+        return '${difference.inHours}小時前';
+      } else if (difference.inDays < 7) {
+        return '${difference.inDays}天前';
+      } else {
+        return '${newsDate.year}年${newsDate.month}月${newsDate.day}日';
+      }
+    } catch (e) {
+      return '未知時間';
+    }
   }
 
   @override
@@ -107,7 +189,7 @@ class _HomePageState extends State<HomePage> {
     return Column(
       children: [
         _buildTopToolBar(),
-        _buildSearchBar(), // 這裡的SearchBar已經修改
+        _buildSearchBar(),
         _buildCategoryFilter(),
         _buildQuickPlaySection(),
         Expanded(child: _buildNewsList()),
@@ -116,7 +198,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildTopToolBar() {
-    // ... (這部分程式碼沒有變化，保持不變)
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
@@ -167,21 +248,37 @@ class _HomePageState extends State<HomePage> {
 
           const Spacer(),
 
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: Colors.grey[600],
-              borderRadius: BorderRadius.circular(8),
+          // 收藏按鈕
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const BookmarkPage()),
+              );
+            },
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.grey[600],
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.3),
+                    spreadRadius: 1,
+                    blurRadius: 2,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.bookmark, color: Colors.white, size: 20),
             ),
-            child: const Icon(Icons.bookmark, color: Colors.white, size: 20),
           ),
         ],
       ),
     );
   }
 
-  // 修改後的搜索欄
   Widget _buildSearchBar() {
     return GestureDetector(
       onTap: () {
@@ -220,7 +317,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildCategoryFilter() {
-    // ... (這部分程式碼沒有變化，保持不變)
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
@@ -254,6 +350,7 @@ class _HomePageState extends State<HomePage> {
                         setState(() {
                           _selectedCategory = category;
                         });
+                        // TODO: 實現分類篩選功能
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(
@@ -292,7 +389,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildQuickPlaySection() {
-    // ... (這部分程式碼沒有變化，保持不變)
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -356,111 +452,172 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildNewsList() {
-    // ... (這部分程式碼沒有變化，保持不變)
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              _error!,
+              style: TextStyle(color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _initializeData,
+              child: const Text('重新載入'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_newsData.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.article_outlined, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              '目前沒有新聞資料',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _initializeData,
+              child: const Text('重新載入'),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
-      child: ListView.builder(
-        itemCount: _newsData.length,
-        itemBuilder: (context, index) {
-          final news = _newsData[index];
-          return Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.3),
-                  spreadRadius: 1,
-                  blurRadius: 3,
-                ),
-              ],
-            ),
-            child: InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ViewNewsContent(newsData: news),
-                  ),
-                );
-              },
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 80,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(Icons.image, color: Colors.grey),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          news['channel'],
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          news['title'],
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            color: Colors.black,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Text(
-                              news['publish_date'],
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 12,
-                              ),
-                            ),
-                            const Spacer(),
-                            Icon(
-                              Icons.chat_bubble_outline,
-                              color: Colors.grey[600],
-                              size: 14,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${news['comments']}',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+      child: RefreshIndicator(
+        onRefresh: _initializeData,
+        child: ListView.builder(
+          itemCount: _newsData.length,
+          itemBuilder: (context, index) {
+            final news = _newsData[index];
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.3),
+                    spreadRadius: 1,
+                    blurRadius: 3,
                   ),
                 ],
               ),
-            ),
-          );
-        },
+              child: InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ViewNewsContent(newsData: news),
+                    ),
+                  );
+                },
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 80,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: news['cover_img'] != null && news['cover_img'].isNotEmpty
+                            ? Image.network(
+                          news['cover_img'],
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Icon(Icons.image, color: Colors.grey);
+                          },
+                        )
+                            : const Icon(Icons.image, color: Colors.grey),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            news['channel'],
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            news['title'],
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: Colors.black,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Text(
+                                news['publish_date'],
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const Spacer(),
+                              Icon(
+                                Icons.chat_bubble_outline,
+                                color: Colors.grey[600],
+                                size: 14,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${news['comments']}',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
 
   Widget _buildBottomNavigationBar() {
-    // ... (這部分程式碼沒有變化，保持不變)
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -498,8 +655,6 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
-    // 由於我們移除 _searchController，這裡也不再需要 dispose
-    // _searchController.dispose();
     super.dispose();
   }
 }

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'ChannelDetailPage.dart';
 
 class ViewNewsContent extends StatefulWidget {
@@ -17,12 +19,177 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
   final TextEditingController _commentController = TextEditingController();
   final TextEditingController _chatController = TextEditingController();
 
+  // 從API獲取的詳細資料
+  Map<String, dynamic>? _newsDetail;
+  List<Map<String, dynamic>> _newsBody = [];
+  Map<int, String> _imageUrls = {}; // 存儲圖片URL映射
+  bool _isLoading = false;
+  String? _error;
+
   // 模擬留言數據
   final List<Map<String, dynamic>> _comments = [
     {'user': '用戶A', 'content': '這個新聞很有意思！', 'time': '2小時前', 'avatar': 'A'},
     {'user': '用戶B', 'content': '感謝分享這個重要資訊', 'time': '3小時前', 'avatar': 'B'},
     {'user': '用戶C', 'content': '希望能有更多這樣的報導', 'time': '5小時前', 'avatar': 'C'},
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeNewsDetail();
+  }
+
+  // 初始化新聞詳情 - 依序獲取各種資料
+  Future<void> _initializeNewsDetail() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      // 1. 先獲取圖片資料
+      await _fetchImages();
+      // 2. 獲取新聞詳情
+      await _fetchNewsDetail();
+      // 3. 獲取新聞內容
+      await _fetchNewsBody();
+    } catch (error) {
+      setState(() {
+        _error = '載入新聞詳情時發生錯誤: $error';
+        _isLoading = false;
+      });
+    }
+  }
+
+  // 獲取圖片資料
+  Future<void> _fetchImages() async {
+    try {
+      final response = await http.get(
+        Uri.parse('http://localhost:3000/api/image'),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          List<dynamic> images = responseData['data'];
+          for (var image in images) {
+            _imageUrls[image['image_id']] = image['image_origin_url'] ?? '';
+          }
+        }
+      }
+    } catch (error) {
+      print('獲取圖片資料失敗: $error');
+    }
+  }
+
+  // 獲取新聞詳情 - 使用現有的 /api/news 端點 (假設支援單一新聞查詢)
+  Future<void> _fetchNewsDetail() async {
+    try {
+      // 如果API支援通過參數查詢特定新聞
+      final response = await http.get(
+        Uri.parse('http://localhost:3000/api/news?news_id=${widget.newsData['id']}'),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          List<dynamic> newsList = responseData['data'];
+          // 找到對應的新聞
+          final matchedNews = newsList.firstWhere(
+                (news) => news['news_id'] == widget.newsData['id'],
+            orElse: () => null,
+          );
+
+          if (matchedNews != null) {
+            setState(() {
+              _newsDetail = matchedNews;
+            });
+          } else {
+            throw Exception('找不到對應的新聞');
+          }
+        }
+      }
+    } catch (error) {
+      print('獲取新聞詳情失敗: $error');
+      // 如果API調用失敗，使用傳入的基本資料
+      setState(() {
+        _newsDetail = {
+          'news_id': widget.newsData['id'],
+          'news_title': widget.newsData['title'],
+          'channel_id': widget.newsData['channel_id'],
+          'news_date': widget.newsData['news_date'],
+          'total_comment': widget.newsData['comments'],
+        };
+      });
+    }
+  }
+
+  // 獲取新聞內容 - 嘗試從相關API獲取
+  Future<void> _fetchNewsBody() async {
+    try {
+      // 假設可以通過某個端點獲取新聞內容
+      // 這裡需要根據您實際的API結構調整
+
+      // 如果沒有專門的news body API，創建模擬資料
+      setState(() {
+        _newsBody = [
+          {
+            'body_order': 10,
+            'body_type': 'text',
+            'body_text': '記者姓名/綜合報導',
+            'image_origin_url': null,
+            'image_text': null,
+          },
+          {
+            'body_order': 20,
+            'body_type': 'text',
+            'body_text': '這是新聞的主要內容。由於目前API結構限制，這裡顯示的是示例內容。實際內容需要根據後端API的具體實現來調整。',
+            'image_origin_url': null,
+            'image_text': null,
+          },
+          {
+            'body_order': 30,
+            'body_type': 'image',
+            'body_text': null,
+            'image_origin_url': _imageUrls[_newsDetail?['cover_image']],
+            'image_text': '相關圖片說明',
+          },
+          {
+            'body_order': 40,
+            'body_type': 'text',
+            'body_text': '新聞的後續內容會在這裡顯示。當後端API完善後，這些內容將從資料庫動態載入。',
+            'image_origin_url': null,
+            'image_text': null,
+          },
+        ];
+        _isLoading = false;
+      });
+    } catch (error) {
+      print('獲取新聞內容失敗: $error');
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  // 格式化日期時間
+  String _formatDateTime(String? dateString) {
+    if (dateString == null) return '未知時間';
+
+    try {
+      final DateTime date = DateTime.parse(dateString);
+      return '${date.year}年${date.month}月${date.day}日 '
+          '週${_getWeekday(date.weekday)} '
+          '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+    } catch (e) {
+      return '未知時間';
+    }
+  }
+
+  String _getWeekday(int weekday) {
+    const weekdays = ['一', '二', '三', '四', '五', '六', '日'];
+    return weekdays[weekday - 1];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -146,6 +313,39 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
 
   // 新聞主要內容
   Widget _buildNewsContent() {
+    if (_isLoading) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        child: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (_error != null) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        child: Center(
+          child: Column(
+            children: [
+              Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
+              const SizedBox(height: 16),
+              Text(
+                _error!,
+                style: TextStyle(color: Colors.grey[600]),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _initializeNewsDetail,
+                child: const Text('重新載入'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -153,7 +353,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
         children: [
           // 新聞標題
           Text(
-            widget.newsData['title'] ?? '無標題',
+            _newsDetail?['news_title'] ?? widget.newsData['title'] ?? '無標題',
             style: const TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -164,9 +364,9 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
 
           const SizedBox(height: 12),
 
-          // 記者信息
+          // 記者信息 (從 news_body 中讀取 body_order = 10 的內容)
           Text(
-            '記者名稱/綜合報導',
+            _getReporterInfo(),
             style: TextStyle(fontSize: 14, color: Colors.grey[700]),
           ),
 
@@ -174,67 +374,110 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
 
           // 報導時間
           Text(
-            '2025年1月1日 週一 上午12:00',
+            _formatDateTime(_newsDetail?['news_date'] ?? widget.newsData['news_date']),
             style: TextStyle(fontSize: 14, color: Colors.grey[600]),
           ),
 
           const SizedBox(height: 20),
 
-          // 新聞圖片
-          Container(
-            width: double.infinity,
-            height: 200,
-            decoration: BoxDecoration(
-              color: Colors.grey[300],
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: widget.newsData['cover_img'] != null
-                  ? Image.network(
-                      widget.newsData['cover_img'],
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Icon(
-                          Icons.image,
-                          color: Colors.grey,
-                          size: 50,
-                        );
-                      },
-                    )
-                  : const Icon(Icons.image, color: Colors.grey, size: 50),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // 圖片說明
-          Row(
-            children: [
-              Icon(Icons.info_outline, size: 16, color: Colors.grey[600]),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  '圖片描述圖片描述圖片描述圖片描述圖片描述圖片描述圖片描述圖片描述圖片描述圖片描述圖片描述圖片描述圖片描述圖片描述圖片描述圖片描述（圖／資料照片）',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                    height: 1.4,
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 20),
-
-          // 新聞內容
-          const Text(
-            '新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容新聞內容',
-            style: TextStyle(fontSize: 16, height: 1.6, color: Colors.black87),
-          ),
+          // 新聞內容 (根據 body_order 順序顯示)
+          ..._buildNewsBodyContent(),
         ],
       ),
+    );
+  }
+
+  // 獲取記者信息
+  String _getReporterInfo() {
+    final reporterBody = _newsBody.where((body) => body['body_order'] == 10).firstOrNull;
+    return reporterBody?['body_text'] ?? '記者姓名/綜合報導';
+  }
+
+  // 建立新聞內容區塊
+  List<Widget> _buildNewsBodyContent() {
+    List<Widget> widgets = [];
+
+    // 根據 body_order 排序，排除記者信息 (body_order = 10)
+    final sortedBody = _newsBody
+        .where((body) => body['body_order'] != 10)
+        .toList()
+      ..sort((a, b) => (a['body_order'] as int).compareTo(b['body_order'] as int));
+
+    for (final body in sortedBody) {
+      if (body['body_type'] == 'text') {
+        // 文字內容
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Text(
+              body['body_text'] ?? '',
+              style: const TextStyle(fontSize: 16, height: 1.6, color: Colors.black87),
+            ),
+          ),
+        );
+      } else if (body['body_type'] == 'image') {
+        // 圖片內容
+        widgets.add(_buildImageContent(body));
+      }
+    }
+
+    return widgets;
+  }
+
+  // 建立圖片內容區塊
+  Widget _buildImageContent(Map<String, dynamic> imageBody) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 新聞圖片
+        Container(
+          width: double.infinity,
+          height: 200,
+          margin: const EdgeInsets.only(bottom: 8),
+          decoration: BoxDecoration(
+            color: Colors.grey[300],
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: imageBody['image_origin_url'] != null && imageBody['image_origin_url'].isNotEmpty
+                ? Image.network(
+              imageBody['image_origin_url'],
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return const Icon(
+                  Icons.image,
+                  color: Colors.grey,
+                  size: 50,
+                );
+              },
+            )
+                : const Icon(Icons.image, color: Colors.grey, size: 50),
+          ),
+        ),
+
+        // 圖片說明
+        if (imageBody['image_text'] != null && imageBody['image_text'].isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, size: 16, color: Colors.grey[600]),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    imageBody['image_text'],
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 
@@ -267,7 +510,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey,
+            color: Colors.grey.withOpacity(0.3),
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, 2),
@@ -297,7 +540,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey,
+            color: Colors.grey.withOpacity(0.3),
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, -1),
@@ -415,7 +658,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
   // 留言覆蓋層
   Widget _buildCommentsOverlay() {
     return Container(
-      color: Colors.black,
+      color: Colors.black.withOpacity(0.5),
       child: Column(
         children: [
           Expanded(
@@ -477,7 +720,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                     padding: const EdgeInsets.all(16),
                     itemCount: _comments.length,
                     separatorBuilder: (context, index) =>
-                        const SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     itemBuilder: (context, index) {
                       final comment = _comments[index];
                       return _buildCommentItem(comment);
@@ -508,7 +751,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey,
+              color: Colors.grey.withOpacity(0.3),
               spreadRadius: 1,
               blurRadius: 5,
               offset: const Offset(0, 2),
