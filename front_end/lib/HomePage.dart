@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'config.dart';
 import 'LoginPage.dart';
@@ -8,9 +8,9 @@ import 'AdminPage.dart';
 import 'ViewNewsContent.dart';
 import 'MapPage.dart';
 import 'AIPage.dart';
+import 'MemberCenterPage.dart';
 import 'SearchPage.dart';
 import 'BookmarkPage.dart';
-import 'MemberCenterPage.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -19,23 +19,24 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
-  int _selectedIndex = 1;
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
+  int _selectedIndex = 1; // 預設選中首頁
   String _selectedCategory = '熱門';
   String _selectedDuration = '15分鐘';
+  final TextEditingController _searchController = TextEditingController();
 
-  // 新增用戶狀態
+  // 用戶狀態
   bool _isLoggedIn = false;
   String _userAccount = '';
   bool _isAdmin = false;
   bool _isLoading = false;
+  String? _error;
 
   final List<String> _categories = ['熱門', '娛樂', '天氣', '國際', '運動'];
   final List<String> _durations = ['15分鐘', '30分鐘', '45分鐘', '1小時', '一直'];
 
+  // 新聞數據
   List<Map<String, dynamic>> _newsData = [];
-  bool _isLoading = false;
-  String? _error;
 
   // 快速播放相關變數
   bool _isPlayerVisible = false;
@@ -43,13 +44,128 @@ class _HomePageState extends State<HomePage> {
   double _playbackSpeed = 1.0;
   int _currentNewsIndex = 0;
 
+  // 三個主要頁面
+  late final List<Widget> _pages;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _pages = [const MapPage(), _buildHomePage(), const AIPage()];
+    // 立即檢查登入狀態
+    _checkLoginStatus();
+    // 獲取新聞數據
     _fetchNews();
   }
 
-  // 獲取新聞資料
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // 當應用程式回到前台時重新檢查登入狀態
+      _checkLoginStatus();
+    }
+  }
+
+  // 檢查登入狀態方法（來自第一個文件）
+  Future<void> _checkLoginStatus() async {
+    print('🔍 開始檢查登入狀態...');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // 直接讀取 SharedPreferences 中的所有相關資料
+      final isLoginStored = prefs.getBool('IsLogin') ?? false;
+      final userAccount = prefs.getString('Account') ?? '';
+      final userId = prefs.getInt('UserID') ?? 0;
+      final isManager = prefs.getInt('IsManager') ?? 0;
+
+      print('=== SharedPreferences 內容 ===');
+      print('IsLogin: $isLoginStored');
+      print('Account: $userAccount');
+      print('UserID: $userId');
+      print('IsManager: $isManager');
+
+      // 管理員判斷：IsManager為1 或 帳號以admin開頭
+      bool isAdminAccount = userAccount.toLowerCase().startsWith('admin');
+      bool isAdmin = isManager == 1 || isAdminAccount;
+
+      print('isAdminAccount: $isAdminAccount');
+      print('最終 isAdmin: $isAdmin');
+      print('==============================');
+
+      if (mounted) {
+        setState(() {
+          _isLoggedIn = isLoginStored;
+          _userAccount = userAccount;
+          _isAdmin = isAdmin;
+        });
+
+        print('✅ UI 狀態已更新:');
+        print('   _isLoggedIn: $_isLoggedIn');
+        print('   _userAccount: $_userAccount');
+        print('   _isAdmin: $_isAdmin');
+      }
+    } catch (e) {
+      print('❌ 檢查登入狀態錯誤: $e');
+      if (mounted) {
+        setState(() {
+          _isLoggedIn = false;
+          _userAccount = '';
+          _isAdmin = false;
+        });
+      }
+    }
+  }
+
+  // 手動刷新登入狀態
+  void _refreshLoginState() {
+    print('🔄 手動刷新登入狀態');
+    _checkLoginStatus();
+  }
+
+  // 統一用戶行為處理（來自第一個文件）
+  void _handleUserAction() {
+    print('👆 點擊用戶按鈕');
+    print('   當前登入狀態: $_isLoggedIn');
+    print('   用戶帳號: $_userAccount');
+    print('   是否管理員: $_isAdmin');
+
+    if (!_isLoggedIn) {
+      print('   → 導向登入頁面');
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginPage()),
+      ).then((_) {
+        print('   ← 從登入頁面返回，重新檢查狀態');
+        _refreshLoginState();
+      });
+    } else if (_isAdmin) {
+      print('   → 導向管理員頁面');
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const AdminPage()),
+      ).then((_) {
+        _refreshLoginState();
+      });
+    } else {
+      print('   → 導向會員中心');
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const MemberCenterPage()),
+      ).then((_) {
+        print('   ← 從會員中心返回，重新檢查狀態');
+        _refreshLoginState();
+      });
+    }
+  }
+
+  // 獲取新聞資料（來自第二個文件）
   Future<void> _fetchNews() async {
     setState(() {
       _isLoading = true;
@@ -100,7 +216,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // 獲取頻道資料
+  // 獲取頻道資料（來自第二個文件）
   Future<Map<int, String>> _fetchChannelData() async {
     try {
       final response = await http.get(
@@ -125,7 +241,7 @@ class _HomePageState extends State<HomePage> {
     return {};
   }
 
-  // 獲取圖片資料
+  // 獲取圖片資料（來自第二個文件）
   Future<Map<int, String>> _fetchImageData() async {
     try {
       final response = await http.get(
@@ -149,7 +265,7 @@ class _HomePageState extends State<HomePage> {
     return {};
   }
 
-  // 格式化日期
+  // 格式化日期（來自第二個文件）
   String _formatDate(String? dateString) {
     if (dateString == null) return '未知時間';
 
@@ -172,7 +288,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // 快速播放功能
+  // 快速播放功能（來自第二個文件）
   void _startQuickPlay() {
     if (_newsData.isNotEmpty) {
       setState(() {
@@ -183,14 +299,12 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // 切換播放/暫停
   void _togglePlayPause() {
     setState(() {
       _isPlaying = !_isPlaying;
     });
   }
 
-  // 上一篇新聞
   void _previousNews() {
     if (_currentNewsIndex > 0) {
       setState(() {
@@ -199,7 +313,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // 下一篇新聞
   void _nextNews() {
     if (_currentNewsIndex < _newsData.length - 1) {
       setState(() {
@@ -208,7 +321,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // 調整播放倍速
   void _adjustPlaybackSpeed() {
     setState(() {
       if (_playbackSpeed == 0.5) {
@@ -221,7 +333,6 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  // 關閉播放器
   void _closePlayer() {
     setState(() {
       _isPlayerVisible = false;
@@ -230,138 +341,13 @@ class _HomePageState extends State<HomePage> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _pages = [const MapPage(), _buildHomePage(), const AIPage()];
-    // 立即檢查登入狀態
-    _checkLoginStatus();
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      // 當應用程式回到前台時重新檢查登入狀態
-      _checkLoginStatus();
-    }
-  }
-
-  // 完全重寫：直接檢查 SharedPreferences 的登入狀態方法
-  Future<void> _checkLoginStatus() async {
-    print('🔍 開始檢查登入狀態...');
-    try {
-      final prefs = await SharedPreferences.getInstance();
-
-      // 直接讀取 SharedPreferences 中的所有相關資料
-      final isLoginStored = prefs.getBool('IsLogin') ?? false;
-      final userAccount = prefs.getString('Account') ?? '';
-      final userId = prefs.getInt('UserID') ?? 0;
-      final isManager = prefs.getInt('IsManager') ?? 0;
-
-      print('=== SharedPreferences 內容 ===');
-      print('IsLogin: $isLoginStored');
-      print('Account: $userAccount');
-      print('UserID: $userId');
-      print('IsManager: $isManager');
-
-      // 管理員判斷：IsManager為1 或 帳號以admin開頭
-      bool isAdminAccount = userAccount.toLowerCase().startsWith('admin');
-      bool isAdmin = isManager == 1 || isAdminAccount;
-
-      print('isAdminAccount: $isAdminAccount');
-      print('最終 isAdmin: $isAdmin');
-      print('==============================');
-
-      if (mounted) {
-        setState(() {
-          _isLoggedIn = isLoginStored;
-          _userAccount = userAccount;
-          _isAdmin = isAdmin;
-          _isLoading = false;
-        });
-
-        print('✅ UI 狀態已更新:');
-        print('   _isLoggedIn: $_isLoggedIn');
-        print('   _userAccount: $_userAccount');
-        print('   _isAdmin: $_isAdmin');
-      }
-    } catch (e) {
-      print('❌ 檢查登入狀態錯誤: $e');
-      if (mounted) {
-        setState(() {
-          _isLoggedIn = false;
-          _userAccount = '';
-          _isAdmin = false;
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  // 手動刷新登入狀態
-  void _refreshLoginState() {
-    print('🔄 手動刷新登入狀態');
-    _checkLoginStatus();
-  }
-
-  // 統一用戶行為處理
-  void _handleUserAction() {
-    print('👆 點擊用戶按鈕');
-    print('   當前登入狀態: $_isLoggedIn');
-    print('   用戶帳號: $_userAccount');
-    print('   是否管理員: $_isAdmin');
-
-    if (!_isLoggedIn) {
-      print('   → 導向登入頁面');
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginPage()),
-      ).then((_) {
-        print('   ← 從登入頁面返回，重新檢查狀態');
-        _refreshLoginState();
-      });
-    } else if (_isAdmin) {
-      print('   → 導向管理員頁面');
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const AdminPage()),
-      ).then((_) {
-        _refreshLoginState();
-      });
-    } else {
-      print('   → 導向會員中心');
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const MemberCenterPage()),
-      ).then((_) {
-        print('   ← 從會員中心返回，重新檢查狀態');
-        _refreshLoginState();
-      });
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    // 在這裡創建頁面列表，確保每次 build 都使用最新的數據
-    final List<Widget> pages = [
-      const MapPage(),
-      _buildHomePage(), // 每次 build 都重新創建首頁
-      const AIPage(),
-    ];
-
     return Scaffold(
       backgroundColor: const Color(0xFFE8E3FF),
       body: SafeArea(
         child: Stack(
           children: [
-            pages[_selectedIndex], // 使用本地的 pages 變數
+            _pages[_selectedIndex],
             if (_isPlayerVisible) _buildMusicPlayer(),
           ],
         ),
@@ -370,6 +356,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // 首頁內容
   Widget _buildHomePage() {
     return Column(
       children: [
@@ -382,7 +369,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // 上方工具欄 - 美化登入後的用戶頭像
+  // 上方工具欄 - 結合兩個文件的設計
   Widget _buildTopToolBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -437,9 +424,10 @@ class _HomePageState extends State<HomePage> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
-                    colors: _isAdmin
-                        ? [Colors.red[400]!, Colors.red[600]!]
-                        : [Colors.blue[400]!, Colors.blue[600]!],
+                    colors:
+                        _isAdmin
+                            ? [Colors.red[400]!, Colors.red[600]!]
+                            : [Colors.blue[400]!, Colors.blue[600]!],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -568,7 +556,10 @@ class _HomePageState extends State<HomePage> {
               child: InkWell(
                 borderRadius: BorderRadius.circular(12),
                 onTap: () {
-                  // TODO: 收藏功能
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const BookmarkPage()),
+                  );
                 },
                 child: Icon(
                   Icons.bookmark_outline,
@@ -583,7 +574,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // 搜索欄
+  // 搜尋欄（整合兩個文件的設計）
   Widget _buildSearchBar() {
     return GestureDetector(
       onTap: () {
@@ -600,7 +591,7 @@ class _HomePageState extends State<HomePage> {
           borderRadius: BorderRadius.circular(25),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey,
+              color: Colors.grey.withOpacity(0.3),
               spreadRadius: 1,
               blurRadius: 3,
               offset: const Offset(0, 1),
@@ -630,7 +621,11 @@ class _HomePageState extends State<HomePage> {
               color: Colors.white,
               borderRadius: BorderRadius.circular(8),
               boxShadow: [
-                BoxShadow(color: Colors.grey, spreadRadius: 1, blurRadius: 2),
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.3),
+                  spreadRadius: 1,
+                  blurRadius: 2,
+                ),
               ],
             ),
             child: const Icon(Icons.menu, size: 20),
@@ -640,46 +635,47 @@ class _HomePageState extends State<HomePage> {
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
-                children: _categories.map((category) {
-                  final isSelected = category == _selectedCategory;
-                  return Container(
-                    margin: const EdgeInsets.only(right: 8),
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedCategory = category;
-                        });
-                        // TODO: 實現分類篩選功能
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isSelected ? Colors.blue : Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey,
-                              spreadRadius: 1,
-                              blurRadius: 2,
+                children:
+                    _categories.map((category) {
+                      final isSelected = category == _selectedCategory;
+                      return Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedCategory = category;
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
                             ),
-                          ],
-                        ),
-                        child: Text(
-                          category,
-                          style: TextStyle(
-                            color: isSelected ? Colors.white : Colors.black,
-                            fontWeight: isSelected
-                                ? FontWeight.bold
-                                : FontWeight.normal,
+                            decoration: BoxDecoration(
+                              color: isSelected ? Colors.blue : Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.grey.withOpacity(0.3),
+                                  spreadRadius: 1,
+                                  blurRadius: 2,
+                                ),
+                              ],
+                            ),
+                            child: Text(
+                              category,
+                              style: TextStyle(
+                                color: isSelected ? Colors.white : Colors.black,
+                                fontWeight:
+                                    isSelected
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                  );
-                }).toList(),
+                      );
+                    }).toList(),
               ),
             ),
           ),
@@ -697,7 +693,11 @@ class _HomePageState extends State<HomePage> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
-          BoxShadow(color: Colors.grey, spreadRadius: 1, blurRadius: 3),
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 1,
+            blurRadius: 3,
+          ),
         ],
       ),
       child: Row(
@@ -718,12 +718,13 @@ class _HomePageState extends State<HomePage> {
             child: DropdownButton<String>(
               value: _selectedDuration,
               underline: Container(),
-              items: _durations.map((duration) {
-                return DropdownMenuItem<String>(
-                  value: duration,
-                  child: Text(duration),
-                );
-              }).toList(),
+              items:
+                  _durations.map((duration) {
+                    return DropdownMenuItem<String>(
+                      value: duration,
+                      child: Text(duration),
+                    );
+                  }).toList(),
               onChanged: (value) {
                 setState(() {
                   _selectedDuration = value!;
@@ -746,22 +747,18 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // 新聞列表
+  // 新聞列表（整合兩個文件的功能）
   Widget _buildNewsList() {
-    // 添加調試信息
     print('_buildNewsList called:');
     print('_isLoading: $_isLoading');
     print('_error: $_error');
     print('_newsData.length: ${_newsData.length}');
-    print('_newsData: $_newsData');
 
     if (_isLoading) {
-      print('Showing loading indicator');
       return const Center(child: CircularProgressIndicator());
     }
 
     if (_error != null) {
-      print('Showing error: $_error');
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -781,7 +778,6 @@ class _HomePageState extends State<HomePage> {
     }
 
     if (_newsData.isEmpty) {
-      print('Showing empty data message');
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -796,7 +792,6 @@ class _HomePageState extends State<HomePage> {
       );
     }
 
-    print('Showing news list with ${_newsData.length} items');
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       child: RefreshIndicator(
@@ -805,8 +800,6 @@ class _HomePageState extends State<HomePage> {
           itemCount: _newsData.length,
           itemBuilder: (context, index) {
             final news = _newsData[index];
-            print('Building news item $index: ${news['title']}');
-
             return Container(
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.all(12),
@@ -814,12 +807,15 @@ class _HomePageState extends State<HomePage> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
-                  BoxShadow(color: Colors.grey, spreadRadius: 1, blurRadius: 3),
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.3),
+                    spreadRadius: 1,
+                    blurRadius: 3,
+                  ),
                 ],
               ),
               child: InkWell(
                 onTap: () {
-                  print('News item tapped: ${news['title']}');
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -846,7 +842,6 @@ class _HomePageState extends State<HomePage> {
                                 news['cover_img'],
                                 fit: BoxFit.cover,
                                 errorBuilder: (context, error, stackTrace) {
-                                  print('Image load error: $error');
                                   return const Icon(
                                     Icons.image,
                                     color: Colors.grey,
@@ -918,6 +913,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // 音樂播放器（來自第二個文件）
   Widget _buildMusicPlayer() {
     if (_newsData.isEmpty) return Container();
 
@@ -933,7 +929,7 @@ class _HomePageState extends State<HomePage> {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.grey,
+              color: Colors.grey.withOpacity(0.3),
               spreadRadius: 1,
               blurRadius: 5,
               offset: const Offset(0, -2),
@@ -1034,7 +1030,11 @@ class _HomePageState extends State<HomePage> {
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
-          BoxShadow(color: Colors.grey, spreadRadius: 1, blurRadius: 3),
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 1,
+            blurRadius: 3,
+          ),
         ],
       ),
       child: BottomNavigationBar(
@@ -1059,10 +1059,5 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
   }
 }
