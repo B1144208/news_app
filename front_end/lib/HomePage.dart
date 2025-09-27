@@ -23,13 +23,17 @@ class _HomePageState extends State<HomePage> {
   String _selectedDuration = '15分鐘';
 
   final List<String> _categories = ['熱門', '娛樂', '天氣', '國際', '運動'];
-  final List<String> _durations = ['15分鐘', '30分鐘', '45分鐘', '1小時'];
+  final List<String> _durations = ['15分鐘', '30分鐘', '45分鐘', '1小時', '一直'];
 
   List<Map<String, dynamic>> _newsData = [];
-  Map<int, String> _channelNames = {}; // 存儲頻道名稱
-  Map<int, String> _imageUrls = {}; // 存儲圖片URL
   bool _isLoading = false;
   String? _error;
+
+  // 快速播放相關變數
+  bool _isPlayerVisible = false;
+  bool _isPlaying = false;
+  double _playbackSpeed = 1.0;
+  int _currentNewsIndex = 0;
 
   late final List<Widget> _pages;
 
@@ -41,75 +45,16 @@ class _HomePageState extends State<HomePage> {
       _buildHomePage(),
       const AIPage(),
     ];
-    _initializeData();
+    _fetchNews();
   }
 
-  // 初始化數據 - 依序獲取所有必要的資料
-  Future<void> _initializeData() async {
+  // 獲取新聞資料
+  Future<void> _fetchNews() async {
     setState(() {
       _isLoading = true;
       _error = null;
     });
 
-    try {
-      // 1. 先獲取頻道資料
-      await _fetchChannels();
-      // 2. 獲取圖片資料
-      await _fetchImages();
-      // 3. 最後獲取新聞資料
-      await _fetchNews();
-    } catch (error) {
-      setState(() {
-        _error = '載入資料時發生錯誤: $error';
-        _isLoading = false;
-      });
-    }
-  }
-
-  // 獲取頻道資料
-  Future<void> _fetchChannels() async {
-    try {
-      final response = await http.get(
-        Uri.parse('http://localhost:3000/api/channel'),
-      );
-
-      if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-        if (responseData['success'] == true) {
-          List<dynamic> channels = responseData['data'];
-          for (var channel in channels) {
-            _channelNames[channel['channel_id']] = channel['channel_name'] ?? '未知頻道';
-          }
-        }
-      }
-    } catch (error) {
-      print('獲取頻道資料失敗: $error');
-    }
-  }
-
-  // 獲取圖片資料
-  Future<void> _fetchImages() async {
-    try {
-      final response = await http.get(
-        Uri.parse('http://localhost:3000/api/image'),
-      );
-
-      if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-        if (responseData['success'] == true) {
-          List<dynamic> images = responseData['data'];
-          for (var image in images) {
-            _imageUrls[image['image_id']] = image['image_origin_url'] ?? '';
-          }
-        }
-      }
-    } catch (error) {
-      print('獲取圖片資料失敗: $error');
-    }
-  }
-
-  // 獲取新聞資料
-  Future<void> _fetchNews() async {
     try {
       final response = await http.get(
         Uri.parse('http://localhost:3000/api/news'),
@@ -120,17 +65,20 @@ class _HomePageState extends State<HomePage> {
         if (responseData['success'] == true) {
           List<dynamic> newsList = responseData['data'];
 
+          // 獲取所有相關的頻道和圖片資料
+          final channelData = await _fetchChannelData();
+          final imageData = await _fetchImageData();
+
           setState(() {
             _newsData = newsList.map<Map<String, dynamic>>((news) {
               return {
                 'id': news['news_id'],
                 'title': news['news_title'] ?? '無標題',
-                'channel': _channelNames[news['channel_id']] ?? '未知頻道',
+                'channel_id': news['channel_id'],
+                'channel': channelData[news['channel_id']] ?? '未知頻道',
                 'publish_date': _formatDate(news['news_date']),
                 'comments': news['total_comment'] ?? 0,
-                'cover_img': _imageUrls[news['cover_image']],
-                // 保留原始資料供詳情頁使用
-                'channel_id': news['channel_id'],
+                'cover_img': imageData[news['cover_image']],
                 'news_date': news['news_date'],
                 'cover_image_id': news['cover_image'],
               };
@@ -149,6 +97,54 @@ class _HomePageState extends State<HomePage> {
         _isLoading = false;
       });
     }
+  }
+
+  // 獲取頻道資料
+  Future<Map<int, String>> _fetchChannelData() async {
+    try {
+      final response = await http.get(
+        Uri.parse('http://localhost:3000/api/channel'),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          List<dynamic> channels = responseData['data'];
+          Map<int, String> channelMap = {};
+          for (var channel in channels) {
+            channelMap[channel['channel_id']] = channel['channel_name'] ?? '未知頻道';
+          }
+          return channelMap;
+        }
+      }
+    } catch (error) {
+      print('獲取頻道資料失敗: $error');
+    }
+    return {};
+  }
+
+  // 獲取圖片資料
+  Future<Map<int, String>> _fetchImageData() async {
+    try {
+      final response = await http.get(
+        Uri.parse('http://localhost:3000/api/image'),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          List<dynamic> images = responseData['data'];
+          Map<int, String> imageMap = {};
+          for (var image in images) {
+            imageMap[image['image_id']] = image['image_origin_url'] ?? '';
+          }
+          return imageMap;
+        }
+      }
+    } catch (error) {
+      print('獲取圖片資料失敗: $error');
+    }
+    return {};
   }
 
   // 格式化日期
@@ -174,12 +170,74 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  // 快速播放功能
+  void _startQuickPlay() {
+    if (_newsData.isNotEmpty) {
+      setState(() {
+        _isPlayerVisible = true;
+        _isPlaying = true;
+        _currentNewsIndex = 0;
+      });
+    }
+  }
+
+  // 切換播放/暫停
+  void _togglePlayPause() {
+    setState(() {
+      _isPlaying = !_isPlaying;
+    });
+  }
+
+  // 上一篇新聞
+  void _previousNews() {
+    if (_currentNewsIndex > 0) {
+      setState(() {
+        _currentNewsIndex--;
+      });
+    }
+  }
+
+  // 下一篇新聞
+  void _nextNews() {
+    if (_currentNewsIndex < _newsData.length - 1) {
+      setState(() {
+        _currentNewsIndex++;
+      });
+    }
+  }
+
+  // 調整播放倍速
+  void _adjustPlaybackSpeed() {
+    setState(() {
+      if (_playbackSpeed == 0.5) {
+        _playbackSpeed = 1.0;
+      } else if (_playbackSpeed == 1.0) {
+        _playbackSpeed = 2.0;
+      } else {
+        _playbackSpeed = 0.5;
+      }
+    });
+  }
+
+  // 關閉播放器
+  void _closePlayer() {
+    setState(() {
+      _isPlayerVisible = false;
+      _isPlaying = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFE8E3FF),
       body: SafeArea(
-        child: _pages[_selectedIndex],
+        child: Stack(
+          children: [
+            _pages[_selectedIndex],
+            if (_isPlayerVisible) _buildMusicPlayer(),
+          ],
+        ),
       ),
       bottomNavigationBar: _buildBottomNavigationBar(),
     );
@@ -264,7 +322,7 @@ class _HomePageState extends State<HomePage> {
                 borderRadius: BorderRadius.circular(8),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withOpacity(0.3),
+                    color: Colors.grey,
                     spreadRadius: 1,
                     blurRadius: 2,
                     offset: const Offset(0, 1),
@@ -295,7 +353,7 @@ class _HomePageState extends State<HomePage> {
           borderRadius: BorderRadius.circular(25),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.3),
+              color: Colors.grey,
               spreadRadius: 1,
               blurRadius: 3,
               offset: const Offset(0, 1),
@@ -328,7 +386,7 @@ class _HomePageState extends State<HomePage> {
               borderRadius: BorderRadius.circular(8),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.3),
+                  color: Colors.grey,
                   spreadRadius: 1,
                   blurRadius: 2,
                 ),
@@ -362,7 +420,7 @@ class _HomePageState extends State<HomePage> {
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.grey.withOpacity(0.3),
+                              color: Colors.grey,
                               spreadRadius: 1,
                               blurRadius: 2,
                             ),
@@ -397,7 +455,7 @@ class _HomePageState extends State<HomePage> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
+            color: Colors.grey,
             spreadRadius: 1,
             blurRadius: 3,
           ),
@@ -436,9 +494,7 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(width: 12),
           ElevatedButton(
-            onPressed: () {
-              // TODO: 實現快速播放功能
-            },
+            onPressed: _startQuickPlay,
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue,
               foregroundColor: Colors.white,
@@ -472,7 +528,7 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: _initializeData,
+              onPressed: _fetchNews,
               child: const Text('重新載入'),
             ),
           ],
@@ -493,7 +549,7 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: _initializeData,
+              onPressed: _fetchNews,
               child: const Text('重新載入'),
             ),
           ],
@@ -504,7 +560,7 @@ class _HomePageState extends State<HomePage> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       child: RefreshIndicator(
-        onRefresh: _initializeData,
+        onRefresh: _fetchNews,
         child: ListView.builder(
           itemCount: _newsData.length,
           itemBuilder: (context, index) {
@@ -517,7 +573,7 @@ class _HomePageState extends State<HomePage> {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withOpacity(0.3),
+                    color: Colors.grey,
                     spreadRadius: 1,
                     blurRadius: 3,
                   ),
@@ -617,13 +673,121 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget _buildMusicPlayer() {
+    if (_newsData.isEmpty) return Container();
+
+    final currentNews = _newsData[_currentNewsIndex];
+
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey,
+              spreadRadius: 1,
+              blurRadius: 5,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // 左側新聞信息
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    currentNews['title'],
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    currentNews['publish_date'],
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // 右側控制按鈕
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 調整倍速按鈕
+                GestureDetector(
+                  onTap: _adjustPlaybackSpeed,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      '${_playbackSpeed}x',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(width: 8),
+
+                // 上一篇按鈕
+                IconButton(
+                  onPressed: _currentNewsIndex > 0 ? _previousNews : null,
+                  icon: const Icon(Icons.skip_previous),
+                  iconSize: 24,
+                ),
+
+                // 播放/暫停按鈕
+                IconButton(
+                  onPressed: _togglePlayPause,
+                  icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow),
+                  iconSize: 28,
+                ),
+
+                // 下一篇按鈕
+                IconButton(
+                  onPressed: _currentNewsIndex < _newsData.length - 1 ? _nextNews : null,
+                  icon: const Icon(Icons.skip_next),
+                  iconSize: 24,
+                ),
+
+                // 關閉按鈕
+                IconButton(
+                  onPressed: _closePlayer,
+                  icon: const Icon(Icons.close),
+                  iconSize: 20,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildBottomNavigationBar() {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
+            color: Colors.grey,
             spreadRadius: 1,
             blurRadius: 3,
           ),
