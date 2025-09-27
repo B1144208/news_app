@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'config.dart';
 import 'LoginPage.dart';
 import 'AdminPage.dart';
 import 'ViewNewsContent.dart';
 import 'MapPage.dart';
 import 'AIPage.dart';
-import 'SearchPage.dart'; // 導入你的搜尋頁面
+import 'SearchPage.dart';
+import 'BookmarkPage.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -18,67 +21,19 @@ class _HomePageState extends State<HomePage> {
   int _selectedIndex = 1;
   String _selectedCategory = '熱門';
   String _selectedDuration = '15分鐘';
-  // 移除 _searchController，因為搜尋邏輯會移到 SearchPage
 
   final List<String> _categories = ['熱門', '娛樂', '天氣', '國際', '運動'];
-  final List<String> _durations = ['15分鐘', '30分鐘', '45分鐘', '1小時'];
+  final List<String> _durations = ['15分鐘', '30分鐘', '45分鐘', '1小時', '一直'];
 
-  final List<Map<String, dynamic>> _newsData = [
-    {
-      'id': 1,
-      'channel_id': 1,
-      'title': '新聞標題新聞標題新聞標題新聞標題新聞標題新聞標題',
-      'channel': '新聞台',
-      'publish_date': '發表時間',
-      'comments': '留言數',
-      'cover_img': 'https://via.placeholder.com/80x60',
-    },
-    {
-      'id': 2,
-      'channel_id': 1,
-      'title': '藍不滿《聽海湧》刪光公視預算 導演發聲了',
-      'channel': 'NOWnews',
-      'publish_date': '5小時前',
-      'comments': 104,
-      'cover_img': 'https://via.placeholder.com/80x60',
-    },
-    {
-      'id': 3,
-      'channel_id': 1,
-      'title': '大快人心！檢座車禍竟要女大生肉償遭免職',
-      'channel': '中天新聞網',
-      'publish_date': '2天前',
-      'comments': 92,
-      'cover_img': 'https://via.placeholder.com/80x60',
-    },
-    {
-      'id': 4,
-      'channel_id': 1,
-      'title': '吃飽上路！黃麟凱最後一餐「有雞腿」槍決法警已到場',
-      'channel': 'Tai Sounds',
-      'publish_date': '30分鐘前',
-      'comments': 3,
-      'cover_img': 'https://via.placeholder.com/80x60',
-    },
-    {
-      'id': 5,
-      'channel_id': 1,
-      'title': '謝金燕兒子生父是誰？葛斯齊公開1線索：早說明了答案',
-      'channel': '中時新聞網',
-      'publish_date': '15分鐘前',
-      'comments': 134,
-      'cover_img': 'https://via.placeholder.com/80x60',
-    },
-    {
-      'id': 6,
-      'channel_id': 1,
-      'title': '烏山頭水庫風景區春節假期 一連9天不打烊',
-      'channel': '台灣好新聞',
-      'publish_date': '5小時前',
-      'comments': 88,
-      'cover_img': 'https://via.placeholder.com/80x60',
-    },
-  ];
+  List<Map<String, dynamic>> _newsData = [];
+  bool _isLoading = false;
+  String? _error;
+
+  // 快速播放相關變數
+  bool _isPlayerVisible = false;
+  bool _isPlaying = false;
+  double _playbackSpeed = 1.0;
+  int _currentNewsIndex = 0;
 
   late final List<Widget> _pages;
 
@@ -90,6 +45,186 @@ class _HomePageState extends State<HomePage> {
       _buildHomePage(),
       const AIPage(),
     ];
+    _fetchNews();
+  }
+
+  // 獲取新聞資料
+  Future<void> _fetchNews() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final response = await http.get(
+        Uri.parse('http://localhost:3000/api/news'),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          List<dynamic> newsList = responseData['data'];
+
+          // 獲取所有相關的頻道和圖片資料
+          final channelData = await _fetchChannelData();
+          final imageData = await _fetchImageData();
+
+          setState(() {
+            _newsData = newsList.map<Map<String, dynamic>>((news) {
+              return {
+                'id': news['news_id'],
+                'title': news['news_title'] ?? '無標題',
+                'channel_id': news['channel_id'],
+                'channel': channelData[news['channel_id']] ?? '未知頻道',
+                'publish_date': _formatDate(news['news_date']),
+                'comments': news['total_comment'] ?? 0,
+                'cover_img': imageData[news['cover_image']],
+                'news_date': news['news_date'],
+                'cover_image_id': news['cover_image'],
+              };
+            }).toList();
+            _isLoading = false;
+          });
+        } else {
+          throw Exception(responseData['message'] ?? '獲取新聞失敗');
+        }
+      } else {
+        throw Exception('伺服器錯誤: ${response.statusCode}');
+      }
+    } catch (error) {
+      setState(() {
+        _error = '載入新聞時發生錯誤: $error';
+        _isLoading = false;
+      });
+    }
+  }
+
+  // 獲取頻道資料
+  Future<Map<int, String>> _fetchChannelData() async {
+    try {
+      final response = await http.get(
+        Uri.parse('http://localhost:3000/api/channel'),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          List<dynamic> channels = responseData['data'];
+          Map<int, String> channelMap = {};
+          for (var channel in channels) {
+            channelMap[channel['channel_id']] = channel['channel_name'] ?? '未知頻道';
+          }
+          return channelMap;
+        }
+      }
+    } catch (error) {
+      print('獲取頻道資料失敗: $error');
+    }
+    return {};
+  }
+
+  // 獲取圖片資料
+  Future<Map<int, String>> _fetchImageData() async {
+    try {
+      final response = await http.get(
+        Uri.parse('http://localhost:3000/api/image'),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          List<dynamic> images = responseData['data'];
+          Map<int, String> imageMap = {};
+          for (var image in images) {
+            imageMap[image['image_id']] = image['image_origin_url'] ?? '';
+          }
+          return imageMap;
+        }
+      }
+    } catch (error) {
+      print('獲取圖片資料失敗: $error');
+    }
+    return {};
+  }
+
+  // 格式化日期
+  String _formatDate(String? dateString) {
+    if (dateString == null) return '未知時間';
+
+    try {
+      final DateTime newsDate = DateTime.parse(dateString);
+      final DateTime now = DateTime.now();
+      final Duration difference = now.difference(newsDate);
+
+      if (difference.inMinutes < 60) {
+        return '${difference.inMinutes}分鐘前';
+      } else if (difference.inHours < 24) {
+        return '${difference.inHours}小時前';
+      } else if (difference.inDays < 7) {
+        return '${difference.inDays}天前';
+      } else {
+        return '${newsDate.year}年${newsDate.month}月${newsDate.day}日';
+      }
+    } catch (e) {
+      return '未知時間';
+    }
+  }
+
+  // 快速播放功能
+  void _startQuickPlay() {
+    if (_newsData.isNotEmpty) {
+      setState(() {
+        _isPlayerVisible = true;
+        _isPlaying = true;
+        _currentNewsIndex = 0;
+      });
+    }
+  }
+
+  // 切換播放/暫停
+  void _togglePlayPause() {
+    setState(() {
+      _isPlaying = !_isPlaying;
+    });
+  }
+
+  // 上一篇新聞
+  void _previousNews() {
+    if (_currentNewsIndex > 0) {
+      setState(() {
+        _currentNewsIndex--;
+      });
+    }
+  }
+
+  // 下一篇新聞
+  void _nextNews() {
+    if (_currentNewsIndex < _newsData.length - 1) {
+      setState(() {
+        _currentNewsIndex++;
+      });
+    }
+  }
+
+  // 調整播放倍速
+  void _adjustPlaybackSpeed() {
+    setState(() {
+      if (_playbackSpeed == 0.5) {
+        _playbackSpeed = 1.0;
+      } else if (_playbackSpeed == 1.0) {
+        _playbackSpeed = 2.0;
+      } else {
+        _playbackSpeed = 0.5;
+      }
+    });
+  }
+
+  // 關閉播放器
+  void _closePlayer() {
+    setState(() {
+      _isPlayerVisible = false;
+      _isPlaying = false;
+    });
   }
 
   @override
@@ -97,7 +232,12 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: const Color(0xFFE8E3FF),
       body: SafeArea(
-        child: _pages[_selectedIndex],
+        child: Stack(
+          children: [
+            _pages[_selectedIndex],
+            if (_isPlayerVisible) _buildMusicPlayer(),
+          ],
+        ),
       ),
       bottomNavigationBar: _buildBottomNavigationBar(),
     );
@@ -107,7 +247,7 @@ class _HomePageState extends State<HomePage> {
     return Column(
       children: [
         _buildTopToolBar(),
-        _buildSearchBar(), // 這裡的SearchBar已經修改
+        _buildSearchBar(),
         _buildCategoryFilter(),
         _buildQuickPlaySection(),
         Expanded(child: _buildNewsList()),
@@ -116,7 +256,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildTopToolBar() {
-    // ... (這部分程式碼沒有變化，保持不變)
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
@@ -167,21 +306,37 @@ class _HomePageState extends State<HomePage> {
 
           const Spacer(),
 
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: Colors.grey[600],
-              borderRadius: BorderRadius.circular(8),
+          // 收藏按鈕
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const BookmarkPage()),
+              );
+            },
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.grey[600],
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey,
+                    spreadRadius: 1,
+                    blurRadius: 2,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.bookmark, color: Colors.white, size: 20),
             ),
-            child: const Icon(Icons.bookmark, color: Colors.white, size: 20),
           ),
         ],
       ),
     );
   }
 
-  // 修改後的搜索欄
   Widget _buildSearchBar() {
     return GestureDetector(
       onTap: () {
@@ -198,7 +353,7 @@ class _HomePageState extends State<HomePage> {
           borderRadius: BorderRadius.circular(25),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.3),
+              color: Colors.grey,
               spreadRadius: 1,
               blurRadius: 3,
               offset: const Offset(0, 1),
@@ -220,7 +375,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildCategoryFilter() {
-    // ... (這部分程式碼沒有變化，保持不變)
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
@@ -232,7 +386,7 @@ class _HomePageState extends State<HomePage> {
               borderRadius: BorderRadius.circular(8),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.3),
+                  color: Colors.grey,
                   spreadRadius: 1,
                   blurRadius: 2,
                 ),
@@ -254,6 +408,7 @@ class _HomePageState extends State<HomePage> {
                         setState(() {
                           _selectedCategory = category;
                         });
+                        // TODO: 實現分類篩選功能
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(
@@ -265,7 +420,7 @@ class _HomePageState extends State<HomePage> {
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.grey.withOpacity(0.3),
+                              color: Colors.grey,
                               spreadRadius: 1,
                               blurRadius: 2,
                             ),
@@ -292,7 +447,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildQuickPlaySection() {
-    // ... (這部分程式碼沒有變化，保持不變)
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -301,7 +455,7 @@ class _HomePageState extends State<HomePage> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
+            color: Colors.grey,
             spreadRadius: 1,
             blurRadius: 3,
           ),
@@ -340,9 +494,7 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(width: 12),
           ElevatedButton(
-            onPressed: () {
-              // TODO: 實現快速播放功能
-            },
+            onPressed: _startQuickPlay,
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue,
               foregroundColor: Colors.white,
@@ -356,117 +508,286 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildNewsList() {
-    // ... (這部分程式碼沒有變化，保持不變)
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              _error!,
+              style: TextStyle(color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _fetchNews,
+              child: const Text('重新載入'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_newsData.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.article_outlined, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              '目前沒有新聞資料',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _fetchNews,
+              child: const Text('重新載入'),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
-      child: ListView.builder(
-        itemCount: _newsData.length,
-        itemBuilder: (context, index) {
-          final news = _newsData[index];
-          return Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.3),
-                  spreadRadius: 1,
-                  blurRadius: 3,
-                ),
-              ],
-            ),
-            child: InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ViewNewsContent(newsData: news),
+      child: RefreshIndicator(
+        onRefresh: _fetchNews,
+        child: ListView.builder(
+          itemCount: _newsData.length,
+          itemBuilder: (context, index) {
+            final news = _newsData[index];
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey,
+                    spreadRadius: 1,
+                    blurRadius: 3,
                   ),
-                );
-              },
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 80,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(8),
+                ],
+              ),
+              child: InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ViewNewsContent(newsData: news),
                     ),
-                    child: const Icon(Icons.image, color: Colors.grey),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          news['channel'],
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          news['title'],
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            color: Colors.black,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Text(
-                              news['publish_date'],
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 12,
-                              ),
-                            ),
-                            const Spacer(),
-                            Icon(
-                              Icons.chat_bubble_outline,
+                  );
+                },
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 80,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: news['cover_img'] != null && news['cover_img'].isNotEmpty
+                            ? Image.network(
+                          news['cover_img'],
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Icon(Icons.image, color: Colors.grey);
+                          },
+                        )
+                            : const Icon(Icons.image, color: Colors.grey),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            news['channel'],
+                            style: TextStyle(
                               color: Colors.grey[600],
-                              size: 14,
+                              fontSize: 12,
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${news['comments']}',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 12,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            news['title'],
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: Colors.black,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Text(
+                                news['publish_date'],
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 12,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
+                              const Spacer(),
+                              Icon(
+                                Icons.chat_bubble_outline,
+                                color: Colors.grey[600],
+                                size: 14,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${news['comments']}',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMusicPlayer() {
+    if (_newsData.isEmpty) return Container();
+
+    final currentNews = _newsData[_currentNewsIndex];
+
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey,
+              spreadRadius: 1,
+              blurRadius: 5,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // 左側新聞信息
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    currentNews['title'],
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    currentNews['publish_date'],
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 12,
                     ),
                   ),
                 ],
               ),
             ),
-          );
-        },
+
+            // 右側控制按鈕
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 調整倍速按鈕
+                GestureDetector(
+                  onTap: _adjustPlaybackSpeed,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      '${_playbackSpeed}x',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(width: 8),
+
+                // 上一篇按鈕
+                IconButton(
+                  onPressed: _currentNewsIndex > 0 ? _previousNews : null,
+                  icon: const Icon(Icons.skip_previous),
+                  iconSize: 24,
+                ),
+
+                // 播放/暫停按鈕
+                IconButton(
+                  onPressed: _togglePlayPause,
+                  icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow),
+                  iconSize: 28,
+                ),
+
+                // 下一篇按鈕
+                IconButton(
+                  onPressed: _currentNewsIndex < _newsData.length - 1 ? _nextNews : null,
+                  icon: const Icon(Icons.skip_next),
+                  iconSize: 24,
+                ),
+
+                // 關閉按鈕
+                IconButton(
+                  onPressed: _closePlayer,
+                  icon: const Icon(Icons.close),
+                  iconSize: 20,
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildBottomNavigationBar() {
-    // ... (這部分程式碼沒有變化，保持不變)
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
+            color: Colors.grey,
             spreadRadius: 1,
             blurRadius: 3,
           ),
@@ -498,8 +819,6 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
-    // 由於我們移除 _searchController，這裡也不再需要 dispose
-    // _searchController.dispose();
     super.dispose();
   }
 }
