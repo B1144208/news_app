@@ -4,6 +4,8 @@ import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:math';
+// 引入配置檔 (假設 config.dart 包含了 baseUrl)
+import 'config.dart';
 // 如果您還沒有創建 BookmarkPage.dart，請將這行註釋掉
 // import 'BookmarkPage.dart';
 
@@ -25,7 +27,8 @@ class News {
     return News(
       title: json['news_title'],
       url: json['origin_url'],
-      coverImage: json['cover_image'] != null ? 'http://localhost:3000/api/image/${json['cover_image']}' : null,
+      // 使用 baseUrl
+      coverImage: json['cover_image'] != null ? '$baseUrl/api/image/${json['cover_image']}' : null,
       publishDate: json['news_date'],
     );
   }
@@ -42,8 +45,13 @@ class _MapPageState extends State<MapPage> {
   final TextEditingController _searchController = TextEditingController();
   final MapController _mapController = MapController();
 
+  // 假設的用戶 ID (請替換為實際登入用戶的 ID)
+  final int _currentUserId = 1;
+  // 台灣的預設中心點 (備用)
+  static const LatLng _taiwanCenter = LatLng(23.6978, 120.9605);
+
   double _currentZoom = 2;
-  LatLng _currentCenter = LatLng(20, 0);
+  LatLng _currentCenter = _taiwanCenter;
 
   List<Marker> _markers = [];
   List<dynamic> _locations = [];
@@ -67,19 +75,41 @@ class _MapPageState extends State<MapPage> {
   @override
   void initState() {
     super.initState();
+    // 啟動時先載入地點數據
     _fetchLocations();
+    // 載入上次位置的邏輯移至 onMapReady 確保地圖控制器已連接
   }
 
   @override
   void dispose() {
+    // 🌟 檢查：只在 _selectedLocation 有效且包含 ID 時才嘗試儲存 🌟
+    if (_selectedLocation != null) {
+      final int? regionId = _selectedLocation!['region_id'];
+      final int? countryId = _selectedLocation!['country_id'];
+      final int? stateId = _selectedLocation!['state_id'];
+
+      // 確保至少有一個 ID 不是 null
+      if (stateId != null || countryId != null || regionId != null) {
+        // 優先級：State ID > Country ID > Region ID
+        if (stateId != null) {
+          _saveLastLocation(null, null, stateId); // 儲存 State ID
+        } else if (countryId != null) {
+          _saveLastLocation(null, countryId, null); // 儲存 Country ID
+        } else if (regionId != null) {
+          _saveLastLocation(regionId, null, null); // 儲存 Region ID
+        }
+      }
+    }
+
     _searchController.dispose();
     super.dispose();
   }
 
+  // === API: 獲取所有地點資料 (http://localhost:3000/api/location) ===
   Future<void> _fetchLocations() async {
     try {
-      final response = await http.get(Uri.parse('http://localhost:3000/api/location'));
-      if (response.statusCode == 200) {
+      final response = await http.get(Uri.parse('$baseUrl/api/location'));
+      if (mounted && response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
         setState(() {
           _locations = data['data'];
@@ -93,18 +123,214 @@ class _MapPageState extends State<MapPage> {
               .toList();
           _regions.sort();
         });
-      } else {
+      } else if (mounted) {
         setState(() {
           _error = '無法從伺服器取得資料：${response.statusCode}';
           _isLoading = false;
         });
       }
     } catch (e) {
-      setState(() {
-        _error = '連線錯誤：請確認伺服器正在執行。';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = '連線錯誤：請確認伺服器正在執行。';
+          _isLoading = false;
+        });
+      }
     }
+  }
+
+  // === API: 讀取上次儲存的位置 ID (GET /api/user/action/search/location/news?userId=...) ===
+  Future<void> _loadLastLocation() async {
+    // 1. 確保所有地點資料已經載入
+    if (_locations.isEmpty) {
+      print('Location data is not yet loaded or is empty.');
+      return;
+    }
+
+    // 1. 修正：將 userId 參數加入 URL 查詢字串中
+    final uri = Uri.parse('$baseUrl/api/user/location/news')
+        .replace(queryParameters: {'userId': _currentUserId.toString()});
+
+    try {
+      // 2. 修正：使用 http.get，並移除 body 參數
+      final response = await http.get(
+        uri,
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        // 後端 searchUserAction 返回的是一個陣列
+        final List<dynamic> results = data['data'];
+
+        if (results.isNotEmpty) {
+          final locationData = results.first;
+
+          // 找出非 NULL 的 ID (以下邏輯保持不變)
+          final int? stateId = locationData['state_id'];
+          final int? countryId = locationData['country_id'];
+          final int? regionId = locationData['region_id'];
+
+          // 確定 ID 和 ID 類型
+          final int? idToUse = stateId ?? countryId ?? regionId;
+          String idKey = stateId != null ? 'state_id' :
+          countryId != null ? 'country_id' :
+          regionId != null ? 'region_id' : '';
+
+          if (idToUse != null && idKey.isNotEmpty) {
+            _setMapToLastLocation(idToUse, idKey);
+          } else {
+            // 如果 ID 為空，使用預設台灣
+            _zoomToTaiwan();
+          }
+        } else {
+          // 如果結果集為空，使用預設台灣
+          _zoomToTaiwan();
+        }
+      } else {
+        print('Error fetching last location: ${response.statusCode}');
+        _zoomToTaiwan();
+      }
+    } catch (e) {
+      print('Error loading last location: $e');
+      _zoomToTaiwan();
+    }
+  }
+
+  // === 輔助函數: 根據 ID 定位地圖 (上次位置 / 搜尋定位通用) ===
+  void _setMapToLastLocation(int id, String idKey) {
+    try {
+      // 1. 在 _locations 列表中查找匹配的 ID
+      final Map<String, dynamic>? targetLocation = _locations.firstWhere(
+            (loc) => loc[idKey] == id,
+        orElse: () => null,
+      );
+
+      if (targetLocation != null) {
+        // 🌟 修正點：從 _locations 數據中提取經緯度，優先 State 坐標
+        double? lat = double.tryParse(targetLocation['state_center_latitude']?.toString() ?? '');
+        double? lng = double.tryParse(targetLocation['state_center_longitude']?.toString() ?? '');
+
+        // 如果 State 坐標為空，則回退到 Country 坐標
+        if (lat == null || lng == null) {
+          lat = double.tryParse(targetLocation['country_center_latitude']?.toString() ?? '');
+          lng = double.tryParse(targetLocation['country_center_longitude']?.toString() ?? '');
+        }
+
+        if (lat != null && lng != null) {
+          final LatLng lastLocation = LatLng(lat, lng);
+
+          // 2. 移動地圖視角並更新狀態
+          setState(() {
+            _currentCenter = lastLocation;
+            _currentZoom = 10.0;
+            _mapController.move(lastLocation, 10.0);
+
+            _markers = [
+              Marker(
+                point: lastLocation,
+                width: 80,
+                height: 80,
+                child: const Icon(Icons.location_on, color: Colors.red, size: 40.0),
+              ),
+            ];
+            _selectedLocation = targetLocation;
+            _isPanelVisible = true;
+          });
+
+          // 載入新聞
+          final locationType = targetLocation['state_id'] != null ? 'state' : 'country';
+          final locationId = targetLocation['state_id'] ?? targetLocation['country_id'];
+          _fetchNewsAndSetState(locationType, locationId);
+
+        } else {
+          print('坐標無效。ID: $id');
+          _zoomToTaiwan();
+        }
+      } else {
+        print('Location ID $id not found in local _locations data.');
+        _zoomToTaiwan();
+      }
+    } catch (e) {
+      print('Error setting map location: $e');
+      _zoomToTaiwan();
+    }
+  }
+
+  // === API: 儲存當前位置 ID (POST /api/user/location/news) ===
+  Future<void> _saveLastLocation(int? regionId, int? countryId, int? stateId) async {
+    // 雙重檢查：如果三個 ID 都是 null，則直接返回
+    if (regionId == null && countryId == null && stateId == null) {
+      print('Skipping location save: All IDs are null.');
+      return;
+    }
+
+    final Map<String, dynamic> body = {
+      "userId": _currentUserId,
+      "dataId": 1, // 這裡 dataId 應該對應一個固定的 ID，如 1
+      "clientIp": "127.0.0.1",
+      "region_id": regionId,
+      "country_id": countryId,
+      "state_id": stateId,
+      "actionType": "location", // 必須傳遞給後端
+      "dataType": "news", // 必須傳遞給後端
+    };
+    // 移除所有為 null 的欄位
+    body.removeWhere((key, value) => value == null);
+
+    try {
+      final response = await http.post(
+        // 注意路由是 /api/action，而非 /api/user/location/news
+        Uri.parse('$baseUrl/api/user/location/news'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      );
+      if (response.statusCode == 200) {
+        print('上次位置 ID 儲存成功');
+      } else {
+        print('上次位置 ID 儲存失敗: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('位置 ID 儲存連線錯誤: $e');
+    }
+  }
+
+  // === 輔助函數: 定位到台灣 (預設/後備) ===
+  void _zoomToTaiwan() {
+    final taiwanLocation = _locations.firstWhere(
+          (loc) =>
+      (loc['country_name_zh_tw'] as String? ?? '') == '台灣' ||
+          (loc['country_name_en'] as String? ?? '').toLowerCase() == 'taiwan',
+      orElse: () => null,
+    );
+
+    LatLng targetCenter = _taiwanCenter;
+    double targetZoom = 7;
+
+    if (taiwanLocation != null) {
+      final lat = double.tryParse(taiwanLocation['country_center_latitude'].toString());
+      final lon = double.tryParse(taiwanLocation['country_center_longitude'].toString());
+
+      if (lat != null && lon != null) {
+        targetCenter = LatLng(lat, lon);
+      }
+    }
+
+    setState(() {
+      _currentCenter = targetCenter;
+      _currentZoom = targetZoom;
+      _mapController.move(_currentCenter, _currentZoom);
+      _markers = [
+        Marker(
+          point: targetCenter,
+          width: 80,
+          height: 80,
+          child: const Icon(Icons.home, color: Colors.green, size: 40.0),
+        ),
+      ];
+      _isPanelVisible = false;
+      _selectedLocation = taiwanLocation;
+      _newsList = [];
+    });
   }
 
   void _zoomIn() {
@@ -122,7 +348,7 @@ class _MapPageState extends State<MapPage> {
   }
 
   // === 核心邏輯：根據關鍵字搜尋並定位地圖 ===
-  void _searchLocation(String query) async {
+  void _searchLocation(String query) {
     if (query.isEmpty) {
       return;
     }
@@ -132,11 +358,9 @@ class _MapPageState extends State<MapPage> {
     // 從本地快取中搜尋
     final foundLocation = _locations.firstWhere(
           (location) {
-        // 確保 location 的屬性是 String 且不為 null
         final zhTwMatch = (location['country_name_zh_tw'] as String? ?? '').contains(query) ||
             (location['state_name_zh_tw'] as String? ?? '').contains(query);
 
-        // 英文搜尋：將地點名稱轉換為小寫後再與小寫查詢字串比對
         final enCountryName = (location['country_name_en'] as String? ?? '').toLowerCase();
         final enStateName = (location['state_name_en'] as String? ?? '').toLowerCase();
 
@@ -148,21 +372,20 @@ class _MapPageState extends State<MapPage> {
     );
 
     if (foundLocation != null) {
-      LatLng markerLatLng;
-      final stateLat = double.tryParse(foundLocation['state_center_latitude'].toString());
-      final stateLon = double.tryParse(foundLocation['state_center_longitude'].toString());
+      // 取得地點的 ID 和類型
+      final int? stateId = foundLocation['state_id'];
+      final int? countryId = foundLocation['country_id'];
+      final int? regionId = foundLocation['region_id'];
 
-      // 如果有州/省的中心點，優先使用
-      if (stateLat != null && stateLon != null) {
-        markerLatLng = LatLng(stateLat, stateLon);
-      } else {
-        // 否則使用國家的中心點
-        markerLatLng = LatLng(
-          double.parse(foundLocation['country_center_latitude'].toString()),
-          double.parse(foundLocation['country_center_longitude'].toString()),
-        );
+      // 確定 ID 和 ID 類型
+      final int? idToUse = stateId ?? countryId ?? regionId;
+      String idKey = stateId != null ? 'state_id' :
+      countryId != null ? 'country_id' :
+      regionId != null ? 'region_id' : '';
+
+      if (idToUse != null && idKey.isNotEmpty) {
+        _setMapToLastLocation(idToUse, idKey);
       }
-      _updateMapWithLocation(foundLocation, markerLatLng);
     } else {
       setState(() {
         _isPanelVisible = false;
@@ -173,25 +396,25 @@ class _MapPageState extends State<MapPage> {
       );
     }
   }
+
   // ========================================================
 
   void _handleMapTap(TapPosition tapPosition, LatLng latlng) {
     // 這裡的邏輯是找出點擊點最近的地點，並進行定位和新聞載入
     final nearestLocation = _findNearestLocation(latlng);
     if (nearestLocation != null) {
-      LatLng markerLatLng;
+      final int? stateId = nearestLocation['state_id'];
+      final int? countryId = nearestLocation['country_id'];
+      final int? regionId = nearestLocation['region_id'];
 
-      final stateLat = double.tryParse(nearestLocation['state_center_latitude'].toString());
-      final stateLon = double.tryParse(nearestLocation['state_center_longitude'].toString());
-      if (stateLat != null && stateLon != null) {
-        markerLatLng = LatLng(stateLat, stateLon);
-      } else {
-        markerLatLng = LatLng(
-          double.parse(nearestLocation['country_center_latitude'].toString()),
-          double.parse(nearestLocation['country_center_longitude'].toString()),
-        );
+      final int? idToUse = stateId ?? countryId ?? regionId;
+      String idKey = stateId != null ? 'state_id' :
+      countryId != null ? 'country_id' :
+      regionId != null ? 'region_id' : '';
+
+      if (idToUse != null && idKey.isNotEmpty) {
+        _setMapToLastLocation(idToUse, idKey);
       }
-      _updateMapWithLocation(nearestLocation, markerLatLng);
     } else {
       setState(() {
         _isPanelVisible = false;
@@ -203,6 +426,7 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
+  // 輔助函式：計算兩點距離
   double _calculateHaversineDistance(LatLng start, LatLng end) {
     const R = 6371;
     final lat1Rad = start.latitude * pi / 180;
@@ -227,7 +451,6 @@ class _MapPageState extends State<MapPage> {
     Map<String, dynamic>? nearestLocation;
 
     for (var location in _locations) {
-      // 邏輯保持不變...
       LatLng? locationLatLng;
 
       final stateLat = double.tryParse(location['state_center_latitude'].toString());
@@ -255,74 +478,42 @@ class _MapPageState extends State<MapPage> {
     return nearestLocation;
   }
 
-  Future<List<News>> _fetchNewsByLocation(String locationType, int locationId) async {
+  // 輔助函式：載入新聞並更新狀態
+  Future<void> _fetchNewsAndSetState(String locationType, int locationId) async {
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/api/news?locationId=$locationId&locationType=$locationType'),
+        Uri.parse('$baseUrl/api/news?locationId=$locationId&locationType=$locationType'),
       );
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
         final List<dynamic> newsData = data['data'];
-        return newsData.map((json) => News.fromJson(json)).toList();
+        final fetchedNews = newsData.map((json) => News.fromJson(json)).toList();
+
+        if (mounted) {
+          setState(() {
+            _newsList = fetchedNews;
+          });
+        }
       } else {
         throw Exception('無法取得新聞資料');
       }
     } catch (e) {
-      print('錯誤: $e');
-      return [];
+      print('新聞載入錯誤: $e');
+      if (mounted) {
+        setState(() {
+          _newsList = [];
+        });
+      }
     }
-  }
-
-  void _updateMapWithLocation(Map<String, dynamic> locationData, LatLng markerLatLng) async {
-    final lat = double.tryParse(locationData['country_center_latitude'].toString());
-    final lon = double.tryParse(locationData['country_center_longitude'].toString());
-
-    if (lat == null || lon == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('地點經緯度資料不正確。'))
-      );
-      return;
-    }
-
-    // 取得地點的 ID 和類型
-    final locationId = locationData['state_id'] ?? locationData['country_id'];
-    final locationType = locationData['state_id'] != null ? 'state' : 'country';
-    final fetchedNews = await _fetchNewsByLocation(locationType, locationId);
-
-    final newCenter = LatLng(lat, lon);
-
-    setState(() {
-      _currentCenter = newCenter;
-      _currentZoom = 5;
-      _mapController.move(_currentCenter, _currentZoom);
-
-      _markers = [
-        Marker(
-          point: markerLatLng,
-          width: 80,
-          height: 80,
-          child: const Icon(
-            Icons.location_on,
-            color: Colors.red,
-            size: 40.0,
-          ),
-        ),
-      ];
-      _selectedLocation = locationData;
-      _isPanelVisible = true;
-      _newsList = fetchedNews;
-    });
   }
 
   // ===================================
-  // 三級聯動下拉選單邏輯
+  // 三級聯動下拉選單邏輯 (保持不變)
   // ===================================
 
   void _onRegionChanged(String? newRegion) {
     setState(() {
       _selectedRegion = newRegion;
-
-      // 重置並更新 Country 列表
       _selectedCountry = null;
       _selectedState = null;
       _states = [];
@@ -341,14 +532,13 @@ class _MapPageState extends State<MapPage> {
       _searchController.clear();
       _isPanelVisible = false;
       _markers = [];
+      _selectedLocation = null;
     });
   }
 
   void _onCountryChanged(String? newCountry) {
     setState(() {
       _selectedCountry = newCountry;
-
-      // 重置並更新 State 列表
       _selectedState = null;
 
       if (newCountry != null) {
@@ -367,6 +557,7 @@ class _MapPageState extends State<MapPage> {
       _searchController.clear();
       _isPanelVisible = false;
       _markers = [];
+      _selectedLocation = null;
     });
   }
 
@@ -383,10 +574,8 @@ class _MapPageState extends State<MapPage> {
     String? searchTarget;
 
     if (_selectedState != null) {
-      // 優先搜尋 State
       searchTarget = _selectedState;
     } else if (_selectedCountry != null) {
-      // 如果沒有 State，則搜尋 Country
       searchTarget = _selectedCountry;
     }
 
@@ -400,7 +589,7 @@ class _MapPageState extends State<MapPage> {
   }
 
   // ===================================
-  // UI 構建輔助函式
+  // UI 構建輔助函式 (保持不變)
   // ===================================
 
   Widget _buildDropdown(
@@ -410,6 +599,7 @@ class _MapPageState extends State<MapPage> {
       ValueChanged<String?> onChanged,
       bool isEnabled,
       ) {
+    // ... (Dropdown 實現) ...
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
@@ -440,6 +630,7 @@ class _MapPageState extends State<MapPage> {
   }
 
   Widget _buildDropdownFilters() {
+    // ... (Dropdown 佈局) ...
     return Padding(
       padding: const EdgeInsets.only(left: 8.0, right: 8.0, bottom: 8.0),
       child: Row(
@@ -498,7 +689,6 @@ class _MapPageState extends State<MapPage> {
 
 
   Widget _buildRightPanel() {
-    // 邏輯保持不變...
     if (_selectedLocation == null) {
       return const SizedBox.shrink();
     }
@@ -596,10 +786,6 @@ class _MapPageState extends State<MapPage> {
           IconButton(
             icon: const Icon(Icons.bookmark),
             onPressed: () {
-              // Navigator.push(
-              //   context,
-              //   MaterialPageRoute(builder: (context) => const BookmarkPage()),
-              // );
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('書籤功能待實作')),
               );
@@ -658,8 +844,17 @@ class _MapPageState extends State<MapPage> {
                           initialZoom: _currentZoom,
                           onMapEvent: (event) {
                             if (event is MapEventMoveEnd) {
+                              // 更新中心點和 Zoom 級別
                               _currentCenter = event.camera.center;
                               _currentZoom = event.camera.zoom;
+                            }
+                          },
+                          // 🌟 修正點：地圖準備就緒後，載入上次位置
+                          onMapReady: () {
+                            if (_locations.isNotEmpty) {
+                              _loadLastLocation();
+                            } else {
+                              _zoomToTaiwan();
                             }
                           },
                           onTap: _handleMapTap,

@@ -48,6 +48,9 @@ dev_dependencies:
   shared_preferences: ^2.2.0 
   file_picker: ^8.0.0
   path: ^1.9.0
+dependency_overrides:
+  vector_math: ^2.2.0  # 强制使用 fl_chart 需要的新版
+
 # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
   # activated in the `analysis_options.yaml` file located at the root of your
