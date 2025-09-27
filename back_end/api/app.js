@@ -11,6 +11,10 @@ app.use(express.json());    // 解析 JSON body
 const responseWrapper = require('./utils/responseWrapper');
 app.use(responseWrapper);
 
+// 權限檢查路由
+const permissionRoutes = require('./routes/permission');
+app.use('/api/permission', permissionRoutes);
+
 // 清除資料庫資料 + AUTO_INCREMENT 重數
 const cleanHelper = require('./utils/cleanHelper');
 app.get('/clean', cleanHelper);
