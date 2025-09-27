@@ -14,6 +14,12 @@ router.get('/secure', checkToken, controller.secureHandler);
 router.get('/', (req, res) => {
     res.send('Hello, Api!');
 });
+//新增
+const permissionRouter = require('./permission'); 
+router.use('/permission', permissionRouter); 
+//新增
+const authRouter = require('./auth');
+router.use('/auth', authRouter);
 
 // 路由模組
 const userRouter = require('./user')
