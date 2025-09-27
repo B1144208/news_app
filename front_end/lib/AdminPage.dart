@@ -202,8 +202,8 @@ class _AdminPageState extends State<AdminPage> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 180,    // 調整寬度 (原本是180)
-        height: 200,   // 調整高度 (原本是200)
+        width: 180,
+        height: 200,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(15),
@@ -236,7 +236,7 @@ class _AdminPageState extends State<AdminPage> {
               title,
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 16, // 從18調整為16，因為錯誤日誌管理文字較長
                 fontWeight: FontWeight.bold,
                 color: Colors.grey[800],
               ),
