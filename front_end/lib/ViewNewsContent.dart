@@ -146,7 +146,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
           {
             'body_order': 20,
             'body_type': 'text',
-            'body_text': '這是新聞的主要內容。由於目前API結構限制，這裡顯示的是示例內容。實際內容需要根據後端API的具體實現來調整。',
+            'body_text': '這是新聞大綱。',
             'body_image': null,
           },
           {
@@ -158,7 +158,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
           {
             'body_order': 40,
             'body_type': 'text',
-            'body_text': '新聞的後續內容會在這裡顯示。當後端API完善後，這些內容將從資料庫動態載入。',
+            'body_text': '新聞的內文會在這裡顯示。',
             'body_image': null,
           },
         ];
