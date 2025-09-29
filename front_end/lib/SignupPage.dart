@@ -9,9 +9,10 @@ import 'LoginPage.dart';
 Future<bool> insertUser(String account, String password) async {
   final url = '$baseUrl/user/signup';
 
+  // 根據 insertUser 函數，後端期望 'account' 和 'password'
   final Map<String, String> body = {
-    'account': account, // 後端期望 account
-    'password': password, // 後端期望 password
+    'account': account, // 不是 user_account
+    'password': password, // 不是 user_password
   };
 
   print('註冊API URL: $url');
@@ -29,8 +30,12 @@ Future<bool> insertUser(String account, String password) async {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
+
+      // 根據 insertUser 的回傳格式
       if (data['success'] == true) {
-        print('User added Successfully: ${response.body}');
+        print(
+          'User added Successfully, insertId: ${data['data']?['insertId']}',
+        );
         return true;
       } else {
         print('註冊失敗: ${data['message']}');

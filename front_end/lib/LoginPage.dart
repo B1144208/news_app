@@ -15,7 +15,11 @@ Future<int> checkUserLogin(String username, String password) async {
 
   print('登入API URL: $url');
 
-  final requestBody = {'account': username, 'password': password};
+  // 根據 userController.js，後端期望 'account' 和 'password'
+  final requestBody = {
+    'account': username, // 不是 user_account
+    'password': password, // 不是 user_password
+  };
 
   try {
     final response = await http.post(
@@ -30,9 +34,15 @@ Future<int> checkUserLogin(String username, String password) async {
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
 
-      // 檢查後端回應格式
-      if (data['success'] == true && data['data']?['success'] == true) {
-        return data['data']['userId']; // 返回用戶ID
+      // 根據 userController.js，成功時回傳格式：
+      // { success: true/false, data: { success: true, userId: user_id }, message: "..." }
+      if (data['success'] == true) {
+        // 檢查是否有 data 物件
+        if (data['data'] != null && data['data']['success'] == true) {
+          return data['data']['userId'] ?? 0;
+        }
+        // 或直接在根層級
+        return data['userId'] ?? 0;
       } else {
         print('登入失敗: ${data['message']}');
         return 0;
@@ -47,8 +57,10 @@ Future<int> checkUserLogin(String username, String password) async {
   }
 }
 
+// 儲存用戶資料到 SharedPreferences
 Future<void> StoreDataInSharedPrederences(int userId) async {
-  final userInfoUrl = '$baseUrl/user?userid=$userId';
+  // 根據 searchUser 函數，使用 user_id 作為參數
+  final userInfoUrl = '$baseUrl/user/$userId'; // 使用路徑參數
 
   print('用戶資料API URL: $userInfoUrl');
 
@@ -61,28 +73,15 @@ Future<void> StoreDataInSharedPrederences(int userId) async {
     if (userInfoResponse.statusCode == 200) {
       final responseData = jsonDecode(userInfoResponse.body);
 
-      // 檢查回應格式
-      if (responseData is Map<String, dynamic>) {
-        // 如果是新的API格式 {success: true, data: [...]}
-        if (responseData['success'] == true && responseData['data'] is List) {
-          final List<dynamic> userData = responseData['data'];
-          if (userData.isNotEmpty) {
-            await _storeUserPreferences(userData[0]);
-          }
-        } else {
-          print('用戶資料回應格式不正確: $responseData');
+      // 根據 searchUser 的回傳格式
+      if (responseData['success'] == true && responseData['data'] != null) {
+        if (responseData['data'] is List &&
+            (responseData['data'] as List).isNotEmpty) {
+          await _storeUserPreferences(responseData['data'][0]);
+        } else if (responseData['data'] is Map) {
+          await _storeUserPreferences(responseData['data']);
         }
-      } else if (responseData is List<dynamic>) {
-        // 如果是舊的API格式，直接是陣列
-        final List<dynamic> userData = responseData;
-        if (userData.isNotEmpty) {
-          await _storeUserPreferences(userData[0]);
-        }
-      } else {
-        print('未知的用戶資料格式: ${responseData.runtimeType}');
       }
-    } else {
-      print('獲取用戶資料失敗: ${userInfoResponse.statusCode}');
     }
   } catch (e) {
     print('獲取用戶資料異常: $e');
@@ -94,23 +93,28 @@ Future<void> _storeUserPreferences(Map<String, dynamic> user) async {
   try {
     final prefs = await SharedPreferences.getInstance();
 
-    // 根據實際的資料庫欄位名稱進行適配
-    final userId = user['UserID'] ?? user['user_id'] ?? 0;
-    final account = user['Account'] ?? user['user_account'] ?? '';
-    final password = user['Password'] ?? user['user_password'] ?? '';
-    final isManager = user['IsManager'] ?? user['is_manager'] ?? 0;
+    final userId = user['user_id'] ?? 0;
+    final account = user['user_account'] ?? '';
+    final password = user['user_password'] ?? '';
+    final userName = user['user_name'] ?? '';
+    final userLevel = user['user_level'] ?? 0;
 
+    // 儲存資料
     await prefs.setInt('UserID', userId);
     await prefs.setString('Account', account);
     await prefs.setString('Password', password);
-    await prefs.setInt('IsManager', isManager);
-    await prefs.setBool('IsLogin', true);
+    await prefs.setInt('UserLevel', userLevel);
+    await prefs.setString('UserName', userName);
+    await prefs.setBool('IsLogin', true); // 這個很重要！
 
-    print(
-      '用戶資料已存儲到SharedPreferences: UserID=$userId, Account=$account, IsManager=$isManager',
-    );
+    print('===== 用戶資料已存儲 =====');
+    print('UserID: $userId');
+    print('Account: $account');
+    print('UserLevel: $userLevel');
+    print('IsLogin: true'); // 確認有儲存
+    print('========================');
   } catch (e) {
-    print('存儲用戶資料到SharedPreferences失敗: $e');
+    print('存儲用戶資料失敗: $e');
   }
 }
 
@@ -587,14 +591,12 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       return;
     }
 
-    // 開始登入流程
     setState(() {
       _isLoggingIn = true;
       PromptMessage = "登入中...";
     });
 
     try {
-      // 檢查輸入帳號密碼是否正確
       final userId = await checkUserLogin(
         accountController.text,
         passwordController.text,
@@ -605,10 +607,11 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           PromptMessage = "成功登入!";
         });
 
-        // 儲存帳號資料至shared_preferences
-        await StoreDataInSharedPrederences(userId);
+        // 如果前面還沒儲存用戶資料，這裡再儲存一次
+        if (userId > 0) {
+          await StoreDataInSharedPrederences(userId);
+        }
 
-        // 延遲1秒後智能導航
         await Future.delayed(const Duration(seconds: 1));
 
         if (mounted) {

@@ -25,11 +25,10 @@ class UserService {
   Future<bool> isAdmin() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final isManager = prefs.getInt('IsManager') ?? 0;
-      final account = prefs.getString('Account') ?? '';
+      final userLevel = prefs.getInt('UserLevel') ?? 0;
 
-      // 管理員判斷：後端IsManager為1 或 帳號以admin開頭
-      return isManager == 1 || account.toLowerCase().startsWith('admin');
+      // 簡單明瞭：5級以上為管理員
+      return userLevel >= 5;
     } catch (e) {
       return false;
     }
@@ -203,16 +202,19 @@ class UserService {
     try {
       print('開始登入: $account');
 
-      // 檢查帳號密碼是否為空
       if (account.isEmpty || password.isEmpty) {
         return {'success': false, 'message': '帳號、密碼不能為空！'};
       }
 
-      // 使用後端的 POST /login 端點
       final url = '$baseUrl/user/login';
       print('登入URL: $url');
 
-      final requestBody = {'account': account, 'password': password};
+      // 使用正確的欄位名稱
+      final requestBody = {
+        'account': account, // 不是 user_account
+        'password': password, // 不是 user_password
+      };
+
       print('請求內容: $requestBody');
 
       final response = await http
@@ -234,19 +236,18 @@ class UserService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
-        if (data['success'] == true && data['data']?['success'] == true) {
-          // 登入成功，儲存用戶資料
-          final userId = data['data']['userId'];
-          await _storeUserData(userId);
+        if (data['success'] == true) {
+          // 取得 userId
+          final userId = data['data']?['userId'] ?? data['userId'] ?? 0;
 
-          print('登入成功');
-          return {'success': true, 'message': '登入成功！'};
-        } else {
-          print('登入失敗: ${data['message']}');
-          return {'success': false, 'message': data['message'] ?? '帳號、密碼錯誤!'};
+          if (userId != 0) {
+            await _storeUserData(userId);
+            return {'success': true, 'message': '登入成功！'};
+          }
         }
+
+        return {'success': false, 'message': data['message'] ?? '帳號、密碼錯誤!'};
       } else {
-        print('HTTP錯誤: ${response.statusCode}');
         return {'success': false, 'message': '伺服器錯誤 (${response.statusCode})'};
       }
     } catch (e) {
