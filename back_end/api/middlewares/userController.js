@@ -57,8 +57,13 @@ async function searchUser (req, res, next) {
 
     try {
         let [result] = await pool.query( sql, params );
-        const user_id = (result.length === 1) && (result[0].user_id);
-        const hashedPassword = (result.length === 1) && (result[0].user_password);
+        let user_id = null;
+        let hashedPassword = null;
+        
+        if (result.length === 1) {
+            user_id = result[0].user_id;  // 直接賦值，不用 && 運算符
+            hashedPassword = result[0].user_password;
+        }
 
         if ( login ) {
             if ( result.length === 1 ) {
@@ -66,10 +71,16 @@ async function searchUser (req, res, next) {
                     let fakeReq = {
                         password: { plainPassword: password, hashedPassword: hashedPassword }
                     };
-                    let result = await callAndCatchApiSuccess ( checkPassword, fakeReq );
-                    return res.apiSuccess ( { success: result.success, userId: user_id }, (result.success)?"Enter Correct": "Password Error");
+                    let checkResult = await callAndCatchApiSuccess ( checkPassword, fakeReq );
+                    
+                    // 確保返回正確的 userId
+                    return res.apiSuccess ( { 
+                        success: checkResult.success, 
+                        userId: user_id  // 使用實際的 user_id 值
+                    }, (checkResult.success) ? "Enter Correct" : "Password Error");
+                    
                 } catch (err) {
-                    err.desc = "middlewares-insertUser(): hashPassword error";
+                    err.desc = "middlewares-searchUser(): checkPassword error";
                     return next(err);
                 }
             } else {
