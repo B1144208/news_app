@@ -15,7 +15,7 @@ Future<int> checkUserLogin(String username, String password) async {
 
   print('登入API URL: $url');
 
-  // 根據 userController.js，後端期望 'account' 和 'password'
+  // 根據 userController.js,後端期望 'account' 和 'password'
   final requestBody = {
     'account': username, // 不是 user_account
     'password': password, // 不是 user_password
@@ -34,7 +34,7 @@ Future<int> checkUserLogin(String username, String password) async {
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
 
-      // 根據 userController.js，成功時回傳格式：
+      // 根據 userController.js,成功時回傳格式:
       // { success: true/false, data: { success: true, userId: user_id }, message: "..." }
       if (data['success'] == true) {
         // 檢查是否有 data 物件
@@ -59,7 +59,7 @@ Future<int> checkUserLogin(String username, String password) async {
 
 // 儲存用戶資料到 SharedPreferences
 Future<void> StoreDataInSharedPrederences(int userId) async {
-  // 根據 searchUser 函數，使用 user_id 作為參數
+  // 根據 searchUser 函數,使用 user_id 作為參數
   final userInfoUrl = '$baseUrl/user/$userId'; // 使用路徑參數
 
   print('用戶資料API URL: $userInfoUrl');
@@ -88,7 +88,7 @@ Future<void> StoreDataInSharedPrederences(int userId) async {
   }
 }
 
-// 輔助函數：儲存用戶偏好設定
+// 輔助函數:儲存用戶偏好設定
 Future<void> _storeUserPreferences(Map<String, dynamic> user) async {
   try {
     final prefs = await SharedPreferences.getInstance();
@@ -105,7 +105,7 @@ Future<void> _storeUserPreferences(Map<String, dynamic> user) async {
     await prefs.setString('Password', password);
     await prefs.setInt('UserLevel', userLevel);
     await prefs.setString('UserName', userName);
-    await prefs.setBool('IsLogin', true); // 這個很重要！
+    await prefs.setBool('IsLogin', true); // 這個很重要!
 
     print('===== 用戶資料已存儲 =====');
     print('UserID: $userId');
@@ -190,7 +190,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     // 檢查是否為admin開頭的管理員帳號
     bool isAdminAccount = account.toLowerCase().startsWith('admin');
 
-    // 管理員判斷：後端IsManager欄位為1 或 帳號以admin開頭
+    // 管理員判斷:後端IsManager欄位為1 或 帳號以admin開頭
     if (isManager == 1 || isAdminAccount) {
       Navigator.of(context).popUntil((route) => route.isFirst);
       Navigator.pushReplacement(
@@ -206,6 +206,11 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     }
   }
 
+  // 返回主頁功能
+  void _returnToHome() {
+    Navigator.of(context).popUntil((route) => route.isFirst);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -219,300 +224,321 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           ),
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            child: Container(
-              height:
-                  MediaQuery.of(context).size.height -
-                  MediaQuery.of(context).padding.top,
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: FadeTransition(
-                opacity: _fadeAnimation,
-                child: SlideTransition(
-                  position: _slideAnimation,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Logo 區域
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 48),
-                        child: Column(
-                          children: [
-                            Container(
-                              width: 120,
-                              height: 120,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.2),
-                                    spreadRadius: 2,
-                                    blurRadius: 20,
-                                    offset: const Offset(0, 8),
-                                  ),
-                                ],
-                              ),
-                              child: Icon(
-                                Icons.newspaper,
-                                size: 60,
-                                color: Colors.blue[600],
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            Text(
-                              '歡迎回來',
-                              style: TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                                shadows: [
-                                  Shadow(
-                                    color: Colors.black.withOpacity(0.3),
-                                    offset: const Offset(0, 2),
-                                    blurRadius: 4,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              '請登入您的帳號',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.white.withOpacity(0.9),
-                                fontWeight: FontWeight.w300,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+          child: Stack(
+            children: [
+              // 返回主頁按鈕
+              Positioned(
+                top: 16,
+                left: 16,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: IconButton(
+                    onPressed: _returnToHome,
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    tooltip: '返回主頁',
+                  ),
+                ),
+              ),
 
-                      // 登入表單
-                      Container(
-                        padding: const EdgeInsets.all(32),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              spreadRadius: 0,
-                              blurRadius: 30,
-                              offset: const Offset(0, 15),
-                            ),
-                          ],
-                        ),
-                        child: Form(
-                          key: _formKey,
-                          child: Column(
-                            children: [
-                              // 帳號輸入框
-                              _buildInputField(
-                                controller: accountController,
-                                label: '帳號',
-                                hint: '請輸入您的帳號',
-                                icon: Icons.person_outline,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return '請輸入帳號';
-                                  }
-                                  return null;
-                                },
-                              ),
-
-                              const SizedBox(height: 24),
-
-                              // 密碼輸入框
-                              _buildInputField(
-                                controller: passwordController,
-                                label: '密碼',
-                                hint: '請輸入您的密碼',
-                                icon: Icons.lock_outline,
-                                obscureText: _obscureText,
-                                suffixIcon: IconButton(
-                                  icon: Icon(
-                                    _obscureText
-                                        ? Icons.visibility_off
-                                        : Icons.visibility,
-                                    color: Colors.grey[600],
-                                  ),
-                                  onPressed: () {
-                                    setState(() {
-                                      _obscureText = !_obscureText;
-                                    });
-                                  },
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return '請輸入密碼';
-                                  }
-                                  return null;
-                                },
-                              ),
-
-                              const SizedBox(height: 32),
-
-                              // 狀態訊息
-                              if (PromptMessage.isNotEmpty)
+              // 主要登入內容
+              SingleChildScrollView(
+                child: Container(
+                  height: MediaQuery.of(context).size.height -
+                      MediaQuery.of(context).padding.top,
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: SlideTransition(
+                      position: _slideAnimation,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Logo 區域
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 48),
+                            child: Column(
+                              children: [
                                 Container(
-                                  margin: const EdgeInsets.only(bottom: 20),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
-                                    horizontal: 16,
-                                  ),
+                                  width: 120,
+                                  height: 120,
                                   decoration: BoxDecoration(
-                                    color:
-                                        PromptMessage == "成功登入!"
-                                            ? Colors.green[50]
-                                            : PromptMessage == "登入中..."
-                                            ? Colors.blue[50]
-                                            : Colors.red[50],
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color:
-                                          PromptMessage == "成功登入!"
-                                              ? Colors.green[300]!
-                                              : PromptMessage == "登入中..."
-                                              ? Colors.blue[300]!
-                                              : Colors.red[300]!,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        PromptMessage == "成功登入!"
-                                            ? Icons.check_circle_outline
-                                            : PromptMessage == "登入中..."
-                                            ? Icons.access_time
-                                            : Icons.error_outline,
-                                        size: 20,
-                                        color:
-                                            PromptMessage == "成功登入!"
-                                                ? Colors.green[700]
-                                                : PromptMessage == "登入中..."
-                                                ? Colors.blue[700]
-                                                : Colors.red[700],
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.2),
+                                        spreadRadius: 2,
+                                        blurRadius: 20,
+                                        offset: const Offset(0, 8),
                                       ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        PromptMessage,
-                                        style: TextStyle(
-                                          color:
-                                              PromptMessage == "成功登入!"
-                                                  ? Colors.green[700]
-                                                  : PromptMessage == "登入中..."
-                                                  ? Colors.blue[700]
-                                                  : Colors.red[700],
-                                          fontWeight: FontWeight.w500,
-                                        ),
+                                    ],
+                                  ),
+                                  child: Icon(
+                                    Icons.newspaper,
+                                    size: 60,
+                                    color: Colors.blue[600],
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                Text(
+                                  '歡迎回來',
+                                  style: TextStyle(
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                    shadows: [
+                                      Shadow(
+                                        color: Colors.black.withOpacity(0.3),
+                                        offset: const Offset(0, 2),
+                                        blurRadius: 4,
                                       ),
                                     ],
                                   ),
                                 ),
-
-                              // 登入按鈕
-                              Container(
-                                width: double.infinity,
-                                height: 56,
-                                child: ElevatedButton(
-                                  onPressed: _isLoggingIn ? null : _handleLogin,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor:
-                                        _isLoggingIn
-                                            ? Colors.grey[400]
-                                            : Colors.blue[600],
-                                    foregroundColor: Colors.white,
-                                    elevation: _isLoggingIn ? 0 : 8,
-                                    shadowColor: Colors.blue.withOpacity(0.3),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  '請登入您的帳號',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.white.withOpacity(0.9),
+                                    fontWeight: FontWeight.w300,
                                   ),
-                                  child:
-                                      _isLoggingIn
-                                          ? Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              SizedBox(
-                                                width: 20,
-                                                height: 20,
-                                                child: CircularProgressIndicator(
-                                                  strokeWidth: 2,
-                                                  valueColor:
-                                                      AlwaysStoppedAnimation<
-                                                        Color
-                                                      >(Colors.white),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 12),
-                                              const Text(
-                                                '登入中...',
-                                                style: TextStyle(
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                            ],
-                                          )
-                                          : const Text(
-                                            '登入',
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          // 登入表單
+                          Container(
+                            padding: const EdgeInsets.all(32),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(24),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  spreadRadius: 0,
+                                  blurRadius: 30,
+                                  offset: const Offset(0, 15),
+                                ),
+                              ],
+                            ),
+                            child: Form(
+                              key: _formKey,
+                              child: Column(
+                                children: [
+                                  // 帳號輸入框
+                                  _buildInputField(
+                                    controller: accountController,
+                                    label: '帳號',
+                                    hint: '請輸入您的帳號',
+                                    icon: Icons.person_outline,
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return '請輸入帳號';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+
+                                  const SizedBox(height: 24),
+
+                                  // 密碼輸入框
+                                  _buildInputField(
+                                    controller: passwordController,
+                                    label: '密碼',
+                                    hint: '請輸入您的密碼',
+                                    icon: Icons.lock_outline,
+                                    obscureText: _obscureText,
+                                    suffixIcon: IconButton(
+                                      icon: Icon(
+                                        _obscureText
+                                            ? Icons.visibility_off
+                                            : Icons.visibility,
+                                        color: Colors.grey[600],
+                                      ),
+                                      onPressed: () {
+                                        setState(() {
+                                          _obscureText = !_obscureText;
+                                        });
+                                      },
+                                    ),
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return '請輸入密碼';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+
+                                  const SizedBox(height: 32),
+
+                                  // 狀態訊息
+                                  if (PromptMessage.isNotEmpty)
+                                    Container(
+                                      margin: const EdgeInsets.only(bottom: 20),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                        horizontal: 16,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: PromptMessage == "成功登入!"
+                                            ? Colors.green[50]
+                                            : PromptMessage == "登入中..."
+                                                ? Colors.blue[50]
+                                                : Colors.red[50],
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: PromptMessage == "成功登入!"
+                                              ? Colors.green[300]!
+                                              : PromptMessage == "登入中..."
+                                                  ? Colors.blue[300]!
+                                                  : Colors.red[300]!,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            PromptMessage == "成功登入!"
+                                                ? Icons.check_circle_outline
+                                                : PromptMessage == "登入中..."
+                                                    ? Icons.access_time
+                                                    : Icons.error_outline,
+                                            size: 20,
+                                            color: PromptMessage == "成功登入!"
+                                                ? Colors.green[700]
+                                                : PromptMessage == "登入中..."
+                                                    ? Colors.blue[700]
+                                                    : Colors.red[700],
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            PromptMessage,
                                             style: TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.bold,
+                                              color: PromptMessage == "成功登入!"
+                                                  ? Colors.green[700]
+                                                  : PromptMessage == "登入中..."
+                                                      ? Colors.blue[700]
+                                                      : Colors.red[700],
+                                              fontWeight: FontWeight.w500,
                                             ),
                                           ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                                        ],
+                                      ),
+                                    ),
 
-                      const SizedBox(height: 24),
-
-                      // 註冊連結
-                      Container(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              '還沒有帳號？',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.9),
-                                fontSize: 16,
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const SignupPage(),
+                                  // 登入按鈕
+                                  Container(
+                                    width: double.infinity,
+                                    height: 56,
+                                    child: ElevatedButton(
+                                      onPressed:
+                                          _isLoggingIn ? null : _handleLogin,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: _isLoggingIn
+                                            ? Colors.grey[400]
+                                            : Colors.blue[600],
+                                        foregroundColor: Colors.white,
+                                        elevation: _isLoggingIn ? 0 : 8,
+                                        shadowColor:
+                                            Colors.blue.withOpacity(0.3),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(16),
+                                        ),
+                                      ),
+                                      child: _isLoggingIn
+                                          ? Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                SizedBox(
+                                                  width: 20,
+                                                  height: 20,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    valueColor:
+                                                        AlwaysStoppedAnimation<
+                                                            Color>(
+                                                      Colors.white,
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 12),
+                                                const Text(
+                                                  '登入中...',
+                                                  style: TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ],
+                                            )
+                                          : const Text(
+                                              '登入',
+                                              style: TextStyle(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                    ),
                                   ),
-                                );
-                              },
-                              child: const Text(
-                                '立即註冊',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  decoration: TextDecoration.underline,
-                                  decorationColor: Colors.white,
-                                ),
+                                ],
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+
+                          const SizedBox(height: 24),
+
+                          // 註冊連結
+                          Container(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  '還沒有帳號?',
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.9),
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const SignupPage(),
+                                      ),
+                                    );
+                                  },
+                                  child: const Text(
+                                    '立即註冊',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      decoration: TextDecoration.underline,
+                                      decorationColor: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
-            ),
+            ],
           ),
         ),
       ),
@@ -607,7 +633,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           PromptMessage = "成功登入!";
         });
 
-        // 如果前面還沒儲存用戶資料，這裡再儲存一次
+        // 如果前面還沒儲存用戶資料,這裡再儲存一次
         if (userId > 0) {
           await StoreDataInSharedPrederences(userId);
         }
