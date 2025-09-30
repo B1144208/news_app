@@ -1,0 +1,74 @@
+-- ===== 超級管理員 SQL 操作指南 =====
+
+-- 1. 查看所有用戶及其權限等級
+SELECT 
+    u.user_id,
+    u.user_account,
+    u.user_name,
+    u.user_level,
+    CASE u.user_level
+        WHEN 0 THEN '訪客'
+        WHEN 1 THEN '會員'
+        WHEN 5 THEN '普通管理員'
+        WHEN 6 THEN '數據管理員'
+        WHEN 7 THEN '高級管理員'
+        WHEN 10 THEN '超級管理員'
+        ELSE CONCAT('等級 ', u.user_level)
+    END as level_name
+FROM user_profile u
+ORDER BY u.user_level DESC, u.user_id;
+
+-- 2. 提升用戶為會員（Level 1）
+UPDATE user_profile 
+SET user_level = 1 
+WHERE user_account = 'username' AND user_level < 1;
+
+-- 3. 提升用戶為普通管理員（Level 5）
+UPDATE user_profile 
+SET user_level = 5 
+WHERE user_account = 'username';
+
+-- 4. 提升用戶為數據管理員（Level 6 - 可管理數據）
+UPDATE user_profile 
+SET user_level = 6 
+WHERE user_account = 'username';
+
+-- 5. 提升用戶為高級管理員（Level 7 - 可添加其他管理員）
+UPDATE user_profile 
+SET user_level = 7 
+WHERE user_account = 'username';
+
+-- 6. 繼承超級管理員權限（Level 10 - 只有現任超級管理員可執行）
+-- 警告：執行前請確認！
+UPDATE user_profile 
+SET user_level = 10 
+WHERE user_account = 'new_super_admin';
+
+-- 可選：同時降低自己的權限（權限轉移）
+UPDATE user_profile 
+SET user_level = 7 
+WHERE user_account = 'current_super_admin';
+
+-- 7. 批量操作示例
+
+-- 將所有訪客升級為會員
+UPDATE user_profile 
+SET user_level = 1 
+WHERE user_level = 0;
+
+-- 降級某個管理員
+UPDATE user_profile 
+SET user_level = 1 
+WHERE user_account = 'demoted_admin';
+
+-- 8. 安全檢查：確保至少有一個超級管理員
+SELECT COUNT(*) as super_admin_count 
+FROM user_profile 
+WHERE user_level = 10;
+
+-- 9. 記錄權限變更（如果有日誌表的話）
+-- INSERT INTO admin_logs (admin_id, action, target_user, old_level, new_level, timestamp)
+-- VALUES (10, 'CHANGE_LEVEL', 'username', 1, 5, NOW());
+
+-- 10. 查看特定用戶的詳細資訊
+SELECT * FROM user_profile WHERE user_account = 'username';
