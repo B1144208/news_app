@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'PermissionHelper.dart';
 
 // 連接頁面
 import 'config.dart';
@@ -14,19 +16,123 @@ class AdminPage extends StatefulWidget {
 }
 
 class _AdminPageState extends State<AdminPage> {
+  int _userLevel = 0;
+  String _levelName = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserInfo();
+  }
+
+  Future<void> _loadUserInfo() async {
+    final level = await PermissionHelper.getUserLevel();
+    setState(() {
+      _userLevel = level;
+      _levelName = PermissionHelper.getLevelName(level);
+    });
+  }
+
+  // 登出功能
+  Future<void> _handleLogout() async {
+    // 顯示確認對話框
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('確認登出'),
+          content: const Text('您確定要登出嗎?'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(
+                '取消',
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text('登出'),
+            ),
+          ],
+        );
+      },
+    );
+
+    // 如果用戶確認登出
+    if (shouldLogout == true) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        
+        // 清除所有登入相關資料
+        await prefs.remove('UserID');
+        await prefs.remove('Account');
+        await prefs.remove('Password');
+        await prefs.remove('UserLevel');
+        await prefs.remove('UserName');
+        await prefs.setBool('IsLogin', false);
+
+        print('===== 用戶已登出 =====');
+        print('已清除所有登入資料');
+        print('===================');
+
+        // 返回首頁
+        if (mounted) {
+          Navigator.of(context).popUntil((route) => route.isFirst);
+          
+          // 顯示登出成功訊息
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 8),
+                  Text('已成功登出'),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          );
+        }
+      } catch (e) {
+        print('登出錯誤: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('登出失敗: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('管理員頁面'),
-        backgroundColor: Colors.blue[800],
+        title: Text('管理員頁面 - $_levelName'),
+        backgroundColor: PermissionHelper.getLevelColor(_userLevel),
         foregroundColor: Colors.white,
         actions: [
           IconButton(
-            onPressed: () {
-              // 登出功能 - 回到首頁
-              Navigator.of(context).popUntil((route) => route.isFirst);
-            },
+            onPressed: _handleLogout,
             icon: const Icon(Icons.logout),
             tooltip: '登出',
           ),
@@ -41,7 +147,7 @@ class _AdminPageState extends State<AdminPage> {
           ),
         ),
         child: Center(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(20.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -67,7 +173,7 @@ class _AdminPageState extends State<AdminPage> {
                       Icon(
                         Icons.admin_panel_settings,
                         size: 60,
-                        color: Colors.blue[800],
+                        color: PermissionHelper.getLevelColor(_userLevel),
                       ),
                       const SizedBox(height: 15),
                       Text(
@@ -81,79 +187,117 @@ class _AdminPageState extends State<AdminPage> {
                       const SizedBox(height: 10),
                       Text(
                         '請選擇要管理的項目',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey[600],
-                        ),
+                        style: TextStyle(fontSize: 16, color: Colors.grey[600]),
                       ),
                     ],
                   ),
                 ),
 
-                // 管理選項卡片 - 三個並排
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                // 管理選項卡片 - 根據權限顯示
+                Wrap(
+                  spacing: 20,
+                  runSpacing: 20,
+                  alignment: WrapAlignment.center,
                   children: [
-                    // Data 管理卡片
-                    _buildManageCard(
-                      context: context,
-                      title: '數據管理',
-                      subtitle: 'Data Management',
-                      icon: Icons.storage,
-                      color: Colors.green,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const DataManagePage(),
+                    // 數據管理 - 需要 Level 6+ (manage_data 權限)
+                    if (_userLevel >= 6)
+                      _buildManageCard(
+                        context: context,
+                        title: '數據管理',
+                        subtitle: 'Data Management',
+                        icon: Icons.storage,
+                        color: Colors.green,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const DataManagePage(),
+                            ),
+                          );
+                        },
+                      ),
+
+                    // 用戶管理 - 需要 Level 7+ (add_manager 權限)
+                    if (_userLevel >= 7)
+                      _buildManageCard(
+                        context: context,
+                        title: '用戶管理',
+                        subtitle: 'User Management',
+                        icon: Icons.people,
+                        color: Colors.orange,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const UserManagePage(),
+                            ),
+                          );
+                        },
+                      ),
+
+                    // 錯誤日誌管理 - Level 5+ 即可查看
+                    if (_userLevel >= 5)
+                      _buildManageCard(
+                        context: context,
+                        title: '錯誤日誌',
+                        subtitle: 'Error Log',
+                        icon: Icons.error_outline,
+                        color: Colors.red,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ErrorlogPage(),
+                            ),
+                          );
+                        },
+                      ),
+
+                    // 如果權限不足,顯示提示
+                    if (_userLevel == 5)
+                      Container(
+                        width: 180,
+                        height: 200,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(15),
+                          border: Border.all(
+                            color: Colors.grey[400]!,
+                            width: 2,
+                            style: BorderStyle.none,
                           ),
-                        );
-                      },
-                    ),
-
-                    const SizedBox(width: 30),
-
-                    // User 管理卡片
-                    _buildManageCard(
-                      context: context,
-                      title: '用戶管理',
-                      subtitle: 'User Management',
-                      icon: Icons.people,
-                      color: Colors.orange,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const UserManagePage(),
-                          ),
-                        );
-                      },
-                    ),
-
-                    const SizedBox(width: 30),
-
-                    // ErrorLog 管理卡片
-                    _buildManageCard(
-                      context: context,
-                      title: '錯誤日誌管理',
-                      subtitle: 'Error Log Management',
-                      icon: Icons.error_outline,
-                      color: Colors.red,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const ErrorlogPage(),
-                          ),
-                        );
-                      },
-                    ),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.lock, size: 40, color: Colors.grey[400]),
+                            const SizedBox(height: 15),
+                            Text(
+                              '更多功能',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              '需要更高權限',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
 
                 const SizedBox(height: 40),
 
-                // 系統狀態信息
+                // 系統狀態信息 - 加入權限等級顯示
                 Container(
                   padding: const EdgeInsets.all(15),
                   decoration: BoxDecoration(
@@ -168,16 +312,46 @@ class _AdminPageState extends State<AdminPage> {
                       ),
                     ],
                   ),
-                  child: Row(
+                  child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.info_outline, color: Colors.blue[600]),
-                      const SizedBox(width: 8),
-                      Text(
-                        '系統運行正常',
-                        style: TextStyle(
-                          color: Colors.grey[700],
-                          fontSize: 14,
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.info_outline, color: Colors.blue[600]),
+                          const SizedBox(width: 8),
+                          Text(
+                            '系統運行正常',
+                            style: TextStyle(
+                              color: Colors.grey[700],
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: PermissionHelper.getLevelColor(
+                            _userLevel,
+                          ).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: PermissionHelper.getLevelColor(_userLevel),
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(
+                          '您的權限等級: Level $_userLevel',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: PermissionHelper.getLevelColor(_userLevel),
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ],
@@ -202,8 +376,8 @@ class _AdminPageState extends State<AdminPage> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 180,    // 調整寬度 (原本是180)
-        height: 200,   // 調整高度 (原本是200)
+        width: 180,
+        height: 200,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(15),
@@ -225,11 +399,7 @@ class _AdminPageState extends State<AdminPage> {
                 color: color.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                icon,
-                size: 40,
-                color: color,
-              ),
+              child: Icon(icon, size: 40, color: color),
             ),
             const SizedBox(height: 15),
             Text(
@@ -245,10 +415,7 @@ class _AdminPageState extends State<AdminPage> {
             Text(
               subtitle,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
             ),
           ],
         ),

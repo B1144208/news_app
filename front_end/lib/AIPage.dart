@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart'; // 引入套件
+import 'package:shared_preferences/shared_preferences.dart';
 
 // 引入詳細頁面
 import 'EventSortingDetailPage.dart';
@@ -60,7 +60,7 @@ class _AIPageState extends State<AIPage> {
     if (id != null) {
       queryParams['id'] = id.toString();
     }
-    final uri = Uri.parse('$_baseUrl/api/EventSorting').replace(queryParameters: queryParams);
+    final uri = Uri.parse('$_baseUrl/EventSorting').replace(queryParameters: queryParams);
 
     try {
       final response = await http.get(uri);
@@ -81,7 +81,7 @@ class _AIPageState extends State<AIPage> {
     if (id != null) {
       queryParams['id'] = id.toString();
     }
-    final uri = Uri.parse('$_baseUrl/api/MultiplePerspectives').replace(queryParameters: queryParams);
+    final uri = Uri.parse('$_baseUrl/MultiplePerspectives').replace(queryParameters: queryParams);
 
     try {
       final response = await http.get(uri);
@@ -100,7 +100,7 @@ class _AIPageState extends State<AIPage> {
   Future<void> _fetchBookmarks() async {
     if (_currentUserId == null) return;
 
-    final url = '$_baseUrl/api/user_action/bookmark/eventsorting?userId=$_currentUserId';
+    final url = '$_baseUrl/user_action/bookmark/eventsorting?userId=$_currentUserId';
 
     try {
       final response = await http.get(Uri.parse(url));
@@ -133,8 +133,8 @@ class _AIPageState extends State<AIPage> {
 
     final isBookmarked = _bookmarkStatus[eventId] ?? false;
     final url = isBookmarked
-        ? '$_baseUrl/api/user_action/delete/bookmark/$eventId'
-        : '$_baseUrl/api/user_action/insert/bookmark/eventsorting';
+        ? '$_baseUrl/user_action/delete/bookmark/$eventId'
+        : '$_baseUrl/user_action/insert/bookmark/eventsorting';
 
     final body = {
       'userId': _currentUserId,
@@ -254,6 +254,7 @@ class _AIPageState extends State<AIPage> {
     );
   }
 
+  // --- 事件整理內容 (已修正：無資料/錯誤時為空白，無 Title 時隱藏單一卡片) ---
   Widget _buildEventSortingContent() {
     return Column(
       children: [
@@ -272,22 +273,28 @@ class _AIPageState extends State<AIPage> {
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
-              } else if (snapshot.hasError) {
-                return Center(child: Text('載入失敗: ${snapshot.error}'));
-              } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                return const Center(child: Text('目前沒有事件整理資料。'));
+              } else if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                // 載入失敗或無資料時，返回空的元件，確保背景乾淨
+                return const SizedBox.shrink();
               } else {
                 final List events = snapshot.data!;
                 return ListView.builder(
                   itemCount: events.length,
                   itemBuilder: (context, index) {
                     final event = events[index];
+
+                    // 獲取並檢查 title
+                    final String title = event['eventsorting_title'] ?? '';
+                    if (title.isEmpty) {
+                      return const SizedBox.shrink(); // 如果沒有標題，則不顯示該卡片
+                    }
+
                     final eventId = event['eventsorting_id'];
                     final isBookmarked = _bookmarkStatus[eventId] ?? false;
 
                     return _buildNewsCard(
-                      title: event['eventsorting_title'],
-                      content: event['eventsorting_summary'],
+                      title: title,
+                      content: event['eventsorting_summary'] ?? '',
                       details: '${event['eventsorting_background_count'] ?? 0}則事件背景',
                       isBookmarked: isBookmarked,
                       onBookmarkTap: () => _toggleBookmark(eventId),
@@ -308,6 +315,7 @@ class _AIPageState extends State<AIPage> {
     );
   }
 
+  // --- 多方看法內容 (已修正：無資料/錯誤時為空白，無 Title 時隱藏單一卡片) ---
   Widget _buildMultiplePerspectivesContent() {
     return Column(
       children: [
@@ -326,18 +334,24 @@ class _AIPageState extends State<AIPage> {
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
-              } else if (snapshot.hasError) {
-                return Center(child: Text('載入失敗: ${snapshot.error}'));
-              } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                return const Center(child: Text('目前沒有多方看法資料。'));
+              } else if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                // 載入失敗或無資料時，返回空的元件，確保背景乾淨
+                return const SizedBox.shrink();
               } else {
                 final List views = snapshot.data!;
                 return ListView.builder(
                   itemCount: views.length,
                   itemBuilder: (context, index) {
                     final view = views[index];
+
+                    // 獲取並檢查 title
+                    final String title = view['multipleperspectives_title'] ?? '';
+                    if (title.isEmpty) {
+                      return const SizedBox.shrink(); // 如果沒有標題，則不顯示該卡片
+                    }
+
                     return _buildNewsCard(
-                      title: view['multipleperspectives_title'],
+                      title: title,
                       content: '看法統整',
                       details: '${view['multipleperspectives_view_count'] ?? 0}種對立觀點',
                       isMultiplePerspectives: true,
@@ -363,6 +377,7 @@ class _AIPageState extends State<AIPage> {
     );
   }
 
+  // --- 卡片元件 (保持不變) ---
   Widget _buildNewsCard({
     required String title,
     required String content,

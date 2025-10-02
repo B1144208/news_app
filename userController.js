@@ -19,11 +19,11 @@ async function searchUser (req, res, next) {
     // 檢查必要欄位 & 格式 - id
     try {
         requireFields = [ { field: 'id'   , data: id  , type: 'number' } ];
-
+        
         ( !login && account ) && requireFields.push (
             { field: 'account' , data: account , type: 'string' , other: ['non_null', 'non_change'] }
         );
-
+        
         login && requireFields.push(
             { field: 'account'  , data: account  , type: 'string' , other: ['non_null', 'non_change'] },
             { field: 'password' , data: password , type: 'string' , other: ['non_null', 'non_change'] },
@@ -38,7 +38,7 @@ async function searchUser (req, res, next) {
 
     // general search
     let sql = `
-        SELECT *
+        SELECT * 
         FROM user_profile
         WHERE 1
     `
@@ -136,58 +136,8 @@ async function insertUser (req, res, next) {
     }
 }
 // update
-// userController.js (請將此替換您的 updateUser 函式)
-
-// update
 async function updateUser(req, res, next) {
-    const { user_id, location_country_id } = req.body ?? {};
-
-
-    // 🚨 暫時跳過 checkRequireField，直接檢查關鍵字段 🚨
-    if (!user_id || typeof user_id !== 'number') {
-        // 如果 user_id 不是數字，嘗試轉換它 (因為前端可能傳遞數字型字串)
-        const parsedUserId = parseInt(user_id);
-        if (isNaN(parsedUserId)) {
-            const err = new Error("User ID is missing or invalid.");
-            err.status = 400;
-            err.desc = "middlewares-updateUser(): User ID check failed";
-            return next(err);
-        }
-    }
-
-    // 如果 location_country_id 是 'null' 或空字串，將其設為 null (用於資料庫)
-    const countryIdToUpdate = (location_country_id === 'null' || location_country_id === '') ? null : location_country_id;
-
-    let sql = `
-        UPDATE user_profile
-        SET location_country_id = ?
-        WHERE user_id = ?
-    `;
-    let params = [ countryIdToUpdate, user_id ];
-
-
-    try {
-        let [result] = await pool.query( sql, params );
-
-
-        if (result.affectedRows === 0) {
-            // 如果影響行數為 0，通常是 user_id 不存在，或新舊值相同
-            return res.apiSuccess(
-                { updated: false, user_id: user_id, affectedRows: 0, changedRows: 0 },
-                "Update Failed: User ID not found or Location is already set to this value."
-            );
-        }
-
-        return res.apiSuccess(
-            { updated: true, user_id: user_id, affectedRows: result.affectedRows, changedRows: result.changedRows },
-            "Update Success"
-        );
-    } catch (err) {
-        // 🌟 捕捉任何資料庫錯誤並記錄 🌟
-        err.desc = "middlewares-updateUser(): database update error";
-        console.error("DATABASE ERROR:", err);
-        return next(err);
-    }
+    return;
 }
 
 // delete

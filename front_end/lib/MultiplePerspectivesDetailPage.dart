@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fl_chart/fl_chart.dart';
-
+import 'config.dart';
 import 'EventSortingDetailPage.dart';
 
 class MultiplePerspectivesDetailPage extends StatefulWidget {
@@ -17,8 +17,7 @@ class MultiplePerspectivesDetailPage extends StatefulWidget {
 class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDetailPage> {
   int? _currentUserId;
   bool _isEventSortingMode = false;
-  final String _baseUrl = 'http://localhost:3000/api/MultiplePerspectives';
-  final String _userActionBaseUrl = 'http://localhost:3000/api/user_action';
+  final String _userActionBaseUrl = '$baseUrl/user_action';
   late Future<dynamic> _viewDetailsFuture;
 
   @override
@@ -38,7 +37,7 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
   }
 
   Future<dynamic> _fetchViewDetails() async {
-    final uri = Uri.parse(_baseUrl).replace(queryParameters: {'id': widget.id.toString()});
+    final uri = Uri.parse('$baseUrl/MultiplePerspectives').replace(queryParameters: {'id': widget.id.toString()});
 
     try {
       final response = await http.get(uri);
@@ -104,12 +103,13 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
         title: const Text('多方看法', style: TextStyle(color: Colors.black)),
         actions: [
           Switch(
-            value: _isEventSortingMode,
+            value: !_isEventSortingMode,
             onChanged: (bool value) {
-              setState(() {
-                _isEventSortingMode = value;
-              });
-              if (_isEventSortingMode) {
+              // value 為 true：使用者想保持「多方看法」模式（不導航）
+              // value 為 false：使用者想切換到「事件整理」模式（需要導航）
+
+              if (!value) {
+                // 當使用者撥到「關閉」時，我們切換到 EventSortingDetailPage
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => EventSortingDetailPage(id: widget.id)),

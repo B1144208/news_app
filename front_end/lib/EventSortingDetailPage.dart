@@ -19,9 +19,9 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
   bool _isEventSortingMode = true;
 
   // 定義 API 基礎 URL
-  final String _eventSortingUrl = '$baseUrl/api/EventSorting';
-  final String _userActionUrl = '$baseUrl/api/user_action';
-  final String _imageUrl = '$baseUrl/api/image'; // 這裡使用取得所有圖片的API
+  final String _eventSortingUrl = '$baseUrl/EventSorting';
+  final String _userActionUrl = '$baseUrl/user_action';
+  final String _imageUrl = '$baseUrl/image'; // 這裡使用取得所有圖片的API
 
   late Future<Map<String, dynamic>> _eventDetailsAndImagesFuture;
 
@@ -80,16 +80,20 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
   }
 
   // 根據 ID 找到對應的圖片 URL
+  // 由於上層呼叫已經用 -1 處理了 null，這裡保持接收 int
   String _findImageUrlById(int imageId) {
-    if (_allImages.isEmpty) {
+    // 增加檢查，如果 ID 是預設的無效值，直接返回空字串
+    if (_allImages.isEmpty || imageId <= 0) {
       return '';
     }
     try {
+      // 尋找對應 ID 的圖片
       final image = _allImages.firstWhere(
             (img) => img['image_id'] == imageId,
-        // 如果找不到，返回一個空地圖或 null
+        // 如果找不到，返回 null
         orElse: () => null,
       );
+      // 如果找到圖片，返回 URL；否則返回空字串
       return image?['image_origin_url'] ?? '';
     } catch (e) {
       print('Error finding image with ID $imageId: $e');
@@ -132,7 +136,6 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // ... (省略不變的 Scaffold 和 AppBar 部分)
       backgroundColor: Colors.grey.shade100,
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -148,10 +151,11 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
           Switch(
             value: !_isEventSortingMode,
             onChanged: (bool value) {
-              setState(() {
-                _isEventSortingMode = !value;
-              });
-              if (!_isEventSortingMode) {
+              // value 為 true：使用者想切換到「多方看法」模式（需要導航）
+              // value 為 false：使用者想保持「事件整理」模式（不導航）
+
+              if (value) {
+                // 當使用者撥到「開啟」時，我們切換到 MultiplePerspectivesDetailPage
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => MultiplePerspectivesDetailPage(id: widget.id)),
@@ -177,7 +181,10 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
           } else {
             final event = snapshot.data!;
             final List timelineItems = event['eventsorting_background'] ?? [];
-            final mainImageId = event['eventsorting_image'];
+
+            // 🐛 核心修復：處理 event['eventsorting_image'] 可能為 null 或非 int 的情況
+            // 使用 as int? ?? -1，如果為 null 或其他非 int 類型，則預設為 -1
+            final mainImageId = event['eventsorting_image'] as int? ?? -1;
 
             // 根據 ID 找到對應的 URL
             final mainImageUrl = _findImageUrlById(mainImageId);
@@ -250,9 +257,10 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
             child: Text('無相關新聞脈絡資料。'),
           ),
         ...items.map((item) {
-          // 處理新聞脈絡中的圖片 ID
-          final timelineImageId = item['image'];
-          final timelineImageUrl = _findImageUrlById(timelineImageId is int ? timelineImageId : -1);
+          // 🐛 修復：處理新聞脈絡中的圖片 ID 可能為 null 的情況
+          // 使用 as int? ?? -1 確保傳遞給 _findImageUrlById 的是 int
+          final timelineImageId = item['image'] as int? ?? -1;
+          final timelineImageUrl = _findImageUrlById(timelineImageId);
 
           return _buildTimelineItem(
               item['time'] ?? '',
@@ -314,7 +322,6 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
   }
 
   // 剩下的函式 (例如 _buildDisclaimer, _buildSummaryCard 等) 保持不變
-  // ... (此處省略以保持程式碼簡潔)
 
   Widget _buildDisclaimer() {
     return Padding(

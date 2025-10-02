@@ -59,6 +59,11 @@ async function searchNews(req, res, next) {
         } else if (locationType === 'country') {
             sql += ` AND nl.location_country_id = ?`;
             params.push(locationId);
+        } else if (locationType === 'region') {
+            // 🌟 關鍵修正：添加 region 的查詢條件 🌟
+            // 假設 news_location 表中 Region ID 欄位名為 location_region_id
+            sql += ` AND nl.location_region_id = ?`;
+            params.push(locationId);
         }
     }
 

@@ -35,16 +35,9 @@ class _HomePageState extends State<HomePage> {
   double _playbackSpeed = 1.0;
   int _currentNewsIndex = 0;
 
-  late final List<Widget> _pages;
-
   @override
   void initState() {
     super.initState();
-    _pages = [
-      const MapPage(),
-      _buildHomePage(),
-      const AIPage(),
-    ];
     _fetchNews();
   }
 
@@ -229,12 +222,19 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    // 在這裡創建頁面列表，確保每次 build 都使用最新的數據
+    final List<Widget> pages = [
+      const MapPage(),
+      _buildHomePage(), // 每次 build 都重新創建首頁
+      const AIPage(),
+    ];
+
     return Scaffold(
       backgroundColor: const Color(0xFFE8E3FF),
       body: SafeArea(
         child: Stack(
           children: [
-            _pages[_selectedIndex],
+            pages[_selectedIndex], // 使用本地的 pages 變數
             if (_isPlayerVisible) _buildMusicPlayer(),
           ],
         ),
@@ -508,13 +508,22 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildNewsList() {
+    // 添加調試信息
+    print('_buildNewsList called:');
+    print('_isLoading: $_isLoading');
+    print('_error: $_error');
+    print('_newsData.length: ${_newsData.length}');
+    print('_newsData: $_newsData');
+
     if (_isLoading) {
+      print('Showing loading indicator');
       return const Center(
         child: CircularProgressIndicator(),
       );
     }
 
     if (_error != null) {
+      print('Showing error: $_error');
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -537,6 +546,7 @@ class _HomePageState extends State<HomePage> {
     }
 
     if (_newsData.isEmpty) {
+      print('Showing empty data message');
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -557,6 +567,7 @@ class _HomePageState extends State<HomePage> {
       );
     }
 
+    print('Showing news list with ${_newsData.length} items');
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       child: RefreshIndicator(
@@ -565,6 +576,8 @@ class _HomePageState extends State<HomePage> {
           itemCount: _newsData.length,
           itemBuilder: (context, index) {
             final news = _newsData[index];
+            print('Building news item $index: ${news['title']}');
+
             return Container(
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.all(12),
@@ -581,6 +594,7 @@ class _HomePageState extends State<HomePage> {
               ),
               child: InkWell(
                 onTap: () {
+                  print('News item tapped: ${news['title']}');
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -605,6 +619,7 @@ class _HomePageState extends State<HomePage> {
                           news['cover_img'],
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
+                            print('Image load error: $error');
                             return const Icon(Icons.image, color: Colors.grey);
                           },
                         )
@@ -617,7 +632,7 @@ class _HomePageState extends State<HomePage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            news['channel'],
+                            news['channel'] ?? '未知頻道',
                             style: TextStyle(
                               color: Colors.grey[600],
                               fontSize: 12,
@@ -625,7 +640,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            news['title'],
+                            news['title'] ?? '無標題',
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
@@ -638,7 +653,7 @@ class _HomePageState extends State<HomePage> {
                           Row(
                             children: [
                               Text(
-                                news['publish_date'],
+                                news['publish_date'] ?? '未知時間',
                                 style: TextStyle(
                                   color: Colors.grey[600],
                                   fontSize: 12,
@@ -652,7 +667,7 @@ class _HomePageState extends State<HomePage> {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                '${news['comments']}',
+                                '${news['comments'] ?? 0}',
                                 style: TextStyle(
                                   color: Colors.grey[600],
                                   fontSize: 12,
@@ -703,16 +718,21 @@ class _HomePageState extends State<HomePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  const Icon(Icons.flash_on, color: Colors.orange, size: 20),
+                  const SizedBox(width: 8),
                   Text(
-                    currentNews['title'],
+                    '大綱：剩餘15分鐘',
+                    //currentNews['title'],
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
+                      color: Colors.black,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
+                  /*
                   Text(
                     currentNews['publish_date'],
                     style: TextStyle(
@@ -720,6 +740,7 @@ class _HomePageState extends State<HomePage> {
                       fontSize: 12,
                     ),
                   ),
+                  */
                 ],
               ),
             ),

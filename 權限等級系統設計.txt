@@ -1,0 +1,119 @@
+-- ===== 權限等級系統設計 =====
+
+-- 基礎權限等級（目前使用）
+INSERT INTO permission_level (level_id, level_name, manage_data, add_manager, inherited_position) VALUES
+
+-- 基礎用戶等級
+(0, '訪客', 0, 0, 0),                    -- 未登入用戶
+(1, '會員', 0, 0, 0),                    -- 已註冊會員
+
+-- 管理員等級
+(5, '普通管理員', 0, 0, 0),              -- 基礎管理權限
+(6, '數據管理員', 1, 0, 0),              -- manage_data = 1
+(7, '高級管理員', 1, 1, 0),              -- add_manager = 1
+(10, '超級管理員', 1, 1, 1);             -- inherited_position = 1
+
+-- ===== 當前權限功能對照表 =====
+/*
+┌─────────────┬──────────────────────────────────────────────┐
+│  等級 (ID)   │                 權限功能                      │
+├─────────────┼──────────────────────────────────────────────┤
+│ 0 - 訪客     │ • view (查看新聞)                             │
+│             │ • share (分享新聞)                            │
+├─────────────┼──────────────────────────────────────────────┤
+│ 1 - 會員     │ • 訪客所有權限                                │
+│             │ • bookmark (收藏新聞)                         │
+│             │ • comment (評論新聞)                          │
+│             │ • score (評分)                                │
+│             │ • search (進階搜尋)                           │
+├─────────────┼──────────────────────────────────────────────┤
+│ 5 - 普通管理員│ • 會員所有權限                                │
+│             │ • view_all_users (查看用戶列表)               │
+│             │ • moderate_comments (審核評論)                │
+│             │ • basic_reports (基礎報表)                    │
+├─────────────┼──────────────────────────────────────────────┤
+│ 6 - 數據管理員│ • 普通管理員所有權限                          │
+│             │ • manage_news (新聞管理 - 新增/編輯/刪除)     │
+│             │ • manage_categories (分類管理)                │
+│             │ • export_data (資料匯出)                      │
+│             │ • import_data (資料匯入)                      │
+│             │ • advanced_reports (進階報表)                 │
+├─────────────┼──────────────────────────────────────────────┤
+│ 7 - 高級管理員│ • 數據管理員所有權限                          │
+│             │ • manage_users (用戶管理 - 編輯/停權)         │
+│             │ • add_admin (新增普通/數據管理員)             │
+│             │ • system_settings (系統設定)                  │
+│             │ • audit_logs (審計日誌)                       │
+├─────────────┼──────────────────────────────────────────────┤
+│10 - 超級管理員│ • 高級管理員所有權限                          │
+│             │ • add_senior_admin (新增高級管理員)           │
+│             │ • inherit_position (繼承超級管理員權限)       │
+│             │ • delete_users (刪除用戶)                     │
+│             │ • database_backup (資料庫備份)                │
+│             │ • system_maintenance (系統維護)               │
+└─────────────┴──────────────────────────────────────────────┘
+*/
+
+-- ===== 未來可擴展的等級（預留） =====
+/*
+建議未來新增的等級：
+
+【會員等級細分】
+2 - VIP會員
+    • priority_support (優先客服)
+    • no_ads (無廣告)
+    • exclusive_content (專屬內容)
+
+3 - 認證作者
+    • publish_articles (發布文章)
+    • edit_own_articles (編輯自己的文章)
+    • view_article_stats (查看文章統計)
+
+4 - 特約編輯
+    • review_articles (審核文章)
+    • featured_articles (推薦文章)
+    • manage_tags (標籤管理)
+
+【專門管理員】
+8 - 安全管理員
+    • security_audit (安全審計)
+    • ip_management (IP管理)
+    • risk_control (風控管理)
+
+9 - 系統管理員
+    • server_management (伺服器管理)
+    • api_management (API管理)
+    • performance_monitor (效能監控)
+
+【特殊角色】
+11 - 開發者
+    • debug_mode (除錯模式)
+    • api_testing (API測試)
+    • beta_features (測試功能)
+
+12 - 審計員
+    • read_only_all (唯讀所有資料)
+    • compliance_check (合規檢查)
+    • report_generation (報告生成)
+*/
+
+-- ===== 超級管理員帳號 =====
+//先註冊一個帳號把等級提升到10
+
+UPDATE user_profile 
+SET user_level = 10 
+WHERE user_account = 'testuser01'; 
+
+-- ===== 查看當前用戶權限等級 =====
+SELECT 
+    u.user_id,
+    u.user_account,
+    u.user_name,
+    u.user_level,
+    p.level_name,
+    p.manage_data,
+    p.add_manager,
+    p.inherited_position
+FROM user_profile u
+LEFT JOIN permission_level p ON u.user_level = p.level_id
+ORDER BY u.user_level DESC;
