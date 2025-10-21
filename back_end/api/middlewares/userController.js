@@ -135,8 +135,7 @@ async function insertUser (req, res, next) {
         return next(err);
     }
 }
-// update
-// userController.js (請將此替換您的 updateUser 函式)
+
 
 // update
 async function updateUser(req, res, next) {

@@ -10,21 +10,79 @@ async function searchUserAction (req, res, next) {
     @ dataType  : news, channel, eventsorting, multipleperspectives
     */
     let { actionType, dataType } = req.params ?? {}
-    let { userId } = req.query ?? {}
+    let { userId, dataId } = req.query ?? {}
+
+    let sql;
+    let params;
 
     // 檢查必要欄位 & 格式 - id
+
     try {
-        [ actionType, dataType, userId ] = await checkRequireField ([
+        [ actionType, dataType ] = await checkRequireField ([
             { field: 'actionType'   , data: actionType  , type: 'string'    , other: ['non_null'],  enum: ['bookmark', 'comment', 'score', 'location'] },
-            { field: 'dataType'     , data: dataType    , type: 'string'    , other: ['non_null'],  enum: ['news', 'channel', 'eventsorting','multipleperspectives'] },
-            { field: 'userId'       , data: userId      , type: 'number'    , other: ['non_null']                                                                    }
+            { field: 'dataType'     , data: dataType    , type: 'string'    , other: ['non_null'],  enum: ['news', 'channel', 'eventsorting','multipleperspectives'] }
         ]);
     } catch (err) {
         err.desc = "middlewares-searchUserAction(): Missing or Invalid required fields";
         return next(err);
     }
 
-    // 特殊处理 location 查询
+
+    //  COMMENT 查詢
+
+    if (actionType === 'comment') {
+            // 檢查 dataId 是否存在
+            try {
+                [ dataId ] = await checkRequireField ([
+                    { field: 'dataId'       , data: dataId      , type: 'number'    , other: ['non_null'] }
+                ]);
+            } catch (err) {
+                err.desc = "middlewares-searchUserAction(): Missing or Invalid required dataId for comment search";
+                return next(err);
+            }
+
+            const dataIdFieldName = `${dataType}_id`; // e.g., 'eventsorting_id'
+
+            // 留言查詢的 SQL
+            sql = `
+                SELECT
+                    uc.user_id,
+                    uc.anonymous_id,
+                    uc.comment_text as text,
+                    uc.ceated_at
+                FROM
+                    user_comment uc
+                WHERE
+                    uc.${dataIdFieldName} = ?
+                ORDER BY
+                    uc.ceated_at DESC
+            `;
+            params = [ dataId ]; // 使用 dataId 作為參數
+
+            // 直接在這裡執行查詢並返回結果，跳過下面依賴 userId 的通用邏輯
+            try {
+                let [result] = await pool.query(sql, params);
+                return res.apiSuccess(result, "Search Comments Success");
+            } catch (err) {
+                err.desc = "middlewares-searchUserAction(): comment search error";
+                return next(err);
+            }
+        }
+
+
+
+    // 非 comment 的動作才需要檢查 userId
+    try {
+        [ userId ] = await checkRequireField ([
+            { field: 'userId'       , data: userId      , type: 'number'    , other: ['non_null'] }
+        ]);
+    } catch (err) {
+        err.desc = "middlewares-searchUserAction(): Missing or Invalid required userId for non-comment actions";
+        return next(err);
+    }
+
+
+    // 特殊处理 location 查询 (原結構保留)
     if (actionType === 'location') {
         let sql = `
                 SELECT ul.*
@@ -41,17 +99,17 @@ async function searchUserAction (req, res, next) {
         }
     }
 
-    let sql = `
+    sql = `
         SELECT *
         FROM user_${actionType}
         WHERE user_id=? AND ${dataType}_id IS NOT NULL
     `;
-    let params = [ userId ];
+    params = [ userId ];
     try {
         let [result] = await pool.query(sql, params);
         return res.apiSuccess(result, "Search Success");
     } catch (err) {
-        err.desc = "middlewares-searchUserAction(): ";
+        err.desc = "middlewares-searchUserAction(): database search error for other actions";
         return next(err);
     }
 }
