@@ -4,6 +4,8 @@ import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:math';
+// 🌟 修正：引入 shared_preferences 用於用戶狀態持久化 🌟
+import 'package:shared_preferences/shared_preferences.dart';
 
 // 引入配置檔 (假設 config.dart 包含了 baseUrl)
 import 'config.dart';
@@ -49,7 +51,8 @@ class _MapPageState extends State<MapPage> {
 
   static const String _kUnselectOption = '--- [未選取] ---';
 
-  final int _currentUserId = 1; // 假定的用戶 ID
+  // 🌟 修正：改為 nullable int，用於儲存從 SharedPreferences 載入的實際用戶 ID 🌟
+  int? _currentUserId;
   static const LatLng _taiwanCenter = LatLng(23.6978, 120.9605);
   static const double _kMaxSearchDistanceKm = 10000.0;
 
@@ -109,23 +112,41 @@ class _MapPageState extends State<MapPage> {
     return null;
   }
 
+  // 🌟 新增：讀取 UserID 的方法 🌟
+  Future<void> _loadUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _currentUserId = prefs.getInt('UserID'); // 使用 'UserID'
+        print('MapPage - Loaded UserID: $_currentUserId');
+      });
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    _fetchLocations(baseUrl);
+    // 🌟 修正：優先載入用戶 ID，再載入地點和上次位置 🌟
+    _loadUserId().then((_) {
+      _fetchLocations(baseUrl).then((_) {
+        // 確保地點資料載入後才讀取上次位置
+        if (!_isLoading && _error == null) {
+          _loadLastLocation();
+        } else {
+          _zoomToTaiwan();
+        }
+      });
+    });
   }
 
   @override
   void dispose() {
+    // 儲存上次位置的邏輯
     int? countryIdToSave;
-
-    // 嘗試從當前選取中找到 Country ID
     if (_selectedLocation != null) {
       countryIdToSave = _safeId('country_id', _selectedLocation!);
     }
-
     _saveLastLocation(countryIdToSave ?? 0);
-
     super.dispose();
   }
 
@@ -262,7 +283,6 @@ class _MapPageState extends State<MapPage> {
 
   // ===================================
   // 新聞切換邏輯 (接收目標範圍參數)
-  // 🌟 修正：使用 safeId 確保 ID 準確 🌟
   // ===================================
   void _toggleNewsScope({required String targetScope}) {
     if (_selectedLocation == null) return;
@@ -406,7 +426,7 @@ class _MapPageState extends State<MapPage> {
     );
   }
 
-  // 🌟 修正：使用 safeId 檢查按鈕狀態，並實作雙按鈕邏輯 🌟
+  // 右側資訊面板
   Widget _buildRightPanel() {
     if (_selectedLocation == null) {
       return const SizedBox.shrink();
@@ -700,6 +720,12 @@ class _MapPageState extends State<MapPage> {
 
   // === API: 讀取上次儲存的位置 ID ===
   Future<void> _loadLastLocation() async {
+    // 🌟 修正：未登入則不載入上次位置 🌟
+    if (_currentUserId == null) {
+      _zoomToTaiwan();
+      return;
+    }
+
     if (_locations.isEmpty) return;
     final uri = Uri.parse('$baseUrl/user');
     try {
@@ -708,7 +734,7 @@ class _MapPageState extends State<MapPage> {
         final data = json.decode(response.body);
         final List<dynamic> results = data['data'];
         final userData = results.firstWhere(
-              (user) => user['user_id'] == _currentUserId,
+              (user) => user['user_id'] == _currentUserId, // 使用 _currentUserId
           orElse: () => null,
         );
         if (userData != null) {
@@ -733,8 +759,7 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
-  // 替換您檔案中的 _setMapToLastLocation 函式
-// 🌟 修正：強制將新聞範圍設定為 country 🌟
+  // 設定地圖到上次位置
   void _setMapToLastLocation(int id, String idKey) {
     try {
       // 找出匹配地點 (使用傳入的 ID 和 Key 來找到地點資料行)
@@ -791,7 +816,7 @@ class _MapPageState extends State<MapPage> {
             _selectedLocation = targetLocation;
             _isPanelVisible = true;
 
-            // 🚨 點擊後，強制新聞範圍為 'country'
+            // 點擊後，強制新聞範圍為 'country'
             _currentNewsScope = 'country';
           });
 
@@ -811,7 +836,10 @@ class _MapPageState extends State<MapPage> {
 
   // === API: 儲存當前位置 ID ===
   Future<void> _saveLastLocation(int? countryId) async {
-    if (countryId == null) return;
+    // 🌟 修正：未登入或 ID 為空則不儲存 🌟
+    if (_currentUserId == null || countryId == null || countryId == 0) {
+      return;
+    }
 
     final Map<String, dynamic> body = {
       "user_id": _currentUserId,
@@ -987,9 +1015,12 @@ class _MapPageState extends State<MapPage> {
     }
 
     if (searchTarget != null) {
+      // 由於 _searchLocation 已經處理了定位和儲存邏輯，這裡直接呼叫即可
       _searchLocation(searchTarget);
 
       if (countryIdToSave != null) {
+        // 雖然 _searchLocation 內部已經執行儲存，但為了確保邏輯一致性，這裡可以保留
+        // 確保儲存的是國家 ID
         _saveLastLocation(countryIdToSave);
       }
     }
@@ -1063,6 +1094,7 @@ class _MapPageState extends State<MapPage> {
                         options: MapOptions(
                           initialCenter: _currentCenter,
                           initialZoom: _currentZoom,
+                          // 🌟 修正：保留 cameraConstraint，因為您的 flutter_map 版本已支援 🌟
                           cameraConstraint: CameraConstraint.contain(
                             bounds: LatLngBounds(
                               LatLng(-90, -180),

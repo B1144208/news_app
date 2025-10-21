@@ -3,6 +3,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
+// 確保路徑正確，以便引入 CommentsPage.dart
+import 'CommentsPage.dart';
 import 'MultiplePerspectivesDetailPage.dart';
 import 'config.dart';
 
@@ -18,82 +20,78 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
   int? _currentUserId;
   bool _isEventSortingMode = true;
 
-  // 定義 API 基礎 URL
+  // 💥 修正 API URL 基礎路徑：
+  // 設置為 $baseUrl，在 _insertUserAction 中手動添加 /user/，以匹配後端 Router
+  final String _userActionBaseUrl = '$baseUrl';
+
   final String _eventSortingUrl = '$baseUrl/EventSorting';
-  final String _userActionUrl = '$baseUrl/user_action';
-  final String _imageUrl = '$baseUrl/image'; // 這裡使用取得所有圖片的API
+  final String _imageUrl = '$baseUrl/image';
 
   late Future<Map<String, dynamic>> _eventDetailsAndImagesFuture;
 
-  // 儲存所有圖片資料的列表，以便比對
   List<dynamic> _allImages = [];
 
   @override
   void initState() {
     super.initState();
+    // 優先載入 UserID，確保後續 API 呼叫能包含用戶資訊
     _loadUserId().then((_) {
+      // 確保在記錄 view 動作前，userId 已經載入
       _eventDetailsAndImagesFuture = _fetchEventDetailsAndImages();
       _insertUserAction('view', 'eventsorting');
     });
   }
 
+  // 🐛 關鍵修復：確保讀取登入頁面存儲的 'UserID' (大寫)
   Future<void> _loadUserId() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _currentUserId = prefs.getInt('userId');
+      _currentUserId = prefs.getInt('UserID'); // 使用 'UserID'
+      print('EventSortingDetailPage - Loaded UserID: $_currentUserId'); // 偵錯用
     });
   }
 
-  // 新增的合併資料獲取函式
   Future<Map<String, dynamic>> _fetchEventDetailsAndImages() async {
     final eventUri = Uri.parse(_eventSortingUrl).replace(queryParameters: {'id': widget.id.toString()});
     final imagesUri = Uri.parse(_imageUrl);
 
     try {
-      // 1. 同時發送兩個 API 請求
       final eventResponse = await http.get(eventUri);
       final imagesResponse = await http.get(imagesUri);
 
-      // 檢查事件資料的回應
       if (eventResponse.statusCode != 200) {
-        throw Exception('Failed to load event details');
+        throw Exception('Failed to load event details: ${eventResponse.statusCode}');
       }
 
-      // 檢查圖片資料的回應
       if (imagesResponse.statusCode == 200) {
         final imagesData = json.decode(imagesResponse.body);
-        _allImages = imagesData['data'] ?? [];
+        _allImages = imagesData['data'] is List ? imagesData['data'] : [];
       } else {
         print('Warning: Failed to load all images. Status code: ${imagesResponse.statusCode}');
-        _allImages = []; // 確保即使失敗也能繼續執行
+        _allImages = [];
       }
 
       final eventData = json.decode(eventResponse.body);
-      if (eventData['data'].isNotEmpty) {
+      if (eventData['data'] is List && eventData['data'].isNotEmpty) {
         return eventData['data'][0];
       } else {
-        throw Exception('Event not found');
+        throw Exception('Event not found or data format invalid');
       }
     } catch (e) {
-      throw Exception('Failed to connect to API: $e');
+      throw Exception('Failed to connect to API or process data: $e');
     }
   }
 
-  // 根據 ID 找到對應的圖片 URL
-  // 由於上層呼叫已經用 -1 處理了 null，這裡保持接收 int
   String _findImageUrlById(int imageId) {
-    // 增加檢查，如果 ID 是預設的無效值，直接返回空字串
     if (_allImages.isEmpty || imageId <= 0) {
       return '';
     }
     try {
-      // 尋找對應 ID 的圖片
       final image = _allImages.firstWhere(
             (img) => img['image_id'] == imageId,
-        // 如果找不到，返回 null
         orElse: () => null,
       );
-      // 如果找到圖片，返回 URL；否則返回空字串
+      // 確保回傳一個非 null 的字串
       return image?['image_origin_url'] ?? '';
     } catch (e) {
       print('Error finding image with ID $imageId: $e');
@@ -101,20 +99,29 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
     }
   }
 
-  // 原有的使用者行為記錄函式不變
+  // 💥 通用 API 函式：處理所有用戶行為 (view, share, bookmark, comment, score)
   Future<void> _insertUserAction(String actionType, String dataType, {String? text, int? score}) async {
-    final url = '$_userActionUrl/$actionType/$dataType';
-    final body = {
-      'userId': _currentUserId,
+    // 💥 構造正確的 URL： $baseUrl/user/:actionType/:dataType
+    final url = '$_userActionBaseUrl/user/$actionType/$dataType';
+
+    final body = <String, dynamic>{
+      'userId': _currentUserId, // 初始包含 userId (如果非 null)
       'dataId': widget.id,
-      'text': text,
-      'score': score,
+      if (text != null && text.isNotEmpty) 'text': text,
+      if (score != null) 'score': score, // 只有非 null 才傳遞
     };
 
+    // 根據後端邏輯，view 和 share 需移除 userId, 改傳 clientIp
     if (actionType == 'view' || actionType == 'share') {
-      body['clientIp'] = '127.0.0.1';
-      body.remove('userId');
+      body['clientIp'] = '127.0.0.1'; // 提供 clientIp
+      body.remove('userId'); // 移除 userId
     }
+
+    // 最終移除 body 中 value 為 null 的鍵
+    body.removeWhere((key, value) => value == null);
+
+    print('Sending API to: $url');
+    print('Request Body: ${json.encode(body)}'); // 偵錯用
 
     try {
       final response = await http.post(
@@ -124,13 +131,94 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
       );
 
       if (response.statusCode == 200) {
-        print('Action $actionType recorded successfully!');
+        print('Action $actionType recorded successfully! Response: ${response.body}');
       } else {
-        print('Failed to record action $actionType: ${response.body}');
+        print('Failed to record action $actionType. Status: ${response.statusCode}, Body: ${response.body}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('操作失敗: ${response.statusCode} - ${json.decode(response.body)['message'] ?? '伺服器錯誤'}')),
+        );
       }
     } catch (e) {
       print('Error recording action: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('連線錯誤: $e')),
+      );
     }
+  }
+
+  // 評分對話框函式保持不變
+  Future<void> _showRatingDialog() async {
+    int? selectedScore;
+
+    if (_currentUserId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('請先登入以使用評分功能')),
+      );
+      return;
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('為此事件整理評分'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('請給予 1 到 5 分 (5 分為最高)：'),
+              const SizedBox(height: 10),
+              StatefulBuilder(
+                builder: (BuildContext context, StateSetter setState) {
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (index) {
+                      final score = index + 1;
+                      return IconButton(
+                        icon: Icon(
+                          score <= (selectedScore ?? 0) ? Icons.star : Icons.star_border,
+                          color: Colors.amber,
+                          size: 30,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            selectedScore = score;
+                          });
+                        },
+                      );
+                    }),
+                  );
+                },
+              ),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('取消'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: const Text('確定'),
+              onPressed: () {
+                if (selectedScore != null && selectedScore! >= 1 && selectedScore! <= 5) {
+                  // 呼叫 API 記錄評分
+                  _insertUserAction('score', 'eventsorting', score: selectedScore);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('感謝您的 $selectedScore 分評分!')),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('請選擇有效的分數 (1-5)！')),
+                  );
+                }
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -151,11 +239,8 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
           Switch(
             value: !_isEventSortingMode,
             onChanged: (bool value) {
-              // value 為 true：使用者想切換到「多方看法」模式（需要導航）
-              // value 為 false：使用者想保持「事件整理」模式（不導航）
-
               if (value) {
-                // 當使用者撥到「開啟」時，我們切換到 MultiplePerspectivesDetailPage
+                // 假設 MultiplePerspectivesDetailPage 也在同一個 id 上操作
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => MultiplePerspectivesDetailPage(id: widget.id)),
@@ -182,11 +267,7 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
             final event = snapshot.data!;
             final List timelineItems = event['eventsorting_background'] ?? [];
 
-            // 🐛 核心修復：處理 event['eventsorting_image'] 可能為 null 或非 int 的情況
-            // 使用 as int? ?? -1，如果為 null 或其他非 int 類型，則預設為 -1
             final mainImageId = event['eventsorting_image'] as int? ?? -1;
-
-            // 根據 ID 找到對應的 URL
             final mainImageUrl = _findImageUrlById(mainImageId);
 
             return SingleChildScrollView(
@@ -214,7 +295,7 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
                     padding: const EdgeInsets.all(16.0),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12.0),
-                      child: _buildMainImage(mainImageUrl), // 直接傳入 URL 字串
+                      child: _buildMainImage(mainImageUrl),
                     ),
                   ),
                   _buildSummaryCard(event['eventsorting_summary'] ?? ''),
@@ -229,7 +310,8 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
     );
   }
 
-  // 由於現在直接傳入 URL，_buildMainImage 和 _buildImage 函式需要調整
+  // --- 輔助 Widget 函式 (保持不變) ---
+
   Widget _buildMainImage(String? imageUrl) {
     if (imageUrl != null && imageUrl.isNotEmpty) {
       return Image.network(
@@ -257,8 +339,6 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
             child: Text('無相關新聞脈絡資料。'),
           ),
         ...items.map((item) {
-          // 🐛 修復：處理新聞脈絡中的圖片 ID 可能為 null 的情況
-          // 使用 as int? ?? -1 確保傳遞給 _findImageUrlById 的是 int
           final timelineImageId = item['image'] as int? ?? -1;
           final timelineImageUrl = _findImageUrlById(timelineImageId);
 
@@ -267,7 +347,7 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
               item['title'] ?? '',
               item['description'] ?? '',
               item['source'] ?? '',
-              timelineImageUrl // 傳入 URL
+              timelineImageUrl
           );
         }).toList(),
       ],
@@ -298,14 +378,13 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
           const SizedBox(width: 8),
           ClipRRect(
             borderRadius: BorderRadius.circular(8.0),
-            child: _buildImage(imageUrl), // 直接傳入 URL 字串
+            child: _buildImage(imageUrl),
           ),
         ],
       ),
     );
   }
 
-  // 處理新聞脈絡圖片的輔助函式
   Widget _buildImage(String imageUrl) {
     if (imageUrl.isNotEmpty) {
       return Image.network(
@@ -320,8 +399,6 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
     }
     return _buildPlaceholderImage(60, 60);
   }
-
-  // 剩下的函式 (例如 _buildDisclaimer, _buildSummaryCard 等) 保持不變
 
   Widget _buildDisclaimer() {
     return Padding(
@@ -373,6 +450,8 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
     );
   }
 
+  // --- 底部操作欄位 (Bottom Actions) ---
+
   Widget _buildBottomActions() {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10.0),
@@ -383,14 +462,22 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
+          // 💥 留言按鈕：導航到通用 CommentsPage
           _buildActionIcon(
               icon: Icons.message,
               label: '留言',
               onTap: () {
                 if (_currentUserId != null) {
-                  // TODO: 顯示留言輸入框並呼叫 _insertUserAction('comment', ...)
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('留言功能已啟用')),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => CommentsPage(
+                        dataId: widget.id, // 傳遞事件 ID
+                        currentUserId: _currentUserId,
+                        dataType: 'eventsorting', // 傳遞數據類型
+                        insertUserAction: _insertUserAction, // 傳遞 API 函式
+                      ),
+                    ),
                   );
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -399,13 +486,31 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
                 }
               }
           ),
+
           _buildActionIcon(
               icon: Icons.chat_bubble_outline,
               label: '聊天機器人',
               onTap: () {
-                // TODO: 點擊聊天機器人功能
+                if (_currentUserId != null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('點擊了聊天機器人，待實作導航')),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('請先登入以使用聊天機器人')),
+                  );
+                }
               }
           ),
+
+          // 評分按鈕
+          _buildActionIcon(
+              icon: Icons.star,
+              label: '評分',
+              onTap: _showRatingDialog
+          ),
+
+          // 收藏按鈕
           _buildActionIcon(
               icon: Icons.bookmark,
               label: '收藏',
@@ -422,12 +527,13 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
                 }
               }
           ),
+
+          // 分享按鈕
           _buildActionIcon(
               icon: Icons.share,
               label: '分享',
               onTap: () {
                 _insertUserAction('share', 'eventsorting');
-                // TODO: 觸發系統分享功能
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('分享功能已啟用')),
                 );
