@@ -21,6 +21,12 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
   int? _currentUserId;
   bool _isEventSortingMode = false;
 
+  // 💥 NEW: 儲存從 API 獲取的分數數據
+  int _totalScore = 0;
+  int _totalRater = 0;
+  // 💥 NEW: 計算平均分數 (四捨五入到小數點後一位)
+  double get _averageScore => _totalRater > 0 ? (_totalScore / _totalRater) : 0.0;
+
   // 修正：只保留 $baseUrl。
   final String _userActionBaseUrl = '$baseUrl';
 
@@ -30,6 +36,7 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
   void initState() {
     super.initState();
     _loadUserId().then((_) {
+      // 確保在 _loadUserId 完成後才開始 fetch data
       _viewDetailsFuture = _fetchViewDetails();
       // 在載入完畢後發送 view action
       _insertUserAction('view', 'multipleperspectives');
@@ -44,38 +51,58 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
     });
   }
 
+  // 💥 NEW: 重新獲取事件詳情，用於評分或留言後更新 UI
+  Future<void> _refreshViewDetails() async {
+    // 設置新的 Future，並觸發 UI 刷新
+    setState(() {
+      _viewDetailsFuture = _fetchViewDetails();
+    });
+  }
+
   Future<dynamic> _fetchViewDetails() async {
     final uri = Uri.parse('$baseUrl/MultiplePerspectives').replace(queryParameters: {'id': widget.id.toString()});
 
     try {
       final response = await http.get(uri);
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        // 確保中文字元正確解析
+        final data = json.decode(utf8.decode(response.bodyBytes));
         if (data['data'].isNotEmpty) {
-          return data['data'][0];
+          final view = data['data'][0];
+
+          // 💥 NEW: 獲取並保存分數數據
+          if (mounted) {
+            setState(() {
+              // 假設 API 欄位為 'total_score' 和 'total_rater'
+              _totalScore = view['total_score'] as int? ?? 0;
+              _totalRater = view['total_rater'] as int? ?? 0;
+              print('Fetched Score: Total Score $_totalScore, Total Rater $_totalRater');
+            });
+          }
+
+          return view;
         } else {
           return null;
         }
       } else {
-        throw Exception('Failed to load view details');
+        throw Exception('Failed to load view details: ${response.statusCode}');
       }
     } catch (e) {
-      throw Exception('Failed to connect to API: $e');
+      throw Exception('Failed to connect to API or process data: $e');
     }
   }
 
   // 通用用戶行為 API 函式
   Future<void> _insertUserAction(String actionType, String dataType, {String? text, int? score}) async {
-    // 🌟 關鍵修正：確保路徑正確，移除多餘的 /insert 🌟
     // 假設您的後端路由是 $baseUrl/user/:actionType/:dataType
     final url = '$_userActionBaseUrl/user/$actionType/$dataType';
 
-    final body = {
+    final body = <String, dynamic>{
       // 確保傳遞給後端的 userId 和 dataId 是 int 類型 (或 null for view/share)
       'userId': _currentUserId,
       'dataId': widget.id,
-      'text': text,
-      'score': score,
+      if (text != null && text.isNotEmpty) 'text': text,
+      if (score != null) 'score': score,
     };
 
     if (actionType == 'view' || actionType == 'share') {
@@ -83,6 +110,8 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
       // 僅在 view/share 動作時移除 userId，讓後端使用 clientIp
       body.remove('userId');
     }
+
+    body.removeWhere((key, value) => value == null);
 
     try {
       final response = await http.post(
@@ -93,86 +122,51 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
 
       if (response.statusCode == 200) {
         print('Action $actionType recorded successfully!');
+        // 💥 NEW: 如果是 score 或 comment 成功，重新載入數據以更新分數
+        if (actionType == 'score' || actionType == 'comment') {
+          _refreshViewDetails();
+        }
       } else {
         print('Failed to record action $actionType. Status: ${response.statusCode}');
-        // 打印詳細的錯誤訊息有助於調試
-        print('Request URL: $url');
-        print('Request Body: ${json.encode(body)}');
-        print('Response Body: ${response.body}'); // 打印後端返回的錯誤訊息
+        if (actionType != 'view') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('操作失敗: ${response.statusCode} - ${json.decode(response.body)['message'] ?? '伺服器錯誤'}')),
+          );
+        }
       }
     } catch (e) {
       print('Error recording action: $e');
+      if (actionType != 'view') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('連線錯誤: $e')),
+        );
+      }
     }
   }
 
-  // 評分 Dialog (新增)
-  void _showRatingDialog() {
-    int? selectedScore;
+  // 💥 NEW: 導航至 CommentsPage 的函式，傳遞分數和回調
+  void _navigateToCommentsPage() {
+    if (_currentUserId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('請先登入以使用評分/留言功能')),
+      );
+      return;
+    }
 
-    showDialog(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: const Text('請給予評分'),
-          content: StatefulBuilder(
-            builder: (BuildContext context, StateSetter setState) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('您對此觀點的滿意度如何？ (1~5分)'),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(5, (index) {
-                      final score = index + 1;
-                      return IconButton(
-                        icon: Icon(
-                          Icons.star,
-                          // 評分星星的顏色邏輯
-                          color: score <= (selectedScore ?? 0)
-                              ? Colors.amber
-                              : Colors.grey,
-                          size: 30,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            selectedScore = score;
-                          });
-                        },
-                      );
-                    }),
-                  ),
-                ],
-              );
-            },
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('取消'),
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-              },
-            ),
-            TextButton(
-              child: const Text('確認評分'),
-              onPressed: () {
-                if (selectedScore != null) {
-                  // 呼叫評分 API，傳遞 score 參數
-                  _insertUserAction('score', 'multipleperspectives', score: selectedScore);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('評分 $selectedScore 已送出！')),
-                  );
-                  Navigator.of(dialogContext).pop();
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('請選擇一個分數')),
-                  );
-                }
-              },
-            ),
-          ],
-        );
-      },
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CommentsPage(
+          dataId: widget.id,
+          currentUserId: _currentUserId,
+          dataType: 'multipleperspectives',
+          insertUserAction: _insertUserAction,
+          // 💥 NEW: 傳遞目前的分數數據和更新回調
+          totalScore: _totalScore,
+          totalRater: _totalRater,
+          onParentDataUpdated: _refreshViewDetails, // 傳遞回調函式
+        ),
+      ),
     );
   }
 
@@ -197,6 +191,7 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
             value: !_isEventSortingMode,
             onChanged: (bool value) {
               if (!value) {
+                // 切換到事件整理頁面
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => EventSortingDetailPage(id: widget.id)),
@@ -222,6 +217,7 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
           } else {
             final view = snapshot.data;
             final List<dynamic> viewpoints = view['viewpoints'] ?? [];
+            // discussions 欄位似乎在您的範例中是空的，但我們保留其結構
             final List<dynamic> discussions = view['discussions'] ?? [];
 
             return SingleChildScrollView(
@@ -235,7 +231,7 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
                       children: [
                         Expanded(
                           child: Text(
-                            view['multipleperspectives_title'] ?? '',
+                            view['multipleperspectives_title'] ?? '無標題',
                             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                           ),
                         ),
@@ -243,9 +239,12 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
                       ],
                     ),
                   ),
+                  // 💥 NEW: 顯示分數
+                  _buildScoreCard(),
                   _buildViewpointSection(viewpoints),
                   _buildChartSection(viewpoints),
                   _buildDiscussionSection(discussions),
+                  const SizedBox(height: 50),
                 ],
               ),
             );
@@ -253,6 +252,32 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
         },
       ),
       bottomNavigationBar: _buildBottomActions(),
+    );
+  }
+
+  // --- 輔助 Widget 函式 ---
+
+  // 💥 NEW: 顯示分數的 Widget
+  Widget _buildScoreCard() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.star, color: Colors.amber, size: 24),
+          const SizedBox(width: 8),
+          Text(
+            // 格式化分數，保留一位小數
+            '${_averageScore.toStringAsFixed(1)} / 5.0',
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(width: 16),
+          Text(
+            '來自 $_totalRater 位使用者評分',
+            style: const TextStyle(fontSize: 14, color: Colors.grey),
+          ),
+        ],
+      ),
     );
   }
 
@@ -360,7 +385,8 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
           percent = double.tryParse(point['percent']!) ?? 0.0;
         }
 
-        final value = (totalPercent > 0) ? (percent / totalPercent * 100) : 0;
+        // 避免除以零
+        final value = (totalPercent > 0) ? (percent / totalPercent * 100) : 0.0;
 
         sections.add(
           PieChartSectionData(
@@ -456,28 +482,11 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
+          // 💥 MODIFIED: 評分/留言
           _buildActionIcon(
               icon: Icons.message,
-              label: '留言',
-              onTap: () {
-                if (_currentUserId != null) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => CommentsPage(
-                        dataId: widget.id,
-                        currentUserId: _currentUserId,
-                        dataType: 'multipleperspectives',
-                        insertUserAction: _insertUserAction, // 傳遞發送 API 函式
-                      ),
-                    ),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('請先登入以使用留言功能')),
-                  );
-                }
-              }
+              label: '評分/留言',
+              onTap: _navigateToCommentsPage // 呼叫統一的導航函式
           ),
           _buildActionIcon(
               icon: Icons.chat_bubble_outline,
@@ -488,20 +497,7 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
                 );
               }
           ),
-          // 🌟 新增：評分按鈕 🌟
-          _buildActionIcon(
-              icon: Icons.star_border,
-              label: '評分',
-              onTap: () {
-                if (_currentUserId != null) {
-                  _showRatingDialog(); // 呼叫評分 Dialog
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('請先登入以使用評分功能')),
-                  );
-                }
-              }
-          ),
+
           _buildActionIcon(
               icon: Icons.bookmark,
               label: '收藏',

@@ -3,32 +3,58 @@ const { checkRequireField } = require('../utils/checkHelper');
 const { callAndCatchApiSuccess } = require('../utils/fakeHelper');
 
 // search
+// search
 async function searchEventsorting (req, res, next) {
     let id = req.query?.id;
-    
+
     // 檢查必要欄位 & 格式 - id
     try {
-        [ id ] = await checkRequireField ([
-            { field: 'id' , data: id , type: 'number' }
-        ]);
+        // 允許 id 是可選的，以便進行一般搜索
+        // 但如果 id 存在，則確保它是數字格式
+        if (id !== undefined) {
+             [ id ] = await checkRequireField ([
+                { field: 'id' , data: id , type: 'number' }
+            ]);
+        }
     } catch (err) {
-        err.desc = "middlewares-searchEventsorting(): Missing or Invalid required fields";
+        err.desc = "middlewares-searchEventsorting(): Invalid required fields format";
         return next(err);
     }
 
+    // 透過 LEFT JOIN 連接 eventsorting_data, eventsorting_horizontal, 和 eventsorting_vertical
+    // 使用 GROUP_CONCAT 將多個相關 ID 彙集成單一欄位
     let sql =  `
-        SELECT * 
-        FROM eventsorting_data
+        SELECT
+            ed.*,
+            GROUP_CONCAT(DISTINCT eh.horizontal_id) AS horizontal_events,
+            GROUP_CONCAT(DISTINCT ev.news_id) AS vertical_news
+        FROM eventsorting_data ed
+        LEFT JOIN eventsorting_horizontal eh ON ed.eventsorting_id = eh.eventsorting_id
+        LEFT JOIN eventsorting_vertical ev ON ed.eventsorting_id = ev.eventsorting_id
         WHERE 1
     `;
     let params = [];
     if ( id ) {
-        sql += ` AND eventsorting_id=?`;
+        sql += ` AND ed.eventsorting_id=?`;
         params.push( id );
     }
+
+    // GROUP BY 是必要的，因為使用了 GROUP_CONCAT 聚合函數
+    sql += ` GROUP BY ed.eventsorting_id`;
+
     try {
         let [result] = await pool.query( sql, params);
-        return res.apiSuccess( result, "Search Success");
+
+        // 處理結果：將 GROUP_CONCAT 產生的逗號分隔字串轉換為數字陣列
+        const processedResult = result.map(row => ({
+            ...row,
+            // 將 'horizontal_events' 字串轉換為數字陣列，若為空則為空陣列
+            horizontal_events: row.horizontal_events ? row.horizontal_events.split(',').map(Number) : [],
+            // 將 'vertical_news' 字串轉換為數字陣列，若為空則為空陣列
+            vertical_news: row.vertical_news ? row.vertical_news.split(',').map(Number) : [],
+        }));
+
+        return res.apiSuccess( processedResult, "Search Success");
     } catch (err) {
         err.desc = "middlewares-searchEventsorting(): database search error";
         return next(err);
