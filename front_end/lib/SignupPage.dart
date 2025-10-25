@@ -75,8 +75,6 @@ class _SignupPageState extends State<SignupPage> {
   final TextEditingController accountController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController password2Controller = TextEditingController();
-  final TextEditingController nameController = TextEditingController();
-  final TextEditingController emailController = TextEditingController();
 
   bool _obscureText = true;
   bool _obscureText2 = true;
@@ -254,13 +252,11 @@ class _SignupPageState extends State<SignupPage> {
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
+              duration: Duration(seconds: 3),
             ),
           );
 
+          // 返回登入頁面
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => LoginPage()),
@@ -268,167 +264,109 @@ class _SignupPageState extends State<SignupPage> {
         }
       } else {
         setState(() {
-          promptMessage = "註冊失敗，請稍後再試！";
+          promptMessage = "註冊失敗，請重試";
+          _isRegistering = false;
         });
       }
     } catch (e) {
+      print('異常: $e');
       setState(() {
-        promptMessage = "註冊發生錯誤：$e";
-      });
-    } finally {
-      setState(() {
+        promptMessage = "發生錯誤: $e";
         _isRegistering = false;
       });
     }
   }
 
+  // 帳號類型指示器
   Widget _buildAccountTypeIndicator() {
-    final account = accountController.text.trim().toLowerCase();
-    if (account.isEmpty) return Container();
+    final account = accountController.text.trim();
+    if (account.isEmpty) return SizedBox.shrink();
 
-    bool isAdminFormat = _isAdminFormat(account);
-
-    if (isAdminFormat) {
-      return Container(
-        margin: EdgeInsets.only(top: 8),
-        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: Colors.red.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.red, width: 1),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.warning, size: 16, color: Colors.red),
-            SizedBox(width: 6),
-            Text(
-              '系統保留格式',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.red,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
+    if (_isAdminFormat(account)) {
+      return Padding(
+        padding: EdgeInsets.only(top: 8),
+        child: Text(
+          '此為系統保留帳號格式',
+          style: TextStyle(color: Colors.orange, fontSize: 12),
         ),
       );
     }
 
-    return Container();
-  }
-
-  @override
-  void dispose() {
-    accountController.dispose();
-    passwordController.dispose();
-    password2Controller.dispose();
-    nameController.dispose();
-    emailController.dispose();
-    super.dispose();
+    return SizedBox.shrink();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text(
-          '註冊',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.blue),
+          onPressed: () => Navigator.pop(context),
         ),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
-        centerTitle: true,
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => LoginPage()),
-              );
-            },
-            child: const Text('已有帳號？登入', style: TextStyle(color: Colors.white)),
-          ),
-        ],
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  SizedBox(height: 20),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.blue.withOpacity(0.05), Colors.white],
+          ),
+        ),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Logo or Header
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: Colors.blue,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Icon(Icons.person_add, color: Colors.white, size: 40),
+                ),
 
-                  // 標題區域
-                  Container(
-                    padding: const EdgeInsets.all(24),
+                const SizedBox(height: 24),
+
+                // 標題
+                Text(
+                  '註冊新帳號',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                // 副標題
+                Text(
+                  '只需帳號和密碼即可開始',
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                ),
+
+                const SizedBox(height: 40),
+
+                // 表單
+                Form(
+                  key: _formKey,
+                  child: Container(
+                    padding: EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
-                          spreadRadius: 1,
+                          color: Colors.black.withOpacity(0.05),
                           blurRadius: 10,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: LinearGradient(
-                              colors: [Colors.green[400]!, Colors.green[600]!],
-                            ),
-                          ),
-                          child: Icon(
-                            Icons.person_add,
-                            size: 40,
-                            color: Colors.white,
-                          ),
-                        ),
-                        SizedBox(height: 16),
-                        Text(
-                          '建立新帳號',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey[800],
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          '請填寫以下資訊完成註冊',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // 表單區域
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
-                          spreadRadius: 1,
-                          blurRadius: 10,
-                          offset: Offset(0, 2),
+                          spreadRadius: 0,
                         ),
                       ],
                     ),
@@ -450,38 +388,43 @@ class _SignupPageState extends State<SignupPage> {
                             }
                             return null;
                           },
-                          additionalWidget: _buildAccountTypeIndicator(),
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        // 姓名輸入框（可選）
-                        _buildFormField(
-                          controller: nameController,
-                          label: '姓名（可選）',
-                          icon: Icons.badge,
-                          hintText: '請輸入您的姓名',
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        // 電子郵件輸入框（可選）
-                        _buildFormField(
-                          controller: emailController,
-                          label: '電子郵件（可選）',
-                          icon: Icons.email,
-                          hintText: '請輸入您的電子郵件',
-                          keyboardType: TextInputType.emailAddress,
-                          validator: (value) {
-                            if (value != null && value.isNotEmpty) {
-                              if (!RegExp(
-                                r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                              ).hasMatch(value)) {
-                                return '請輸入有效的電子郵件格式';
-                              }
-                            }
-                            return null;
-                          },
+                          additionalWidget: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(height: 8),
+                              Container(
+                                padding: EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange[50],
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: Colors.orange[200]!,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.info_outline,
+                                      size: 16,
+                                      color: Colors.orange[700],
+                                    ),
+                                    SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        '帳號一旦設定，之後無法更改',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.orange[700],
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              _buildAccountTypeIndicator(),
+                            ],
+                          ),
                         ),
 
                         const SizedBox(height: 20),
@@ -552,146 +495,141 @@ class _SignupPageState extends State<SignupPage> {
                       ],
                     ),
                   ),
+                ),
 
-                  const SizedBox(height: 20),
+                const SizedBox(height: 20),
 
-                  // 顯示訊息
-                  if (promptMessage.isNotEmpty)
-                    Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.all(16),
-                      margin: EdgeInsets.only(bottom: 20),
-                      decoration: BoxDecoration(
-                        color:
-                            promptMessage == "成功註冊!"
-                                ? Colors.green[50]
-                                : promptMessage == "註冊中..."
-                                ? Colors.blue[50]
-                                : Colors.red[50],
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color:
-                              promptMessage == "成功註冊!"
-                                  ? Colors.green
-                                  : promptMessage == "註冊中..."
-                                  ? Colors.blue
-                                  : Colors.red,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            promptMessage == "成功註冊!"
-                                ? Icons.check_circle
-                                : promptMessage == "註冊中..."
-                                ? Icons.hourglass_empty
-                                : Icons.error,
-                            color:
-                                promptMessage == "成功註冊!"
-                                    ? Colors.green[700]
-                                    : promptMessage == "註冊中..."
-                                    ? Colors.blue[700]
-                                    : Colors.red[700],
-                          ),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              promptMessage,
-                              style: TextStyle(
-                                color:
-                                    promptMessage == "成功註冊!"
-                                        ? Colors.green[700]
-                                        : promptMessage == "註冊中..."
-                                        ? Colors.blue[700]
-                                        : Colors.red[700],
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                  // 註冊按鈕
+                // 顯示訊息
+                if (promptMessage.isNotEmpty)
                   Container(
                     width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: _isRegistering ? null : _performSignup,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        elevation: 3,
+                    padding: EdgeInsets.all(16),
+                    margin: EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color:
+                          promptMessage == "成功註冊!"
+                              ? Colors.green[50]
+                              : promptMessage == "註冊中..."
+                              ? Colors.blue[50]
+                              : Colors.red[50],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color:
+                            promptMessage == "成功註冊!"
+                                ? Colors.green
+                                : promptMessage == "註冊中..."
+                                ? Colors.blue
+                                : Colors.red,
                       ),
-                      child:
-                          _isRegistering
-                              ? Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(width: 12),
-                                  Text(
-                                    '註冊中...',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              )
-                              : Text(
-                                '註冊',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          promptMessage == "成功註冊!"
+                              ? Icons.check_circle
+                              : promptMessage == "註冊中..."
+                              ? Icons.hourglass_empty
+                              : Icons.error,
+                          color:
+                              promptMessage == "成功註冊!"
+                                  ? Colors.green[700]
+                                  : promptMessage == "註冊中..."
+                                  ? Colors.blue[700]
+                                  : Colors.red[700],
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            promptMessage,
+                            style: TextStyle(
+                              color:
+                                  promptMessage == "成功註冊!"
+                                      ? Colors.green[700]
+                                      : promptMessage == "註冊中..."
+                                      ? Colors.blue[700]
+                                      : Colors.red[700],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
 
-                  const SizedBox(height: 20),
-
-                  // 登入連結
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        '已經有帳號了？',
-                        style: TextStyle(color: Colors.grey[600]),
+                // 註冊按鈕
+                Container(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: _isRegistering ? null : _performSignup,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => LoginPage(),
+                      elevation: 3,
+                    ),
+                    child:
+                        _isRegistering
+                            ? Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: 12),
+                                Text(
+                                  '註冊中...',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            )
+                            : Text(
+                              '註冊',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          );
-                        },
-                        child: Text(
-                          '立即登入',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue,
-                          ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // 登入連結
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('已經有帳號了？', style: TextStyle(color: Colors.grey[600])),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (context) => LoginPage()),
+                        );
+                      },
+                      child: Text(
+                        '立即登入',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue,
                         ),
                       ),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ),
