@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import 'UserService.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'config.dart';
 
 class ChangePasswordPage extends StatefulWidget {
   const ChangePasswordPage({super.key});
@@ -9,7 +12,6 @@ class ChangePasswordPage extends StatefulWidget {
 }
 
 class _ChangePasswordPageState extends State<ChangePasswordPage> {
-  final UserService _userService = UserService();
   final _formKey = GlobalKey<FormState>();
 
   final TextEditingController _currentPasswordController =
@@ -37,30 +39,79 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     setState(() => _isLoading = true);
 
     try {
-      final result = await _userService.changePassword(
-        _currentPasswordController.text,
-        _newPasswordController.text,
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getInt('UserID');
+
+      if (userId == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('未登入'), backgroundColor: Colors.red),
+          );
+        }
+        return;
+      }
+
+      // ✅ 改為後端期望的字段名：old_password 和 new_password
+      final response = await http.put(
+        Uri.parse('$baseUrl/user'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'user_id': userId,
+          'action': 'change-password',
+          'old_password': _currentPasswordController.text, // ✅ 改為 old_password
+          'new_password': _newPasswordController.text, // ✅ 改為 new_password
+        }),
       );
 
-      if (result['success']) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('密碼修改成功'), backgroundColor: Colors.green),
-        );
-        Navigator.pop(context);
+      print('修改密碼 - 響應狀態碼: ${response.statusCode}');
+      print('修改密碼 - 響應內容: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print('修改密碼 - 解析數據: $data');
+
+        // ✅ 檢查後端返回的格式
+        if (data['success'] == true) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('密碼修改成功'),
+                backgroundColor: Colors.green,
+              ),
+            );
+            Navigator.pop(context);
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(data['message'] ?? '密碼修改失敗'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] ?? '密碼修改失敗'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('伺服器錯誤: ${response.statusCode}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('修改密碼時發生錯誤: $e'), backgroundColor: Colors.red),
-      );
+      print('修改密碼異常: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('修改密碼時發生錯誤: $e'), backgroundColor: Colors.red),
+        );
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -105,7 +156,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '為了您的帳號安全，請定期更換密碼並使用強密碼',
+                            '為了您的帳號安全，請定期更新密碼並使用強密碼',
                             style: TextStyle(
                               color: Colors.orange[600],
                               fontSize: 13,

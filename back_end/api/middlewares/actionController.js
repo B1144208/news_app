@@ -31,44 +31,54 @@ async function searchUserAction (req, res, next) {
 
     //  COMMENT 查詢
 
-    if (actionType === 'comment') {
-            // 檢查 dataId 是否存在
-            try {
-                [ dataId ] = await checkRequireField ([
-                    { field: 'dataId'       , data: dataId      , type: 'number'    , other: ['non_null'] }
-                ]);
-            } catch (err) {
-                err.desc = "middlewares-searchUserAction(): Missing or Invalid required dataId for comment search";
-                return next(err);
-            }
+    if (actionType==="comment") {
+        const dataIdFieldName = `${dataType}_id`;
 
-            const dataIdFieldName = `${dataType}_id`; // e.g., 'eventsorting_id'
+        let sql = `
+            SELECT
+                t1.comment_id,
+                t1.user_id,
+                t1.comment_text,
+                t1.ceated_at,
+                t2.anonymous_name,  /* 匿名名稱 */
+                t3.user_name        /* 來自 user_profile 的真實用戶名稱 */
+            FROM user_comment t1
+            LEFT JOIN anonymous_data t2 ON t1.anonymous_id = t2.anonymous_id
+            LEFT JOIN user_profile t3 ON t1.user_id = t3.user_id  /* 🌟 使用正確的表名 user_profile 🌟 */
+            WHERE t1.${dataIdFieldName} = ?
+            ORDER BY t1.ceated_at DESC
+        `;
+        let params = [ dataId ];
 
-            // 留言查詢的 SQL
-            sql = `
-                SELECT
-                    uc.user_id,
-                    uc.anonymous_id,
-                    uc.comment_text as text,
-                    uc.ceated_at
-                FROM
-                    user_comment uc
-                WHERE
-                    uc.${dataIdFieldName} = ?
-                ORDER BY
-                    uc.ceated_at DESC
-            `;
-            params = [ dataId ]; // 使用 dataId 作為參數
+        try {
+            let [result] = await pool.query(sql, params);
 
-            // 直接在這裡執行查詢並返回結果，跳過下面依賴 userId 的通用邏輯
-            try {
-                let [result] = await pool.query(sql, params);
-                return res.apiSuccess(result, "Search Comments Success");
-            } catch (err) {
-                err.desc = "middlewares-searchUserAction(): comment search error";
-                return next(err);
-            }
+            // 格式化結果：決定顯示哪個名稱
+            const commentsWithNames = result.map(comment => {
+                let displayUser;
+                if (comment.anonymous_name) {
+                    displayUser = comment.anonymous_name; // 使用匿名名稱
+                } else if (comment.user_name) {
+                    displayUser = comment.user_name;     // 使用真實用戶名稱
+                } else if (comment.user_id) {
+                    displayUser = `用戶 #${comment.user_id}`; // Fallback 到 ID
+                } else {
+                    displayUser = '訪客';
+                }
+
+                return {
+                    ...comment,
+                    display_name: displayUser,
+                    is_anonymous: !!comment.anonymous_name,
+                };
+            });
+
+            return res.apiSuccess(commentsWithNames, "Search Success");
+        } catch (err) {
+            err.desc = "middlewares-searchUserAction(): database search error for comment";
+            return next(err);
         }
+    }
 
 
 

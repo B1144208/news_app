@@ -25,9 +25,21 @@ class _AIPageState extends State<AIPage> {
   // true: 事件整理, false: 多方看法
   bool _isEventSortingMode = true;
 
-  // 狀態變量用於儲存內容數據
+  // 狀態變量用於儲存內容數據 (完整資料)
   List<dynamic> _eventsortingList = [];
   List<dynamic> _multiplePerspectivesList = [];
+
+  // # 🌟 搜尋功能修正 🌟
+  // 儲存篩選後的資料，UI 將會依賴這個列表
+  List<dynamic> _filteredEventsortingList = [];
+  List<dynamic> _filteredMultiplePerspectivesList = [];
+  // 搜尋欄的控制器
+  final TextEditingController _searchController = TextEditingController();
+  // 記錄當前搜尋關鍵字
+  String _currentSearchKeyword = '';
+  // 記錄是否正在搜尋中 (可以不用，但有利於區分狀態)
+  bool _isSearching = false;
+
 
   // 🌟 修正點 1：統一的 Future，確保所有數據載入完成，解決刷新不同步問題 🌟
   late Future<void> _loadingFuture;
@@ -47,6 +59,64 @@ class _AIPageState extends State<AIPage> {
     // 🌟 修正點 3：將所有初始化邏輯放在一個 Future 中 🌟
     _loadingFuture = _loadUserId().then((_) {
       return _fetchData();
+    });
+
+    // # 🌟 搜尋功能修正 🌟
+    // 監聽 TextField 的變化
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    // # 🌟 搜尋功能修正 🌟
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  // # 🌟 搜尋功能修正 🌟
+  // 當搜尋欄內容改變時調用
+  void _onSearchChanged() {
+    // 避免在 setState 內部直接呼叫 setState 導致的錯誤
+    final keyword = _searchController.text;
+    if (_currentSearchKeyword != keyword) {
+      _currentSearchKeyword = keyword;
+      _filterData(keyword);
+    }
+  }
+
+  // # 🌟 搜尋功能修正 🌟
+  // 核心篩選邏輯
+  void _filterData(String keyword) {
+    if (keyword.isEmpty) {
+      setState(() {
+        _filteredEventsortingList = _eventsortingList;
+        _filteredMultiplePerspectivesList = _multiplePerspectivesList;
+        _isSearching = false;
+      });
+      return;
+    }
+
+    final lowerCaseKeyword = keyword.toLowerCase();
+    _isSearching = true;
+
+    // 篩選事件整理 (Eventsorting)
+    final filteredEvents = _eventsortingList.where((event) {
+      final title = event['eventsorting_title']?.toLowerCase() ?? '';
+      final summary = event['eventsorting_summary']?.toLowerCase() ?? '';
+      return title.contains(lowerCaseKeyword) || summary.contains(lowerCaseKeyword);
+    }).toList();
+
+    // 篩選多方看法 (MultiplePerspectives)
+    final filteredMP = _multiplePerspectivesList.where((view) {
+      final title = view['multipleperspectives_title']?.toLowerCase() ?? '';
+      // 由於多方看法資料沒有 summary，只篩選 title
+      return title.contains(lowerCaseKeyword);
+    }).toList();
+
+    setState(() {
+      _filteredEventsortingList = filteredEvents;
+      _filteredMultiplePerspectivesList = filteredMP;
     });
   }
 
@@ -71,6 +141,15 @@ class _AIPageState extends State<AIPage> {
       // 3. 賦值給狀態變量
       _eventsortingList = results[0];
       _multiplePerspectivesList = results[1];
+
+      // # 🌟 搜尋功能修正 🌟
+      // 初始化篩選列表為完整列表
+      _filteredEventsortingList = List.from(_eventsortingList);
+      _filteredMultiplePerspectivesList = List.from(_multiplePerspectivesList);
+      // 如果有關鍵字，則進行一次篩選
+      if (_currentSearchKeyword.isNotEmpty) {
+        _filterData(_currentSearchKeyword);
+      }
 
       // 4. 載入收藏狀態
       if (_currentUserId != null) {
@@ -291,9 +370,20 @@ class _AIPageState extends State<AIPage> {
                   ),
                   Expanded(
                     child: TextField(
+                      // # 🌟 搜尋功能修正 🌟
+                      controller: _searchController, // 綁定控制器
                       decoration: InputDecoration(
                         hintText: _isEventSortingMode ? "搜尋事件" : "搜尋多方觀點",
                         prefixIcon: const Icon(Icons.search),
+                        suffixIcon: _currentSearchKeyword.isNotEmpty
+                            ? IconButton(
+                          icon: const Icon(Icons.clear, size: 20),
+                          onPressed: () {
+                            _searchController.clear(); // 清空輸入框
+                            // _onSearchChanged 會被觸發，重新顯示完整列表
+                          },
+                        )
+                            : null,
                         contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 8),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
@@ -302,6 +392,7 @@ class _AIPageState extends State<AIPage> {
                         filled: true,
                         fillColor: Colors.grey.shade200,
                       ),
+                      // 由於使用了 addListener，此處不需要 onSubmitted 或 onChanged
                     ),
                   ),
                   // 右上角收藏按鈕導航
@@ -329,6 +420,9 @@ class _AIPageState extends State<AIPage> {
                     onChanged: (bool value) {
                       setState(() {
                         _isEventSortingMode = !value;
+                        // # 🌟 搜尋功能修正 🌟
+                        // 切換模式後，如果正在搜尋，重新觸發篩選，確保切換後的列表是正確篩選的
+                        _filterData(_currentSearchKeyword);
                       });
                     },
                     activeColor: Colors.blue,
@@ -374,24 +468,34 @@ class _AIPageState extends State<AIPage> {
     );
   }
 
-  // --- 事件整理內容 (直接使用 _eventsortingList) ---
+  // --- 事件整理內容 (使用 _filteredEventsortingList) ---
   Widget _buildEventSortingContent() {
+    // # 🌟 搜尋功能修正 🌟 - 使用篩選後的列表
+    final listToShow = _filteredEventsortingList;
+
     return Column(
       children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(
             children: [
-              Text("AI整理近期焦點新聞", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text(
+                _isSearching && _currentSearchKeyword.isNotEmpty
+                    ? "搜尋結果 (${listToShow.length} 筆)"
+                    : "AI整理近期焦點新聞",
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
             ],
           ),
         ),
         const Divider(height: 1),
         Expanded(
-          child: ListView.builder(
-            itemCount: _eventsortingList.length,
+          child: listToShow.isEmpty
+              ? Center(child: Text('找不到與 "$_currentSearchKeyword" 相關的事件'))
+              : ListView.builder(
+            itemCount: listToShow.length,
             itemBuilder: (context, index) {
-              final event = _eventsortingList[index];
+              final event = listToShow[index];
 
               final String title = event['eventsorting_title'] ?? '';
               if (title.isEmpty) {
@@ -422,24 +526,34 @@ class _AIPageState extends State<AIPage> {
     );
   }
 
-  // --- 多方看法內容 (直接使用 _multiplePerspectivesList) ---
+  // --- 多方看法內容 (使用 _filteredMultiplePerspectivesList) ---
   Widget _buildMultiplePerspectivesContent() {
+    // # 🌟 搜尋功能修正 🌟 - 使用篩選後的列表
+    final listToShow = _filteredMultiplePerspectivesList;
+
     return Column(
       children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(
             children: [
-              Text("近期新聞不同觀點之討論", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text(
+                _isSearching && _currentSearchKeyword.isNotEmpty
+                    ? "搜尋結果 (${listToShow.length} 筆)"
+                    : "近期新聞不同觀點之討論",
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
             ],
           ),
         ),
         const Divider(height: 1),
         Expanded(
-          child: ListView.builder(
-            itemCount: _multiplePerspectivesList.length,
+          child: listToShow.isEmpty
+              ? Center(child: Text('找不到與 "$_currentSearchKeyword" 相關的觀點'))
+              : ListView.builder(
+            itemCount: listToShow.length,
             itemBuilder: (context, index) {
-              final view = _multiplePerspectivesList[index];
+              final view = listToShow[index];
 
               final String title = view['multipleperspectives_title'] ?? '';
               if (title.isEmpty) {

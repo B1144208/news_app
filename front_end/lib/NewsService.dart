@@ -14,7 +14,7 @@ class NewsService {
     if (isLoggedIn) {
       final userId = await _userService.getUserId();
       if (userId != null) {
-        headers['User-ID'] = userId;
+        headers['User-ID'] = userId.toString();
       }
 
       final token = await _userService.getToken();

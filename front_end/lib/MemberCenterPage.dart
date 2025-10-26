@@ -5,6 +5,8 @@ import 'PermissionHelper.dart';
 import 'LoginPage.dart';
 import 'ProfileEditPage.dart';
 import 'ChangePasswordPage.dart';
+
+import 'DeleteAccountPage.dart';
 import 'SettingsPage.dart';
 
 class MemberCenterPage extends StatefulWidget {
@@ -87,52 +89,10 @@ class _MemberCenterPageState extends State<MemberCenterPage> {
   }
 
   Future<void> _deleteAccount() async {
-    // 顯示確認對話框
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('確認刪除帳號'),
-            content: const Text('此操作無法復原，確定要刪除帳號嗎？'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('取消'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('刪除', style: TextStyle(color: Colors.red)),
-              ),
-            ],
-          ),
-    );
-
-    if (confirmed == true) {
-      try {
-        final result = await _userService.deleteAccount();
-        if (result['success']) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('帳號已刪除'), backgroundColor: Colors.green),
-          );
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (context) => const LoginPage()),
-            (route) => false,
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['message'] ?? '刪除帳號失敗'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('刪除帳號時發生錯誤'), backgroundColor: Colors.red),
-        );
-      }
-    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const DeleteAccountPage()),
+    ).then((_) => _loadUserData());
   }
 
   @override
