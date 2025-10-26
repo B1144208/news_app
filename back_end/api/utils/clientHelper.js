@@ -27,7 +27,7 @@ module.exports = {
         // IPv6 本機 ::1 轉成 IPv4 127.0.0.1
         const clientIp = ip === '::1'? '127.0.0.1': ip;
         
-        ( req.body? req.body: {} ).clientIp = clientIp;
+        req.clientIp = clientIp;
 
         // return res.apiSuccess({ clientIp: clientIp }, "Success");
         next();

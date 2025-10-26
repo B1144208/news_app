@@ -2,6 +2,7 @@ const pool = require('../connect_db');
 const { checkRequireField } = require('../utils/checkHelper');
 const { callAndCatchApiSuccess } = require('../utils/fakeHelper');
 const { searchAnonymous, insertAnonymous } = require('./anonymousController');
+const { insertKeyword } = require('./keywordController');
 
 // search
 async function searchUserAction (req, res, next) {
@@ -117,15 +118,18 @@ async function searchUserAction (req, res, next) {
 // insert
 async function insertUserAction (req, res, next) {
     /*
-    @ actionType : view, share, bookmark, comment, score, location
+    @ actionType : view, share, search, bookmark, comment, score, location
     @ dataType   : news, channel, eventsorting, multipleperspectives
+    @ search     : recordId
     @ comment    : anonymous(可空), text
     @ score      : score
     @ location   : region_id, country_id, state_id
     */
     let { actionType, dataType } = req.params ?? {}
-    let { userId, dataId, clientIp } = req.body ?? {}
-    let { anonymous, text, score, region_id, country_id, state_id } = req.body ?? {}
+    let { userId, dataId } = req.body ?? {}
+    let { recordId, anonymous, text, score, region_id, country_id, state_id } = req.body ?? {}
+    const clientIp = req.clientIp;
+
     // 如果 actionType 是 'location'，則 dataId 可以是 'lth' (可選)；否則必須是 'non_null'
     const dataIdCheck = (actionType === 'location') ? ['lth'] : ['non_null'];
 
@@ -142,26 +146,28 @@ async function insertUserAction (req, res, next) {
     // 檢查必要欄位 & 格式 - actionType, dataType, userId, dataId, clientIp, anonymous, text, score
     try {
         [ actionType, dataType, userId, dataId, anonymous, text, score, region_id, country_id, state_id ] = await checkRequireField ([
-            { field: 'actionType'   , data: actionType  , type: 'string'    , other: ['non_null'],  enum: ['view', 'share', 'bookmark', 'comment', 'score', 'location'] },
+            { field: 'actionType'   , data: actionType  , type: 'string'    , other: ['non_null'],  enum: ['view', 'share', 'search', 'bookmark', 'comment', 'score', 'location'] },
             { field: 'dataType'     , data: dataType    , type: 'string'    , other: ['non_null'],  enum: ['news', 'channel', 'eventsorting','multipleperspectives'] },
             { field: 'userId'       , data: userId      , type: 'number'    , other: ['lth']                    },
             { field: 'dataId'       , data: dataId      , type: 'number'    , other: dataIdCheck                },
-            { field: 'clientIp'     , data: clientIp                        , other: ['non_null', 'non_change'] },
+            { field: 'recordId'     , data: recordId    , type: 'number'    , other: ['lth']                    },
             { field: 'anonymous'    , data: anonymous   , type: 'string'    , other: ['lth']                    },
             { field: 'text'         , data: text        , type: 'string'    , other: ['lth']                    },
             { field: 'score'        , data: score       , type: 'number'    , other: ['lth']                    },
             { field: 'region_id'    , data: region_id   , type: 'number'    , other: ['lth']                    },
             { field: 'country_id'   , data: country_id  , type: 'number'    , other: ['lth']                    },
-            { field: 'state_id'     , data: state_id    , type: 'number'    , other: ['lth']                    }
+            { field: 'state_id'     , data: state_id    , type: 'number'    , other: ['lth']                    },
+            { field: 'clientIp'     , data: clientIp                        , other: ['non_null', 'non_change'] }
         ]);
     } catch (err) {
         err.desc = "middlewares-insertUserAction(): Missing or Invalid required fields";
         return next(err);
     }
 
-    // view & share 才能使用 clientIp
+    // 僅 view & share & search 能夠沒有 userId
     let invalidField = false;
-    invalidField = ( (!userId)? !actionType==='view' && !actionType==='share': false ) ||
+    invalidField = ( (!userId)? !actionType==='view' && !actionType==='share' && !actionType==='search': false ) ||
+                   ( (actionType === 'search')? !recordId || userId : false ) ||
                    ( (actionType === 'comment')? !text : false ) ||
                    ( (actionType === 'score')? !score : false )
     if ( invalidField ) {
@@ -176,76 +182,81 @@ async function insertUserAction (req, res, next) {
         return next(err);
     }
 
-     // 特殊處理 location 插入
-        if (actionType === 'location') {
-            let checkSql = `SELECT * FROM user_location WHERE user_id = ?`;
-            try {
-                let [existing] = await pool.query(checkSql, [userId]);
+    // **************************************************************************************************************
+    // 特殊處理 location 插入
+    if (actionType === 'location') {
+        let checkSql = `SELECT * FROM user_location WHERE user_id = ?`;
+        try {
+            let [existing] = await pool.query(checkSql, [userId]);
 
-                // 🌟 核心修改 🌟: 使用輔助函式構造 SET 語句和參數
-                const { setClause, params: idParams } = getIDSetClause(region_id, country_id, state_id);
+            // 🌟 核心修改 🌟: 使用輔助函式構造 SET 語句和參數
+            const { setClause, params: idParams } = getIDSetClause(region_id, country_id, state_id);
 
-                let sql, params;
+            let sql, params;
 
-                if (existing.length > 0) {
-                    // 更新现有記錄
-                    sql = `
-                        UPDATE user_location
-                        SET ${setClause}, updated_at = NOW()
-                        WHERE user_id = ?
-                    `;
-                    params = [...idParams, userId]; // ID 參數 + userId
-                } else {
-                    // 插入新記錄
-                    // 這裡需要特別處理，因為 INSERT 語句需要所有欄位名稱
-                    // 由於我們只確定哪個 ID 有值，需要更精確的 INSERT 語句。
+            if (existing.length > 0) {
+                // 更新现有記錄
+                sql = `
+                    UPDATE user_location
+                    SET ${setClause}, updated_at = NOW()
+                    WHERE user_id = ?
+                `;
+                params = [...idParams, userId]; // ID 參數 + userId
+            } else {
+                // 插入新記錄
+                // 這裡需要特別處理，因為 INSERT 語句需要所有欄位名稱
+                // 由於我們只確定哪個 ID 有值，需要更精確的 INSERT 語句。
 
-                    // 簡化處理：為了避免複雜的動態 INSERT，我們將 NULL ID 設置為 NULL
-                    sql = `
-                        INSERT INTO user_location (user_id, region_id, country_id, state_id, updated_at)
-                        VALUES (?, ?, ?, ?, NOW())
-                    `;
-                    // 這裡我們直接使用 checkRequireField 之後的參數，它們會是 (1, null, null, 123)
-                    params = [userId, region_id, country_id, state_id];
-                }
-
-                // 由於 INSERT 語句 (上面的 else 塊) 會將三個 ID 都設為參數，
-                // 只有 UPDATE 語句需要動態 SET 子句。
-
-                // 重新整理邏輯：如果使用 UPDATE，則使用動態 SET
-                if (existing.length > 0) {
-                    // 🌟 替換 INSERT 之前的 UPDATE 邏輯 🌟
-                    sql = `
-                        UPDATE user_location
-                        SET ${setClause}, updated_at = NOW()
-                        WHERE user_id = ?
-                    `;
-                    params = [...idParams, userId];
-                } else {
-                    sql = `
-                        INSERT INTO user_location (user_id, region_id, country_id, state_id, updated_at)
-                        VALUES (?, ?, ?, ?, NOW())
-                    `;
-                    params = [userId, region_id, country_id, state_id];
-                }
-
-                // 檢查：如果錯誤發生在 UPDATE（即 existing.length > 0），則上面的 setClause 修復是正確的。
-
-                let [result] = await pool.query(sql, params);
-                return res.apiSuccess({insertId: result.insertId || existing[0].location_id}, "Location Insert/Update Success");
-            } catch (err) {
-                err.desc = "middlewares-insertUserAction(): location insert/update error";
-                // 錯誤訊息就在這裡拋出，說明 SQL 語句有問題。
-                return next(err);
+                // 簡化處理：為了避免複雜的動態 INSERT，我們將 NULL ID 設置為 NULL
+                sql = `
+                    INSERT INTO user_location (user_id, region_id, country_id, state_id, updated_at)
+                    VALUES (?, ?, ?, ?, NOW())
+                `;
+                // 這裡我們直接使用 checkRequireField 之後的參數，它們會是 (1, null, null, 123)
+                params = [userId, region_id, country_id, state_id];
             }
+
+            // 由於 INSERT 語句 (上面的 else 塊) 會將三個 ID 都設為參數，
+            // 只有 UPDATE 語句需要動態 SET 子句。
+
+            // 重新整理邏輯：如果使用 UPDATE，則使用動態 SET
+            if (existing.length > 0) {
+                // 🌟 替換 INSERT 之前的 UPDATE 邏輯 🌟
+                sql = `
+                    UPDATE user_location
+                    SET ${setClause}, updated_at = NOW()
+                    WHERE user_id = ?
+                `;
+                params = [...idParams, userId];
+            } else {
+                sql = `
+                    INSERT INTO user_location (user_id, region_id, country_id, state_id, updated_at)
+                    VALUES (?, ?, ?, ?, NOW())
+                `;
+                params = [userId, region_id, country_id, state_id];
+            }
+
+            // 檢查：如果錯誤發生在 UPDATE（即 existing.length > 0），則上面的 setClause 修復是正確的。
+
+            let [result] = await pool.query(sql, params);
+            return res.apiSuccess({insertId: result.insertId || existing[0].location_id}, "Location Insert/Update Success");
+        } catch (err) {
+            err.desc = "middlewares-insertUserAction(): location insert/update error";
+            // 錯誤訊息就在這裡拋出，說明 SQL 語句有問題。
+            return next(err);
         }
+    }
 
-    let sql = `
-        INSERT INTO user_${actionType} ( user_${userId? 'id': 'ip'}, ${dataType}_id )
-        VALUES ( ?, ? )
-    `;
-    let params = [ userId || clientIp, dataId ];
+    let colums = [ `${dataType}_id` ];
+    let params = [ dataId ];
+    let needIp = actionType=="view" || actionType=="share";
+    if (userId) { colums.push("user_id"); params.push(userId); }
+    if (needIp) { colums.push("user_ip"); params.push(clientIp); }
 
+    if (actionType==="search") {
+        colums.push("record_id");
+        params.push(recordId);
+    }
 
     if (actionType==="comment") {
         let anonymousId = null;
@@ -261,20 +272,20 @@ async function insertUserAction (req, res, next) {
                 return next(err);
             }
         }
-        sql = `
-            INSERT INTO user_${actionType} ( user_${userId? 'id': 'ip'}, ${dataType}_id, anonymous_id, comment_text )
-            VALUES ( ?, ? , ?, ?)
-        `;
+        colums.push("anonymous_id", "comment_text");
         params.push( anonymousId, text );
     }
 
     if (actionType==="score") {
-        sql = `
-            INSERT INTO user_${actionType} ( user_${userId? 'id': 'ip'}, ${dataType}_id, target_score )
-            VALUES ( ?, ? , ?)
-        `;
+        colums.push("target_score")
         params.push( score );
     }
+    sql = `
+        INSERT INTO user_${actionType} (
+            ${colums.join(', ')}
+        ) VALUES ( ${colums.map(()=>'?').join(', ')} )
+    `;
+
 
     try {
         let [result] = await pool.query(sql, params);

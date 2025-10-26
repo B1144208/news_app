@@ -95,6 +95,7 @@ async function insertGroupcustomize (req, res, next) {
     @ general : news 的分類，user 創建時就要先匯入
     @           參數 : userId
     */
+
     let kind = req.params?.kind;
     let { userId, name, type, order } = req.body ?? {};
 

@@ -18,7 +18,6 @@ router.post('/login', searchUser);
 router.post('/signup', insertUser);
 
 // update
-// update
 router.put('/', updateUser);
 
 // delete
@@ -31,6 +30,7 @@ router.get('/:actionType/:dataType', searchUserAction);
 router.post('/:actionType/:dataType', getClientIp, insertUserAction);
 router.put('/:actionType/:targetId', updateUserAction);
 router.delete('/:actionType/:targetId', deleteUserAction);
+
 
 // ======= 新增的會員功能路由 =======
 

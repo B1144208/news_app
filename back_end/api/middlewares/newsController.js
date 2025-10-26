@@ -86,7 +86,7 @@ async function insertNews(req, res, next) {
         // 優先檢查 url 是否已經存在
         try {
             let fakeReq = {
-                body: {
+                query: {
                     url: url
                 }
             };

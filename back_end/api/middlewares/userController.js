@@ -3,6 +3,7 @@ const { checkRequireField } = require('../utils/checkHelper');
 const { callAndCatchApiSuccess } = require('../utils/fakeHelper');
 const { checkPassword, hashPassword } = require('../utils/passwordHelper');
 const { generateUsername } = require('../utils/randomHelper');
+const { insertGroupcustomize } = require('./groupcustomizeController');
 
 // search
 async function searchUser (req, res, next) {
@@ -127,11 +128,25 @@ async function insertUser (req, res, next) {
         VALUES ( ?, ?, ?)
     `
     let params = [ account, hashedPassword, generateUsername() ];
+    let userId;
     try {
         let [result] = await pool.query( sql, params);
-        return res.apiSuccess ( { insertId: result.insertId }, "Insert Success");
+        userId = result.insertId;
     } catch (err) {
         err.desc = "middlewares-insertUser(): database insert error";
+        return next(err);
+    }
+
+    // insert groupcustomize order
+    let fakeReq = {
+        params: { kind: "general" },
+        body: {userId: userId}
+    };
+    try {
+        let insertGroupcustomizeResult = callAndCatchApiSuccess(insertGroupcustomize, fakeReq);
+        return res.apiSuccess ( { insertId: userId }, "Insert Success");
+    } catch (err) {
+        err.desc = "middlewares-insertUser(): database groupcustomize insert error";
         return next(err);
     }
 }
