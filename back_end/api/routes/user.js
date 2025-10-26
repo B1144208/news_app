@@ -18,28 +18,17 @@ router.post('/login', searchUser);
 // 註冊
 router.post('/signup', insertUser);
 
-<<<<<<< HEAD
 // update
 router.put('/', updateUser);
-=======
-// ============================================
-// 使用者行為路由
-// ============================================
->>>>>>> 3ae6b733eb6a811e33e122793ce1efe1d4359927
 
 router.get('/:actionType/:dataType', searchUserAction);
 router.post('/:actionType/:dataType', getClientIp, insertUserAction);
 router.put('/:actionType/:targetId', updateUserAction);
 router.delete('/:actionType/:targetId', deleteUserAction);
 
-<<<<<<< HEAD
-
-// ======= 新增的會員功能路由 =======
-=======
 // ============================================
 // 會員功能路由（統一通過 updateUser）
 // ============================================
->>>>>>> 3ae6b733eb6a811e33e122793ce1efe1d4359927
 
 /**
  * 統一的會員管理路由

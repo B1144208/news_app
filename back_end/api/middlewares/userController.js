@@ -3,11 +3,7 @@ const { checkRequireField } = require('../utils/checkHelper');
 const { callAndCatchApiSuccess } = require('../utils/fakeHelper');
 const { checkPassword, hashPassword } = require('../utils/passwordHelper');
 const { generateUsername } = require('../utils/randomHelper');
-<<<<<<< HEAD
 const { insertGroupcustomize } = require('./groupcustomizeController');
-=======
-const { apiSuccess, apiError } = require('../utils/responseWrapper');
->>>>>>> 3ae6b733eb6a811e33e122793ce1efe1d4359927
 
 // ============================================
 // 驗證碼系統配置（全局）
@@ -28,9 +24,8 @@ function generateVerificationCode(length = VERIFICATION_CONFIG.codeLength) {
     .padEnd(length, '0');
 }
 
-<<<<<<< HEAD
 // insert
-async function insertUser (req, res, next) {
+/*async function insertUser (req, res, next) {
 
     const { account, password } = req.body ?? {};
     let hashedPassword;
@@ -70,29 +65,7 @@ async function insertUser (req, res, next) {
         err.desc = "middlewares-insertUser(): database insert error";
         return next(err);
     }
-
-    // insert groupcustomize order
-    let fakeReq = {
-        params: { kind: "general" },
-        body: {userId: userId}
-    };
-    try {
-        let insertGroupcustomizeResult = callAndCatchApiSuccess(insertGroupcustomize, fakeReq);
-        return res.apiSuccess ( { insertId: userId }, "Insert Success");
-    } catch (err) {
-        err.desc = "middlewares-insertUser(): database groupcustomize insert error";
-        return next(err);
-    }
-=======
-async function sendEmailCode(email, code) {
-  console.log(`\n========== EMAIL VERIFICATION CODE ==========`);
-  console.log(`To: ${email}`);
-  console.log(`Code: ${code}`);
-  console.log(`Valid for: ${VERIFICATION_CONFIG.codeExpiry / 1000} seconds`);
-  console.log(`=============================================\n`);
-  return true;
->>>>>>> 3ae6b733eb6a811e33e122793ce1efe1d4359927
-}
+}*/
 
 async function sendPhoneCode(phone, code) {
   console.log(`\n========== PHONE VERIFICATION CODE ==========`);
@@ -250,6 +223,7 @@ async function insertUser(req, res, next) {
     return next(err);
   }
 
+  let userId = null;
   let sql = `
     INSERT INTO user_profile (user_account, user_password, user_name)
     VALUES (?, ?, ?)
@@ -257,10 +231,23 @@ async function insertUser(req, res, next) {
   let params = [account, hashedPassword, generateUsername()];
   try {
     let [result] = await pool.query(sql, params);
-    return res.apiSuccess({ insertId: result.insertId }, 'Insert Success');
+    userId = result.insertId
   } catch (err) {
     err.desc = 'middlewares-insertUser(): database insert error';
     return next(err);
+  }
+
+  // insert groupcustomize order
+  let fakeReq = {
+      params: { kind: "general" },
+      body: {userId: userId}
+  };
+  try {
+      let insertGroupcustomizeResult = callAndCatchApiSuccess(insertGroupcustomize, fakeReq);
+      return res.apiSuccess ( { insertId: userId }, "Insert Success");
+  } catch (err) {
+      err.desc = "middlewares-insertUser(): database groupcustomize insert error";
+      return next(err);
   }
 }
 
