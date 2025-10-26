@@ -1,5 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'config.dart';
+import 'ChangePasswordPage.dart';
+import 'EmailVerificationPage.dart';
+import 'PhoneVerificationPage.dart';
+import 'DeleteAccountPage.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -17,10 +24,17 @@ class _SettingsPageState extends State<SettingsPage> {
   String _fontSize = 'medium';
   String _language = 'zh_TW';
 
+  // 帳號驗證狀態
+  String? _userEmail;
+  String? _userPhone;
+  bool _emailVerified = false;
+  bool _phoneVerified = false;
+
   @override
   void initState() {
     super.initState();
     _loadSettings();
+    _loadUserInfo();
   }
 
   Future<void> _loadSettings() async {
@@ -36,6 +50,20 @@ class _SettingsPageState extends State<SettingsPage> {
       _fontSize = prefs.getString('font_size') ?? 'medium';
       _language = prefs.getString('language') ?? 'zh_TW';
     });
+  }
+
+  Future<void> _loadUserInfo() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      setState(() {
+        _userEmail = prefs.getString('UserEmail');
+        _userPhone = prefs.getString('UserPhone');
+        _emailVerified = prefs.getBool('EmailVerified') ?? false;
+        _phoneVerified = prefs.getBool('PhoneVerified') ?? false;
+      });
+    } catch (e) {
+      print('載入用戶信息錯誤: $e');
+    }
   }
 
   Future<void> _saveSetting(String key, dynamic value) async {
@@ -76,21 +104,17 @@ class _SettingsPageState extends State<SettingsPage> {
                   value: 'zh_TW',
                   groupValue: _language,
                   onChanged: (value) {
-                    setState(() {
-                      _language = value!;
-                    });
+                    setState(() => _language = value!);
                     _saveSetting('language', value);
                     Navigator.pop(context);
                   },
                 ),
                 RadioListTile<String>(
-                  title: const Text('简体中文'),
+                  title: const Text('簡體中文'),
                   value: 'zh_CN',
                   groupValue: _language,
                   onChanged: (value) {
-                    setState(() {
-                      _language = value!;
-                    });
+                    setState(() => _language = value!);
                     _saveSetting('language', value);
                     Navigator.pop(context);
                   },
@@ -100,9 +124,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   value: 'en',
                   groupValue: _language,
                   onChanged: (value) {
-                    setState(() {
-                      _language = value!;
-                    });
+                    setState(() => _language = value!);
                     _saveSetting('language', value);
                     Navigator.pop(context);
                   },
@@ -127,9 +149,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   value: 'small',
                   groupValue: _fontSize,
                   onChanged: (value) {
-                    setState(() {
-                      _fontSize = value!;
-                    });
+                    setState(() => _fontSize = value!);
                     _saveSetting('font_size', value);
                     Navigator.pop(context);
                   },
@@ -139,9 +159,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   value: 'medium',
                   groupValue: _fontSize,
                   onChanged: (value) {
-                    setState(() {
-                      _fontSize = value!;
-                    });
+                    setState(() => _fontSize = value!);
                     _saveSetting('font_size', value);
                     Navigator.pop(context);
                   },
@@ -151,9 +169,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   value: 'large',
                   groupValue: _fontSize,
                   onChanged: (value) {
-                    setState(() {
-                      _fontSize = value!;
-                    });
+                    setState(() => _fontSize = value!);
                     _saveSetting('font_size', value);
                     Navigator.pop(context);
                   },
@@ -163,9 +179,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   value: 'extra_large',
                   groupValue: _fontSize,
                   onChanged: (value) {
-                    setState(() {
-                      _fontSize = value!;
-                    });
+                    setState(() => _fontSize = value!);
                     _saveSetting('font_size', value);
                     Navigator.pop(context);
                   },
@@ -176,7 +190,7 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  void _clearCache() async {
+  void _clearCache() {
     showDialog(
       context: context,
       builder:
@@ -189,8 +203,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 child: const Text('取消'),
               ),
               TextButton(
-                onPressed: () async {
-                  // 這裡可以加入清除快取的邏輯
+                onPressed: () {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -211,7 +224,7 @@ class _SettingsPageState extends State<SettingsPage> {
       case 'zh_TW':
         return '繁體中文';
       case 'zh_CN':
-        return '简体中文';
+        return '簡體中文';
       case 'en':
         return 'English';
       default:
@@ -246,7 +259,7 @@ class _SettingsPageState extends State<SettingsPage> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // 通知設定
+            // ========== 通知設定 ==========
             _buildSectionHeader('通知設定'),
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -268,9 +281,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     subtitle: const Text('接收應用通知'),
                     value: _notificationsEnabled,
                     onChanged: (value) {
-                      setState(() {
-                        _notificationsEnabled = value;
-                      });
+                      setState(() => _notificationsEnabled = value);
                       _saveSetting('notifications_enabled', value);
                     },
                   ),
@@ -282,9 +293,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     onChanged:
                         _notificationsEnabled
                             ? (value) {
-                              setState(() {
-                                _pushNotificationsEnabled = value;
-                              });
+                              setState(() => _pushNotificationsEnabled = value);
                               _saveSetting('push_notifications_enabled', value);
                             }
                             : null,
@@ -297,9 +306,9 @@ class _SettingsPageState extends State<SettingsPage> {
                     onChanged:
                         _notificationsEnabled
                             ? (value) {
-                              setState(() {
-                                _emailNotificationsEnabled = value;
-                              });
+                              setState(
+                                () => _emailNotificationsEnabled = value,
+                              );
                               _saveSetting(
                                 'email_notifications_enabled',
                                 value,
@@ -311,7 +320,7 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
 
-            // 顯示設定
+            // ========== 顯示設定 ==========
             _buildSectionHeader('顯示設定'),
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -333,13 +342,8 @@ class _SettingsPageState extends State<SettingsPage> {
                     subtitle: const Text('使用深色主題'),
                     value: _darkModeEnabled,
                     onChanged: (value) {
-                      setState(() {
-                        _darkModeEnabled = value;
-                      });
+                      setState(() => _darkModeEnabled = value);
                       _saveSetting('dark_mode_enabled', value);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('深色模式功能開發中')),
-                      );
                     },
                   ),
                   const Divider(height: 1),
@@ -360,7 +364,7 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
 
-            // 播放設定
+            // ========== 媒體設定 ==========
             _buildSectionHeader('媒體設定'),
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -380,15 +384,13 @@ class _SettingsPageState extends State<SettingsPage> {
                 subtitle: const Text('在行動網路下自動播放影片'),
                 value: _autoPlayVideo,
                 onChanged: (value) {
-                  setState(() {
-                    _autoPlayVideo = value;
-                  });
+                  setState(() => _autoPlayVideo = value);
                   _saveSetting('auto_play_video', value);
                 },
               ),
             ),
 
-            // 儲存與快取
+            // ========== 儲存與快取 ==========
             _buildSectionHeader('儲存與快取'),
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -412,7 +414,7 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
 
-            // 關於
+            // ========== 關於 ==========
             _buildSectionHeader('關於'),
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -468,13 +470,13 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                   const Divider(height: 1),
                   ListTile(
-                    title: const Text('意見回饋'),
+                    title: const Text('意見反饋'),
                     subtitle: const Text('提供意見或回報問題'),
                     leading: Icon(Icons.feedback_outlined, color: Colors.teal),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('意見回饋功能開發中')),
+                        const SnackBar(content: Text('意見反饋功能開發中')),
                       );
                     },
                   ),

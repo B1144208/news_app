@@ -4,321 +4,613 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'config.dart';
 
 class UserService {
-  static final UserService _instance = UserService._internal();
-  factory UserService() => _instance;
+  static final UserService instance = UserService._internal();
+
   UserService._internal();
 
-  // 支持 UserService.instance 的調用方式
-  static UserService get instance => _instance;
-
-  // 檢查是否已登入
-  Future<bool> isLoggedIn() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      return prefs.getBool('IsLogin') ?? false;
-    } catch (e) {
-      return false;
-    }
+  factory UserService() {
+    return instance;
   }
 
-  // 檢查是否為管理員
-  Future<bool> isAdmin() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final userLevel = prefs.getInt('UserLevel') ?? 0;
-
-      // 簡單明瞭：5級以上為管理員
-      return userLevel >= 5;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  // 獲取用戶帳號
-  Future<String?> getUserAccount() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      return prefs.getString('Account');
-    } catch (e) {
-      return null;
-    }
-  }
-
-  // 獲取用戶ID
-  Future<String?> getUserId() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getInt('UserID');
-      return userId?.toString();
-    } catch (e) {
-      return null;
-    }
-  }
-
-  // 獲取用戶名稱（從帳號推導）
-  Future<String?> getUserName() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final account = prefs.getString('Account');
-      // 如果有其他方式獲取真實姓名，可以在這裡擴展
-      return account; // 暫時返回帳號作為名稱
-    } catch (e) {
-      return null;
-    }
-  }
-
-  // 獲取用戶資料
-  Future<Map<String, dynamic>> getUserProfile() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getInt('UserID');
-
-      if (userId == null) {
-        return {'success': false, 'message': '未登入'};
+  Future<Map<String, String>> _getAuthHeaders() async {
+    final headers = {'Content-Type': 'application/json; charset=utf-8'};
+    final isLoggedIn = await this.isLoggedIn();
+    if (isLoggedIn) {
+      final userId = await getUserId();
+      if (userId != null) {
+        headers['User-ID'] = userId.toString();
       }
+      final token = await getToken();
+      if (token != null) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+    }
+    return headers;
+  }
 
-      final url = '$baseUrl/user?userid=$userId';
-      final response = await http.get(Uri.parse(url));
+  Future<bool> isLoggedIn() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    return token != null && token.isNotEmpty;
+  }
+
+  Future<int?> getUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('UserID');
+  }
+
+  Future<String?> getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('token');
+  }
+
+  Future<bool> hasPermission(String permission) async {
+    final prefs = await SharedPreferences.getInstance();
+    final permissionsJson = prefs.getString('permissions');
+    if (permissionsJson == null) return false;
+    try {
+      final permissions = jsonDecode(permissionsJson) as Map<String, dynamic>;
+      return permissions[permission] == true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<Map<String, dynamic>> login(String account, String password) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/user/login'),
+        headers: {'Content-Type': 'application/json; charset=utf-8'},
+        body: jsonEncode({'user_account': account, 'user_password': password}),
+      );
 
       if (response.statusCode == 200) {
-        final List<dynamic> userData = jsonDecode(response.body);
-        if (userData.isNotEmpty) {
-          return {
-            'success': true,
-            'data': {
-              'UserID': userData[0]['UserID'],
-              'Account': userData[0]['Account'],
-              'IsManager': userData[0]['IsManager'],
-              'user_name': userData[0]['Account'], // 使用帳號作為顯示名稱
-              'user_account': userData[0]['Account'],
-              'user_email': '', // 如果後端有email欄位可以添加
-            },
-          };
+        final result = jsonDecode(utf8.decode(response.bodyBytes));
+        if (result['success'] == true) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('Account', account);
+          await prefs.setInt('UserID', result['data']['user_id'] ?? 0);
+          await prefs.setString('token', result['data']['token'] ?? '');
+          await prefs.setInt('IsManager', result['data']['is_manager'] ?? 0);
+          if (result['data']['permissions'] != null) {
+            await prefs.setString(
+              'permissions',
+              jsonEncode(result['data']['permissions']),
+            );
+          }
         }
+        return result;
+      } else {
+        return {'success': false, 'message': '登入失敗', 'error': response.body};
       }
-
-      return {'success': false, 'message': '獲取用戶資料失敗'};
     } catch (e) {
-      return {'success': false, 'message': '網路錯誤: $e'};
+      return {'success': false, 'message': '網絡錯誤: $e'};
     }
   }
 
-  // 更新用戶資料
-  Future<Map<String, dynamic>> updateProfile(
-    Map<String, dynamic> profileData,
+  Future<Map<String, dynamic>> signup(
+    String account,
+    String password,
+    String email,
   ) async {
     try {
-      // 由於原始後端可能不支持更新，這裡先返回成功
-      // 實際項目中需要調用相應的更新API
-      return {'success': true, 'message': '資料更新成功'};
+      final response = await http.post(
+        Uri.parse('$baseUrl/user/signup'),
+        headers: {'Content-Type': 'application/json; charset=utf-8'},
+        body: jsonEncode({
+          'user_account': account,
+          'user_password': password,
+          'user_email': email,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(utf8.decode(response.bodyBytes));
+      } else {
+        return {'success': false, 'message': '註冊失敗', 'error': response.body};
+      }
     } catch (e) {
-      return {'success': false, 'message': '更新失敗: $e'};
+      return {'success': false, 'message': '網絡錯誤: $e'};
     }
   }
 
-  // 修改密碼
-  Future<Map<String, dynamic>> changePassword(
-    String currentPassword,
-    String newPassword,
-  ) async {
-    try {
-      // 由於原始後端可能不支持修改密碼，這裡先返回成功
-      // 實際項目中需要調用相應的修改密碼API
-      return {'success': true, 'message': '密碼修改成功'};
-    } catch (e) {
-      return {'success': false, 'message': '修改密碼失敗: $e'};
-    }
-  }
-
-  // 登出
+  // ✅ 修改登出方法 - 直接清除本地數據
   Future<Map<String, dynamic>> logout() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.clear(); // 清除所有本地資料
+      await prefs.remove('Account');
+      await prefs.remove('UserID');
+      await prefs.remove('token');
+      await prefs.remove('IsManager');
+      await prefs.remove('permissions');
+
+      print('登出成功 - 本地數據已清除');
+
       return {'success': true, 'message': '登出成功'};
     } catch (e) {
+      print('登出失敗: $e');
       return {'success': false, 'message': '登出失敗: $e'};
     }
   }
 
-  // 刪除帳號
-  Future<Map<String, dynamic>> deleteAccount() async {
+  // ✅ 修改個人資料
+  Future<Map<String, dynamic>> updateProfile({
+    required String name,
+    required String email,
+    String? birthday,
+  }) async {
     try {
-      // 由於原始後端可能不支持刪除帳號，這裡先清除本地資料
-      // 實際項目中需要調用相應的刪除API
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
-      return {'success': true, 'message': '帳號已刪除'};
-    } catch (e) {
-      return {'success': false, 'message': '刪除帳號失敗: $e'};
-    }
-  }
+      final userId = await getUserId();
 
-  // 檢查權限
-  Future<bool> hasPermission(String permission) async {
-    final isLoggedIn = await this.isLoggedIn();
-    final isAdmin = await this.isAdmin();
-
-    // 基本權限控制
-    switch (permission) {
-      case 'view':
-      case 'share':
-        return true; // 所有人都可以查看和分享
-      case 'bookmark':
-      case 'comment':
-      case 'score':
-      case 'search':
-        return isLoggedIn; // 需要登入
-      case 'admin':
-      case 'manage':
-      case 'delete':
-      case 'edit':
-        return isAdmin; // 只有管理員
-      default:
-        return false;
-    }
-  }
-
-  // 獲取認證標頭
-  Future<Map<String, String>> getHeaders() async {
-    final headers = {'Content-Type': 'application/json'};
-
-    final userId = await getUserId();
-    if (userId != null) {
-      headers['User-ID'] = userId;
-    }
-
-    return headers;
-  }
-
-  // 獲取Token（如果需要）
-  Future<String?> getToken() async {
-    // 原始系統可能不使用token，返回null
-    return null;
-  }
-
-  // 登入方法 - 使用後端的 POST /login 端點
-  Future<Map<String, dynamic>> login(String account, String password) async {
-    try {
-      print('開始登入: $account');
-
-      if (account.isEmpty || password.isEmpty) {
-        return {'success': false, 'message': '帳號、密碼不能為空！'};
+      if (userId == null) {
+        return {'success': false, 'message': '用戶ID不存在'};
       }
 
-      final url = '$baseUrl/user/login';
-      print('登入URL: $url');
-
-      // 使用正確的欄位名稱
-      final requestBody = {
-        'account': account, // 不是 user_account
-        'password': password, // 不是 user_password
-      };
-
-      print('請求內容: $requestBody');
-
-      final response = await http
-          .post(
-            Uri.parse(url),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode(requestBody),
-          )
-          .timeout(
-            Duration(seconds: 10),
-            onTimeout: () {
-              throw Exception('請求超時，請檢查網路連接');
-            },
-          );
-
-      print('回應狀態碼: ${response.statusCode}');
-      print('回應內容: ${response.body}');
+      final response = await http.put(
+        Uri.parse('$baseUrl/user'),
+        headers: await _getAuthHeaders(),
+        body: jsonEncode({
+          'action': 'update-profile',
+          'user_id': userId,
+          'user_name': name,
+          'user_email': email,
+          'user_birthday': birthday,
+        }),
+      );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-
-        if (data['success'] == true) {
-          // 取得 userId
-          final userId = data['data']?['userId'] ?? data['userId'] ?? 0;
-
-          if (userId != 0) {
-            await _storeUserData(userId);
-            return {'success': true, 'message': '登入成功！'};
-          }
-        }
-
-        return {'success': false, 'message': data['message'] ?? '帳號、密碼錯誤!'};
+        return jsonDecode(utf8.decode(response.bodyBytes));
       } else {
-        return {'success': false, 'message': '伺服器錯誤 (${response.statusCode})'};
+        return {'success': false, 'message': '更新失敗', 'error': response.body};
       }
     } catch (e) {
-      print('登入異常: $e');
-      return {'success': false, 'message': '登入失敗: $e'};
+      return {'success': false, 'message': '網絡錯誤: $e'};
     }
   }
 
-  // 私有方法：儲存用戶資料到 SharedPreferences
-  Future<void> _storeUserData(int userId) async {
-    final userInfoUrl = '$baseUrl/user?userid=$userId';
-
-    print('用戶資料API URL: $userInfoUrl');
-
+  // ✅ 修改密碼
+  Future<Map<String, dynamic>> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
     try {
-      final userInfoResponse = await http.get(Uri.parse(userInfoUrl));
+      final userId = await getUserId();
+      if (userId == null) {
+        return {'success': false, 'message': '用戶ID不存在'};
+      }
 
-      print('用戶資料回應狀態碼: ${userInfoResponse.statusCode}');
-      print('用戶資料回應內容: ${userInfoResponse.body}');
+      final response = await http.put(
+        Uri.parse('$baseUrl/user'),
+        headers: await _getAuthHeaders(),
+        body: jsonEncode({
+          'action': 'change-password',
+          'user_id': userId,
+          'old_password': oldPassword,
+          'new_password': newPassword,
+        }),
+      );
 
-      if (userInfoResponse.statusCode == 200) {
-        final responseData = jsonDecode(userInfoResponse.body);
+      if (response.statusCode == 200) {
+        return jsonDecode(utf8.decode(response.bodyBytes));
+      } else {
+        return {'success': false, 'message': '修改密碼失敗', 'error': response.body};
+      }
+    } catch (e) {
+      return {'success': false, 'message': '網絡錯誤: $e'};
+    }
+  }
 
-        // 檢查回應格式
-        if (responseData is Map<String, dynamic>) {
-          // 如果是新的API格式 {success: true, data: [...]}
-          if (responseData['success'] == true && responseData['data'] is List) {
-            final List<dynamic> userData = responseData['data'];
-            if (userData.isNotEmpty) {
-              await _storeUserPreferences(userData[0]);
-            }
+  // ✅ 刪除帳號
+  Future<Map<String, dynamic>> deleteAccount({required String password}) async {
+    try {
+      final userId = await getUserId();
+      if (userId == null) {
+        return {'success': false, 'message': '用戶ID不存在'};
+      }
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/user'),
+        headers: await _getAuthHeaders(),
+        body: jsonEncode({
+          'action': 'delete-account',
+          'user_id': userId,
+          'password': password,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(utf8.decode(response.bodyBytes));
+        if (result['success'] == true) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove('Account');
+          await prefs.remove('UserID');
+          await prefs.remove('token');
+          await prefs.remove('IsManager');
+          await prefs.remove('permissions');
+        }
+        return result;
+      } else {
+        return {'success': false, 'message': '刪除帳號失敗', 'error': response.body};
+      }
+    } catch (e) {
+      return {'success': false, 'message': '網絡錯誤: $e'};
+    }
+  }
+
+  // ✅ 發送郵箱驗證碼 - 支持多種路由
+  Future<Map<String, dynamic>> sendEmailVerification(String email) async {
+    try {
+      final userId = await getUserId();
+      if (userId == null) {
+        return {'success': false, 'message': '用戶ID不存在'};
+      }
+
+      print('📧 發送郵箱驗證碼');
+      print('   用戶ID: $userId');
+      print('   郵箱: $email');
+
+      // ✅ 嘗試不同的路由組合
+      final routesToTry = [
+        // 優先嘗試 PUT /user (最可能)
+        {
+          'method': 'PUT',
+          'url': '$baseUrl/user',
+          'body': {
+            'user_id': userId,
+            'action': 'send-email-code',
+            'email': email,
+          },
+        },
+        // 次選 POST /user
+        {
+          'method': 'POST',
+          'url': '$baseUrl/user',
+          'body': {
+            'user_id': userId,
+            'action': 'send-email-code',
+            'email': email,
+          },
+        },
+        // 第三選擇 PUT /user/{id}
+        {
+          'method': 'PUT',
+          'url': '$baseUrl/user/$userId',
+          'body': {'action': 'send-email-code', 'email': email},
+        },
+        // 第四選擇 POST /user/{id}
+        {
+          'method': 'POST',
+          'url': '$baseUrl/user/$userId',
+          'body': {'action': 'send-email-code', 'email': email},
+        },
+      ];
+
+      for (int i = 0; i < routesToTry.length; i++) {
+        final route = routesToTry[i];
+        print(
+          '📧 嘗試端點 ${i + 1}/${routesToTry.length}: ${route['method']} ${route['url']}',
+        );
+
+        try {
+          late http.Response response;
+
+          if (route['method'] == 'PUT') {
+            response = await http
+                .put(
+                  Uri.parse(route['url']! as String),
+                  headers: await _getAuthHeaders(),
+                  body: jsonEncode(route['body']),
+                )
+                .timeout(const Duration(seconds: 10));
           } else {
-            print('用戶資料回應格式不正確: $responseData');
+            response = await http
+                .post(
+                  Uri.parse(route['url']! as String),
+                  headers: await _getAuthHeaders(),
+                  body: jsonEncode(route['body']),
+                )
+                .timeout(const Duration(seconds: 10));
           }
-        } else if (responseData is List<dynamic>) {
-          // 如果是舊的API格式，直接是陣列
-          final List<dynamic> userData = responseData;
-          if (userData.isNotEmpty) {
-            await _storeUserPreferences(userData[0]);
+
+          print('📧 API 響應狀態碼: ${response.statusCode}');
+
+          if (response.statusCode == 200) {
+            final result = jsonDecode(utf8.decode(response.bodyBytes));
+            print('✅ 成功！使用端點: ${route['method']} ${route['url']}');
+            return result;
           }
-        } else {
-          print('未知的用戶資料格式: ${responseData.runtimeType}');
+        } catch (e) {
+          print('❌ 端點 ${i + 1} 失敗: $e');
+          continue;
         }
-      } else {
-        print('獲取用戶資料失敗: ${userInfoResponse.statusCode}');
       }
+
+      return {'success': false, 'message': '發送驗證碼失敗，所有端點都不可用'};
     } catch (e) {
-      print('獲取用戶資料異常: $e');
+      print('❌ 發送郵箱驗證碼異常: $e');
+      return {'success': false, 'message': '網絡錯誤: $e'};
     }
   }
 
-  // 輔助方法：儲存用戶偏好設定
-  Future<void> _storeUserPreferences(Map<String, dynamic> user) async {
+  // ✅ 驗證郵箱 - 支持多種路由
+  Future<Map<String, dynamic>> verifyEmail({
+    required String email,
+    required String code,
+  }) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final userId = await getUserId();
+      if (userId == null) {
+        return {'success': false, 'message': '用戶ID不存在'};
+      }
 
-      // 根據實際的資料庫欄位名稱進行適配
-      final userId = user['UserID'] ?? user['user_id'] ?? 0;
-      final account = user['Account'] ?? user['user_account'] ?? '';
-      final password = user['Password'] ?? user['user_password'] ?? '';
-      final isManager = user['IsManager'] ?? user['is_manager'] ?? 0;
+      print('✅ 驗證郵箱');
+      print('   用戶ID: $userId');
+      print('   郵箱: $email');
+      print('   驗證碼: $code');
 
-      await prefs.setInt('UserID', userId);
-      await prefs.setString('Account', account);
-      await prefs.setString('Password', password);
-      await prefs.setInt('IsManager', isManager);
-      await prefs.setBool('IsLogin', true);
+      final routesToTry = [
+        {
+          'method': 'PUT',
+          'url': '$baseUrl/user',
+          'body': {
+            'user_id': userId,
+            'action': 'verify-email-code',
+            'email': email,
+            'code': code,
+          },
+        },
+        {
+          'method': 'POST',
+          'url': '$baseUrl/user',
+          'body': {
+            'user_id': userId,
+            'action': 'verify-email-code',
+            'email': email,
+            'code': code,
+          },
+        },
+        {
+          'method': 'PUT',
+          'url': '$baseUrl/user/$userId',
+          'body': {'action': 'verify-email-code', 'email': email, 'code': code},
+        },
+        {
+          'method': 'POST',
+          'url': '$baseUrl/user/$userId',
+          'body': {'action': 'verify-email-code', 'email': email, 'code': code},
+        },
+      ];
 
-      print('用戶資料已存儲: UserID=$userId, Account=$account, IsManager=$isManager');
+      for (int i = 0; i < routesToTry.length; i++) {
+        final route = routesToTry[i];
+        print(
+          '✅ 嘗試端點 ${i + 1}/${routesToTry.length}: ${route['method']} ${route['url']}',
+        );
+
+        try {
+          late http.Response response;
+
+          if (route['method'] == 'PUT') {
+            response = await http
+                .put(
+                  Uri.parse(route['url']! as String),
+                  headers: await _getAuthHeaders(),
+                  body: jsonEncode(route['body']),
+                )
+                .timeout(const Duration(seconds: 10));
+          } else {
+            response = await http
+                .post(
+                  Uri.parse(route['url']! as String),
+                  headers: await _getAuthHeaders(),
+                  body: jsonEncode(route['body']),
+                )
+                .timeout(const Duration(seconds: 10));
+          }
+
+          print('✅ API 響應狀態碼: ${response.statusCode}');
+
+          if (response.statusCode == 200) {
+            final result = jsonDecode(utf8.decode(response.bodyBytes));
+            print('✅ 成功！使用端點: ${route['method']} ${route['url']}');
+            return result;
+          }
+        } catch (e) {
+          print('❌ 端點 ${i + 1} 失敗: $e');
+          continue;
+        }
+      }
+
+      return {'success': false, 'message': '郵箱驗證失敗，所有端點都不可用'};
     } catch (e) {
-      print('存儲用戶資料失敗: $e');
+      print('❌ 郵箱驗證異常: $e');
+      return {'success': false, 'message': '網絡錯誤: $e'};
+    }
+  }
+
+  // ✅ 發送手機驗證碼 - 支持多種路由
+  Future<Map<String, dynamic>> sendPhoneVerification(String phone) async {
+    try {
+      final userId = await getUserId();
+      if (userId == null) {
+        return {'success': false, 'message': '用戶ID不存在'};
+      }
+
+      print('📱 發送手機驗證碼');
+      print('   用戶ID: $userId');
+      print('   手機: $phone');
+
+      final routesToTry = [
+        {
+          'method': 'PUT',
+          'url': '$baseUrl/user',
+          'body': {
+            'user_id': userId,
+            'action': 'send-phone-code',
+            'phone': phone,
+          },
+        },
+        {
+          'method': 'POST',
+          'url': '$baseUrl/user',
+          'body': {
+            'user_id': userId,
+            'action': 'send-phone-code',
+            'phone': phone,
+          },
+        },
+        {
+          'method': 'PUT',
+          'url': '$baseUrl/user/$userId',
+          'body': {'action': 'send-phone-code', 'phone': phone},
+        },
+        {
+          'method': 'POST',
+          'url': '$baseUrl/user/$userId',
+          'body': {'action': 'send-phone-code', 'phone': phone},
+        },
+      ];
+
+      for (int i = 0; i < routesToTry.length; i++) {
+        final route = routesToTry[i];
+        print(
+          '📱 嘗試端點 ${i + 1}/${routesToTry.length}: ${route['method']} ${route['url']}',
+        );
+
+        try {
+          late http.Response response;
+
+          if (route['method'] == 'PUT') {
+            response = await http
+                .put(
+                  Uri.parse(route['url']! as String),
+                  headers: await _getAuthHeaders(),
+                  body: jsonEncode(route['body']),
+                )
+                .timeout(const Duration(seconds: 10));
+          } else {
+            response = await http
+                .post(
+                  Uri.parse(route['url']! as String),
+                  headers: await _getAuthHeaders(),
+                  body: jsonEncode(route['body']),
+                )
+                .timeout(const Duration(seconds: 10));
+          }
+
+          print('📱 API 響應狀態碼: ${response.statusCode}');
+
+          if (response.statusCode == 200) {
+            final result = jsonDecode(utf8.decode(response.bodyBytes));
+            print('✅ 成功！使用端點: ${route['method']} ${route['url']}');
+            return result;
+          }
+        } catch (e) {
+          print('❌ 端點 ${i + 1} 失敗: $e');
+          continue;
+        }
+      }
+
+      return {'success': false, 'message': '發送驗證碼失敗，所有端點都不可用'};
+    } catch (e) {
+      print('❌ 發送手機驗證碼異常: $e');
+      return {'success': false, 'message': '網絡錯誤: $e'};
+    }
+  }
+
+  // ✅ 驗證手機 - 支持多種路由
+  Future<Map<String, dynamic>> verifyPhone({
+    required String phone,
+    required String code,
+  }) async {
+    try {
+      final userId = await getUserId();
+      if (userId == null) {
+        return {'success': false, 'message': '用戶ID不存在'};
+      }
+
+      print('✅ 驗證手機');
+      print('   用戶ID: $userId');
+      print('   手機: $phone');
+      print('   驗證碼: $code');
+
+      final routesToTry = [
+        {
+          'method': 'PUT',
+          'url': '$baseUrl/user',
+          'body': {
+            'user_id': userId,
+            'action': 'verify-phone-code',
+            'phone': phone,
+            'code': code,
+          },
+        },
+        {
+          'method': 'POST',
+          'url': '$baseUrl/user',
+          'body': {
+            'user_id': userId,
+            'action': 'verify-phone-code',
+            'phone': phone,
+            'code': code,
+          },
+        },
+        {
+          'method': 'PUT',
+          'url': '$baseUrl/user/$userId',
+          'body': {'action': 'verify-phone-code', 'phone': phone, 'code': code},
+        },
+        {
+          'method': 'POST',
+          'url': '$baseUrl/user/$userId',
+          'body': {'action': 'verify-phone-code', 'phone': phone, 'code': code},
+        },
+      ];
+
+      for (int i = 0; i < routesToTry.length; i++) {
+        final route = routesToTry[i];
+        print(
+          '✅ 嘗試端點 ${i + 1}/${routesToTry.length}: ${route['method']} ${route['url']}',
+        );
+
+        try {
+          late http.Response response;
+
+          if (route['method'] == 'PUT') {
+            response = await http
+                .put(
+                  Uri.parse(route['url']! as String),
+                  headers: await _getAuthHeaders(),
+                  body: jsonEncode(route['body']),
+                )
+                .timeout(const Duration(seconds: 10));
+          } else {
+            response = await http
+                .post(
+                  Uri.parse(route['url']! as String),
+                  headers: await _getAuthHeaders(),
+                  body: jsonEncode(route['body']),
+                )
+                .timeout(const Duration(seconds: 10));
+          }
+
+          print('✅ API 響應狀態碼: ${response.statusCode}');
+
+          if (response.statusCode == 200) {
+            final result = jsonDecode(utf8.decode(response.bodyBytes));
+            print('✅ 成功！使用端點: ${route['method']} ${route['url']}');
+            return result;
+          }
+        } catch (e) {
+          print('❌ 端點 ${i + 1} 失敗: $e');
+          continue;
+        }
+      }
+
+      return {'success': false, 'message': '手機驗證失敗，所有端點都不可用'};
+    } catch (e) {
+      print('❌ 手機驗證異常: $e');
+      return {'success': false, 'message': '網絡錯誤: $e'};
     }
   }
 }

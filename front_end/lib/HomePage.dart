@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'config.dart';
@@ -9,6 +10,8 @@ import 'MapPage.dart';
 import 'AIPage.dart';
 import 'SearchPage.dart';
 import 'BookmarkPage.dart';
+import 'MemberCenterPage.dart';
+import 'SignupPage.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -105,7 +108,8 @@ class _HomePageState extends State<HomePage> {
           List<dynamic> channels = responseData['data'];
           Map<int, String> channelMap = {};
           for (var channel in channels) {
-            channelMap[channel['channel_id']] = channel['channel_name'] ?? '未知頻道';
+            channelMap[channel['channel_id']] =
+                channel['channel_name'] ?? '未知頻道';
           }
           return channelMap;
         }
@@ -161,6 +165,15 @@ class _HomePageState extends State<HomePage> {
     } catch (e) {
       return '未知時間';
     }
+  }
+
+  // 獲取用戶資訊
+  Future<Map<String, dynamic>> _getUserInfo() async {
+    final prefs = await SharedPreferences.getInstance();
+    return {
+      'account': prefs.getString('Account') ?? '',
+      'isAdmin': (prefs.getInt('UserLevel') ?? 0) >= 5,
+    };
   }
 
   // 快速播放功能
@@ -255,85 +268,187 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // ========== 注意：新聞導入邏輯完全來自v2 (HomePage_1_.dart) 已驗證可正常運作 ==========
+  // ========== 工具欄：支持登入系統 (v1) + 簡化結構 (v2) ==========
   Widget _buildTopToolBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        children: [
-          Row(
+    return FutureBuilder<bool>(
+      future: SharedPreferences.getInstance().then(
+        (prefs) => prefs.getBool('IsLogin') ?? false,
+      ),
+      builder: (context, snapshot) {
+        final isLoggedIn = snapshot.data ?? false;
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
             children: [
-              ElevatedButton(
-                onPressed: () {
+              if (!isLoggedIn)
+                // 未登入狀態 - 顯示登入和註冊按鈕 (來自v1)
+                Row(
+                  children: [
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const LoginPage(),
+                          ),
+                        ).then((_) {
+                          // 登入後刷新頁面
+                          setState(() {});
+                        });
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black,
+                        elevation: 2,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        minimumSize: const Size(60, 32),
+                      ),
+                      child: const Text('登入', style: TextStyle(fontSize: 12)),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const SignupPage(),
+                          ),
+                        ).then((_) {
+                          // 註冊後刷新頁面
+                          setState(() {});
+                        });
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        elevation: 2,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        minimumSize: const Size(60, 32),
+                      ),
+                      child: const Text('註冊', style: TextStyle(fontSize: 12)),
+                    ),
+                  ],
+                )
+              else
+                // 已登入狀態 - 顯示用戶頭像 (來自v1)
+                FutureBuilder<Map<String, dynamic>>(
+                  future: _getUserInfo(),
+                  builder: (context, userSnapshot) {
+                    final userAccount = userSnapshot.data?['account'] ?? '';
+                    final isAdmin = userSnapshot.data?['isAdmin'] ?? false;
+
+                    return Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () {
+                            if (isAdmin) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const AdminPage(),
+                                ),
+                              ).then((_) => setState(() {}));
+                            } else {
+                              // 導向會員中心頁面
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder:
+                                      (context) => const MemberCenterPage(),
+                                ),
+                              ).then((_) => setState(() {}));
+                            }
+                          },
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: isAdmin ? Colors.red : Colors.blue,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                            ),
+                            child: Center(
+                              child: Text(
+                                userAccount.isNotEmpty
+                                    ? userAccount[0].toUpperCase()
+                                    : 'U',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        if (isAdmin)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.red),
+                            ),
+                            child: const Text(
+                              '管理員',
+                              style: TextStyle(fontSize: 10, color: Colors.red),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                ),
+
+              const Spacer(),
+
+              // 收藏按鈕 (兩個版本相同)
+              GestureDetector(
+                onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const LoginPage()),
+                    MaterialPageRoute(
+                      builder: (context) => const BookmarkPage(),
+                    ),
                   );
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black,
-                  elevation: 2,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[600],
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.3),
+                        spreadRadius: 1,
+                        blurRadius: 2,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
                   ),
-                  minimumSize: const Size(60, 32),
-                ),
-                child: const Text('登入', style: TextStyle(fontSize: 12)),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const AdminPage()),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
-                  elevation: 2,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
+                  child: const Icon(
+                    Icons.bookmark,
+                    color: Colors.white,
+                    size: 20,
                   ),
-                  minimumSize: const Size(80, 32),
                 ),
-                child: const Text('管理員', style: TextStyle(fontSize: 12)),
               ),
             ],
           ),
-
-          const Spacer(),
-
-          // 收藏按鈕
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const BookmarkPage()),
-              );
-            },
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.grey[600],
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey,
-                    spreadRadius: 1,
-                    blurRadius: 2,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
-              ),
-              child: const Icon(Icons.bookmark, color: Colors.white, size: 20),
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -431,7 +546,7 @@ class _HomePageState extends State<HomePage> {
                           style: TextStyle(
                             color: isSelected ? Colors.white : Colors.black,
                             fontWeight:
-                            isSelected ? FontWeight.bold : FontWeight.normal,
+                                isSelected ? FontWeight.bold : FontWeight.normal,
                           ),
                         ),
                       ),
@@ -448,59 +563,48 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildQuickPlaySection() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey,
-            spreadRadius: 1,
-            blurRadius: 3,
-          ),
-        ],
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          const Icon(Icons.flash_on, color: Colors.orange, size: 24),
-          const SizedBox(width: 8),
-          const Text(
-            '快速播放',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.orange,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: GestureDetector(
+              onTap: _startQuickPlay,
+              child: const Row(
+                children: [
+                  Icon(Icons.play_circle_fill, color: Colors.white, size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    '快速播放',
+                    style: TextStyle(color: Colors.white, fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
           ),
           const Spacer(),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey),
-              borderRadius: BorderRadius.circular(8),
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: DropdownButton<String>(
               value: _selectedDuration,
-              underline: Container(),
               items: _durations.map((duration) {
-                return DropdownMenuItem<String>(
+                return DropdownMenuItem(
                   value: duration,
                   child: Text(duration),
                 );
               }).toList(),
               onChanged: (value) {
-                setState(() {
-                  _selectedDuration = value!;
-                });
+                if (value != null) {
+                  setState(() {
+                    _selectedDuration = value;
+                  });
+                }
               },
             ),
-          ),
-          const SizedBox(width: 12),
-          ElevatedButton(
-            onPressed: _startQuickPlay,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            ),
-            child: const Text('確認'),
           ),
         ],
       ),
@@ -508,182 +612,143 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildNewsList() {
-    // 添加調試信息
-    print('_buildNewsList called:');
-    print('_isLoading: $_isLoading');
-    print('_error: $_error');
-    print('_newsData.length: ${_newsData.length}');
-    print('_newsData: $_newsData');
-
     if (_isLoading) {
-      print('Showing loading indicator');
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
     if (_error != null) {
-      print('Showing error: $_error');
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(
-              _error!,
-              style: TextStyle(color: Colors.grey[600]),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _fetchNews,
-              child: const Text('重新載入'),
-            ),
-          ],
+        child: Text(
+          _error!,
+          style: const TextStyle(color: Colors.red, fontSize: 16),
         ),
       );
     }
 
     if (_newsData.isEmpty) {
-      print('Showing empty data message');
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.article_outlined, size: 64, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(
-              '目前沒有新聞資料',
-              style: TextStyle(color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _fetchNews,
-              child: const Text('重新載入'),
-            ),
-          ],
+      return const Center(
+        child: Text(
+          '沒有新聞資料',
+          style: TextStyle(fontSize: 16, color: Colors.grey),
         ),
       );
     }
 
-    print('Showing news list with ${_newsData.length} items');
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      child: RefreshIndicator(
-        onRefresh: _fetchNews,
-        child: ListView.builder(
-          itemCount: _newsData.length,
-          itemBuilder: (context, index) {
-            final news = _newsData[index];
-            print('Building news item $index: ${news['title']}');
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: ListView.builder(
+        itemCount: _newsData.length,
+        itemBuilder: (context, index) {
+          final news = _newsData[index];
+          print('Building news item $index: ${news['title']}');
 
-            return Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey,
-                    spreadRadius: 1,
-                    blurRadius: 3,
+          return Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey,
+                  spreadRadius: 1,
+                  blurRadius: 3,
+                ),
+              ],
+            ),
+            child: InkWell(
+              onTap: () {
+                print('News item tapped: ${news['title']}');
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ViewNewsContent(newsData: news),
+                  ),
+                );
+              },
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 80,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: news['cover_img'] != null &&
+                              news['cover_img'].isNotEmpty
+                          ? Image.network(
+                              news['cover_img'],
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                print('Image load error: $error');
+                                return const Icon(Icons.image,
+                                    color: Colors.grey);
+                              },
+                            )
+                          : const Icon(Icons.image, color: Colors.grey),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          news['channel'] ?? '未知頻道',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          news['title'] ?? '無標題',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: Colors.black,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Text(
+                              news['publish_date'] ?? '未知時間',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 12,
+                              ),
+                            ),
+                            const Spacer(),
+                            Icon(
+                              Icons.chat_bubble_outline,
+                              color: Colors.grey[600],
+                              size: 14,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${news['comments'] ?? 0}',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
-              child: InkWell(
-                onTap: () {
-                  print('News item tapped: ${news['title']}');
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ViewNewsContent(newsData: news),
-                    ),
-                  );
-                },
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 80,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: news['cover_img'] != null && news['cover_img'].isNotEmpty
-                            ? Image.network(
-                          news['cover_img'],
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            print('Image load error: $error');
-                            return const Icon(Icons.image, color: Colors.grey);
-                          },
-                        )
-                            : const Icon(Icons.image, color: Colors.grey),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            news['channel'] ?? '未知頻道',
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 12,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            news['title'] ?? '無標題',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: Colors.black,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Text(
-                                news['publish_date'] ?? '未知時間',
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: 12,
-                                ),
-                              ),
-                              const Spacer(),
-                              Icon(
-                                Icons.chat_bubble_outline,
-                                color: Colors.grey[600],
-                                size: 14,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${news['comments'] ?? 0}',
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -753,7 +818,10 @@ class _HomePageState extends State<HomePage> {
                 GestureDetector(
                   onTap: _adjustPlaybackSpeed,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.grey),
                       borderRadius: BorderRadius.circular(4),
@@ -783,7 +851,10 @@ class _HomePageState extends State<HomePage> {
 
                 // 下一篇按鈕
                 IconButton(
-                  onPressed: _currentNewsIndex < _newsData.length - 1 ? _nextNews : null,
+                  onPressed:
+                      _currentNewsIndex < _newsData.length - 1
+                          ? _nextNews
+                          : null,
                   icon: const Icon(Icons.skip_next),
                   iconSize: 24,
                 ),
@@ -807,11 +878,7 @@ class _HomePageState extends State<HomePage> {
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
-          BoxShadow(
-            color: Colors.grey,
-            spreadRadius: 1,
-            blurRadius: 3,
-          ),
+          BoxShadow(color: Colors.grey, spreadRadius: 1, blurRadius: 3),
         ],
       ),
       child: BottomNavigationBar(
