@@ -7,20 +7,6 @@ import 'EventSortingDetailPage.dart';
 import 'MultiplePerspectivesDetailPage.dart';
 import 'config.dart';
 
-// 假設歷史記錄數據 (靜態模擬)
-const List<String> _mockSearchHistory = [
-  '00000', '22222', '44444', '11111', '33333', '55555',
-];
-
-// 假設熱門搜尋數據 (靜態模擬)
-const List<String> _mockHotSearches = [
-  '00000', '11111', '22222', '33333', '44444',
-  '55555', '66666', '77777', '88888', '99999',
-];
-
-
-
-
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
 
@@ -32,19 +18,30 @@ class _SearchPageState extends State<SearchPage> {
   final TextEditingController _searchController = TextEditingController();
   List<Map<String, dynamic>> _searchResults = [];
   bool _isLoading = false;
+  bool _isHistoryAndPopularLoading = false;
 
-  final String _channelUrl = '$baseUrl/channel';
-  final String _eventSortingUrl = '$baseUrl/EventSorting';
-  final String _multiplePerspectivesUrl = '$baseUrl/MultiplePerspectives';
+  // 狀態：儲存這次搜尋的 record_id
+  int? _currentRecordId;
 
-  // ⚠️ 歷史記錄狀態現在由一個可變列表來模擬，以便實現「刪除」的 UI 效果
-  List<String> _currentHistory = List<String>.from(_mockSearchHistory);
+  // 狀態：模擬登入用戶ID。由於歷史記錄 API 需要 ID，這裡必須有值。
+  final int _currentUserId = 1;
+
+  // API 路由
+  final String _generalSearchUrl = '$baseUrl/general_search';
+  final String _userSearchBaseUrl = '$baseUrl/user/search';
+  // 新增歷史記錄和熱門搜尋 API
+  final String _searchHistoryUrl = '$baseUrl/search/history';
+  final String _popularSearchUrl = '$baseUrl/search/popular';
+
+  // 歷史記錄和熱門搜尋數據列表
+  List<Map<String, dynamic>> _currentHistory = [];
+  List<String> _popularSearches = [];
 
 
   @override
   void initState() {
     super.initState();
-    // 移除 _loadSearchHistory()
+    _loadHistoryAndPopularData();
     _searchController.addListener(_onSearchQueryChanged);
   }
 
@@ -59,34 +56,84 @@ class _SearchPageState extends State<SearchPage> {
     if (_searchController.text.isEmpty && _searchResults.isNotEmpty) {
       setState(() {
         _searchResults = [];
+        _currentRecordId = null;
       });
     }
   }
 
-  // MARK: - 歷史記錄模擬邏輯
 
-  // 模擬「清除所有歷史記錄」
+  // MARK: - 歷史記錄與熱門搜尋 API 載入
+
+  Future<void> _loadHistoryAndPopularData() async {
+    setState(() {
+      _isHistoryAndPopularLoading = true;
+    });
+
+      await Future.wait([
+        _loadSearchHistory(),
+        _loadPopularSearches(),
+      ]);
+
+    setState(() {
+      _isHistoryAndPopularLoading = false;
+    });
+  }
+
+  // 獲取歷史記錄 (GET /api/search/history/:userId)
+  Future<void> _loadSearchHistory() async {
+    try {
+      // ⚠️ 這裡使用 /api/search/history/1 模擬用戶 ID
+      final response = await http.get(Uri.parse('$_searchHistoryUrl/$_currentUserId'));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] is List) {
+          setState(() {
+            _currentHistory = List<Map<String, dynamic>>.from(data['data']);
+          });
+        }
+      } else {
+        print('Failed to load history: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Load history error: $e');
+    }
+  }
+
+  // 獲取熱門搜尋 (GET /api/search/popular)
+  Future<void> _loadPopularSearches() async {
+    try {
+      final response = await http.get(Uri.parse(_popularSearchUrl));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] is List) {
+          setState(() {
+            // 將 [{ keyword_id: 1, keyword_text: "..." }] 轉換為 [ "..." ]
+            _popularSearches = List<Map<String, dynamic>>.from(data['data'])
+                .map((item) => item['keyword_text'] as String)
+                .toList();
+          });
+        }
+      } else {
+        print('Failed to load popular searches: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Load popular searches error: $e');
+    }
+  }
+
+  // 模擬清除歷史記錄的 UI 邏輯 (請替換為實際的 DELETE API)
   void _clearAllSearchHistory() {
     setState(() {
       _currentHistory = [];
     });
-    // ⚠️ 這裡不再調用任何持久化或 API 邏輯
-  }
-
-  // 模擬「保存關鍵字」：點擊標籤或搜索成功時，模擬將其提到最前面
-  void _simulateSaveKeyword(String keyword) {
-    // 僅在當前列表不包含該關鍵字時，模擬插入
-    if (!_currentHistory.contains(keyword)) {
-      setState(() {
-        _currentHistory.insert(0, keyword);
-      });
-    }
-    // ⚠️ 這裡不再調用任何持久化或 API 邏輯
   }
 
 
-  // MARK: - 搜索及導航邏輯 (保留原有功能)
+  // MARK: - 搜索及點擊記錄邏輯
 
+  // 階段 1: 執行搜尋並獲取 record_id
   Future<void> _performSearch(String keyword) async {
     if (keyword.isEmpty) {
       setState(() {
@@ -100,46 +147,46 @@ class _SearchPageState extends State<SearchPage> {
     });
 
     try {
-      final channelResp = await http.get(Uri.parse(_channelUrl));
-      final eventResp = await http.get(Uri.parse(_eventSortingUrl));
-      final multipleResp = await http.get(Uri.parse(_multiplePerspectivesUrl));
+      final uri = Uri.parse('$_generalSearchUrl?keyword=$keyword');
 
-      List<Map<String, dynamic>> results = [];
+      final response = await http.get(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+      );
 
-      // ... (原有的 API 數據處理和篩選邏輯 - 保持不變) ...
-      if (channelResp.statusCode == 200) {
-        final data = json.decode(channelResp.body)['data'];
-        for (var item in data) {
-          final name = item['channel_name'] ?? '';
-          if (name.toLowerCase().contains(keyword.toLowerCase())) {
-            results.add({'type': 'channel', 'id': item['channel_id'], 'title': name});
-          }
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        if (data['success'] == true) {
+
+          final int? recordId = data['record_id'];
+          setState(() {
+            _currentRecordId = recordId;
+          });
+
+          List<Map<String, dynamic>> results = [];
+
+          // 處理 News
+          final newsList = List<Map<String, dynamic>>.from(data['news'] ?? []);
+          results.addAll(newsList.map((item) => {'type': 'news', 'id': item['news_id'] ?? item['id'], 'title': item['title'] ?? '無標題'}));
+
+          // 處理 Channel
+          final channelList = List<Map<String, dynamic>>.from(data['channel'] ?? []);
+          results.addAll(channelList.map((item) => {'type': 'channel', 'id': item['channel_id'] ?? item['id'], 'title': item['channel_name'] ?? item['title'] ?? '無標題'}));
+
+          // 處理 EventSorting
+          final eventList = List<Map<String, dynamic>>.from(data['eventsorting'] ?? []);
+          results.addAll(eventList.map((item) => {'type': 'eventSorting', 'id': item['eventsorting_id'] ?? item['id'], 'title': item['eventsorting_title'] ?? item['title'] ?? '無標題'}));
+
+          // 處理 MultiplePerspectives
+          final multipleList = List<Map<String, dynamic>>.from(data['multipleperspectives'] ?? []);
+          results.addAll(multipleList.map((item) => {'type': 'multiplePerspectives', 'id': item['multipleperspectives_id'] ?? item['id'], 'title': item['multipleperspectives_title'] ?? item['title'] ?? '無標題'}));
+
+          setState(() {
+            _searchResults = results;
+          });
         }
       }
-
-      if (eventResp.statusCode == 200) {
-        final data = json.decode(eventResp.body)['data'];
-        for (var item in data) {
-          final title = item['eventsorting_title'] ?? '';
-          if (title.toLowerCase().contains(keyword.toLowerCase())) {
-            results.add({'type': 'eventSorting', 'id': item['eventsorting_id'], 'title': title});
-          }
-        }
-      }
-
-      if (multipleResp.statusCode == 200) {
-        final data = json.decode(multipleResp.body)['data'];
-        for (var item in data) {
-          final title = item['multipleperspectives_title'] ?? '';
-          if (title.toLowerCase().contains(keyword.toLowerCase())) {
-            results.add({'type': 'multiplePerspectives', 'id': item['multipleperspectives_id'], 'title': title});
-          }
-        }
-      }
-
-      setState(() {
-        _searchResults = results;
-      });
     } catch (e) {
       print('Search error: $e');
     } finally {
@@ -149,17 +196,39 @@ class _SearchPageState extends State<SearchPage> {
     }
   }
 
-  void _navigateToDetail(Map<String, dynamic> item) {
-    final currentKeyword = _searchController.text.trim();
-    if (currentKeyword.isNotEmpty) {
-      // ⚠️ 模擬保存關鍵字
-      _simulateSaveKeyword(currentKeyword);
+  // 階段 2: 記錄點擊行為
+  Future<void> _recordClickAction(String dataType, int dataId) async {
+    if (_currentRecordId == null) return;
+
+    String typePath;
+    switch (dataType) {
+      case 'news': typePath = 'news'; break;
+      case 'channel': typePath = 'channel'; break;
+      case 'eventSorting': typePath = 'eventsorting'; break;
+      case 'multiplePerspectives': typePath = 'multipleperspectives'; break;
+      default: return;
     }
 
+    try {
+      await http.post(
+        Uri.parse('$_userSearchBaseUrl/$typePath'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'recordId': _currentRecordId,
+          'dataId': dataId,
+        }),
+      );
+    } catch (e) {
+      print('Click action error: $e');
+    }
+  }
+
+  void _navigateToDetail(Map<String, dynamic> item) {
     final type = item['type'];
     final id = item['id'];
 
-    // 導航邏輯保持不變...
+    _recordClickAction(type, id);
+
     if (type == 'channel') {
       Navigator.push(context, MaterialPageRoute(builder: (context) => ChannelDetailPage(channelId: id, channelName: item['title'])));
     } else if (type == 'eventSorting') {
@@ -187,7 +256,7 @@ class _SearchPageState extends State<SearchPage> {
       ),
       body: Column(
         children: [
-          _isLoading
+          _isLoading || _isHistoryAndPopularLoading
               ? const LinearProgressIndicator()
               : const SizedBox.shrink(),
           Expanded(
@@ -200,7 +269,7 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  // 1. 構建頂部的搜索欄和返回箭頭 (保持不變)
+  // 構建頂部的搜索欄和返回箭頭
   Widget _buildSearchBar() {
     return Row(
       children: [
@@ -242,17 +311,21 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  // 2. 構建搜索歷史和熱門搜尋的主體
+  // 構建搜索歷史和熱門搜尋的主體
   Widget _buildHistoryAndHotSearch(BuildContext context) {
+
+    // 提取歷史記錄的關鍵字列表
+    final historyKeywords = _currentHistory.map((item) => item['keyword_text'] as String).toList();
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 歷史記錄區塊
-          _buildHistoryHeader(),
+          _buildHistoryHeader(historyKeywords.isEmpty),
           const SizedBox(height: 8),
-          _buildTagsWrapper(_currentHistory), // ⚠️ 使用可變的 _currentHistory
+          _buildTagsWrapper(historyKeywords),
 
           const SizedBox(height: 32),
 
@@ -262,30 +335,16 @@ class _SearchPageState extends State<SearchPage> {
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black),
           ),
           const SizedBox(height: 8),
-          _buildTagsWrapper(_mockHotSearches), // ⚠️ 使用靜態的 _mockHotSearches
+          _buildTagsWrapper(_popularSearches),
 
-          const SizedBox(height: 50),
-          // 截圖中的可愛插畫（這裡使用一個 Placeholder 容器代替圖片）
-          Center(
-            child: Container(
-              width: 200,
-              height: 200,
-              decoration: BoxDecoration(
-                color: Colors.pink.shade100,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Center(
-                child: Text('可愛插畫 Placeholder', textAlign: TextAlign.center, style: TextStyle(color: Colors.pink)),
-              ),
-            ),
-          ),
+          // 底部可愛插畫 Placeholder 已被刪除
         ],
       ),
     );
   }
 
-  // 3. 構建歷史記錄的標題和清除按鈕
-  Widget _buildHistoryHeader() {
+  // 歷史記錄的標題和清除按鈕
+  Widget _buildHistoryHeader(bool isEmpty) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -294,8 +353,7 @@ class _SearchPageState extends State<SearchPage> {
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black),
         ),
         TextButton(
-          // ⚠️ 調用模擬的清除邏輯
-          onPressed: _currentHistory.isEmpty ? null : _clearAllSearchHistory,
+          onPressed: isEmpty ? null : _clearAllSearchHistory,
           child: const Text(
             '刪除歷史記錄',
             style: TextStyle(
@@ -309,7 +367,7 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  // 4. 構建標籤樣式的 Wrapper (用於歷史記錄和熱門搜尋) (保持不變)
+  // 構建標籤樣式的 Wrapper
   Widget _buildTagsWrapper(List<String> keywords) {
     return Wrap(
       spacing: 12.0,
@@ -318,12 +376,10 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  // 5. 構建單個搜索標籤
+  // 構建單個搜索標籤
   Widget _buildSearchTag(String keyword) {
     return InkWell(
       onTap: () {
-        // 點擊標籤時，模擬保存關鍵字並執行搜索
-        _simulateSaveKeyword(keyword); // ⚠️ 模擬保存
         _searchController.text = keyword;
         _searchController.selection = TextSelection.fromPosition(
           TextPosition(offset: _searchController.text.length),
@@ -352,7 +408,7 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  // 6. 搜索結果列表 (保持不變)
+  // 搜索結果列表
   Widget _buildResultsList() {
     if (!_isLoading && _searchResults.isEmpty && _searchController.text.isNotEmpty) {
       return const Center(child: Text('找不到相關內容'));
@@ -362,7 +418,11 @@ class _SearchPageState extends State<SearchPage> {
       itemCount: _searchResults.length,
       itemBuilder: (context, index) {
         final item = _searchResults[index];
-        final typeText = item['type'] == 'channel' ? '頻道' : item['type'] == 'eventSorting' ? '事件整理' : '多重觀點';
+        final type = item['type'];
+        final typeText = type == 'channel' ? '頻道'
+            : type == 'eventSorting' ? '事件整理'
+            : type == 'multiplePerspectives' ? '多重觀點'
+            : type == 'news' ? '新聞' : '其他';
 
         return ListTile(
           title: Text(item['title']),
