@@ -130,14 +130,13 @@ async function insertUserAction (req, res, next) {
     /*
     @ actionType : view, share, search, bookmark, comment, score, location
     @ dataType   : news, channel, eventsorting, multipleperspectives
-    @ search     : recordId
     @ comment    : anonymous(可空), text
     @ score      : score
     @ location   : region_id, country_id, state_id
     */
     let { actionType, dataType } = req.params ?? {}
     let { userId, dataId } = req.body ?? {}
-    let { recordId, anonymous, text, score, region_id, country_id, state_id } = req.body ?? {}
+    let { anonymous, text, score, region_id, country_id, state_id } = req.body ?? {}
     const clientIp = req.clientIp;
 
     // 如果 actionType 是 'location'，則 dataId 可以是 'lth' (可選)；否則必須是 'non_null'
@@ -160,7 +159,6 @@ async function insertUserAction (req, res, next) {
             { field: 'dataType'     , data: dataType    , type: 'string'    , other: ['non_null'],  enum: ['news', 'channel', 'eventsorting','multipleperspectives'] },
             { field: 'userId'       , data: userId      , type: 'number'    , other: ['lth']                    },
             { field: 'dataId'       , data: dataId      , type: 'number'    , other: dataIdCheck                },
-            { field: 'recordId'     , data: recordId    , type: 'number'    , other: ['lth']                    },
             { field: 'anonymous'    , data: anonymous   , type: 'string'    , other: ['lth']                    },
             { field: 'text'         , data: text        , type: 'string'    , other: ['lth']                    },
             { field: 'score'        , data: score       , type: 'number'    , other: ['lth']                    },
@@ -177,7 +175,7 @@ async function insertUserAction (req, res, next) {
     // 僅 view & share & search 能夠沒有 userId
     let invalidField = false;
     invalidField = ( (!userId)? !actionType==='view' && !actionType==='share' && !actionType==='search': false ) ||
-                   ( (actionType === 'search')? !recordId || userId : false ) ||
+                   ( (actionType === 'search')? userId : false ) ||
                    ( (actionType === 'comment')? !text : false ) ||
                    ( (actionType === 'score')? !score : false )
     if ( invalidField ) {
@@ -262,11 +260,6 @@ async function insertUserAction (req, res, next) {
     let needIp = actionType=="view" || actionType=="share";
     if (userId) { colums.push("user_id"); params.push(userId); }
     if (needIp) { colums.push("user_ip"); params.push(clientIp); }
-
-    if (actionType==="search") {
-        colums.push("record_id");
-        params.push(recordId);
-    }
 
     if (actionType==="comment") {
         let anonymousId = null;

@@ -32,41 +32,24 @@ async function generalSearch (req, res, next) {
         return next(err);
     }
 
-    // get recordId
-    let recordId = null, hasRecord = false;
     let sql = `
-        SELECT * 
-        FROM user_search_record 
-        WHERE user_id = ? AND keyword_id = ?
+            INSERT INTO user_search_record (
+            ${userId? "user_id,": ""}
+            user_ip,
+            keyword_id
+        ) VALUES ( ${userId? "?,": ""} ?, ? )
     `;
-    let params = [userId, keywordId];
+    let params = [];
+    if (userId) params.push(userId);
+    params.push(clientIp, keywordId);
     try {
         let [result] = await pool.query(sql, params);
-        hasRecord = (result.length != 0) && ( recordIncrease(userId, keywordId) ) && (recordId = result[0]["record_id"])
+        recordId = result.insertId;
     } catch (err) {
         err.desc = "middlewares-insertUserAction(): database insert error";
         return next(err);
     }
-
-    if ( !hasRecord ) {
-        sql = `
-                INSERT INTO user_search_record (
-                    ${userId? "user_id,": ""}
-                    user_ip,
-                    keyword_id
-                ) VALUES ( ${userId? "?,": ""} ?, ? )
-            `;
-            params = [];
-            if (userId) params.push(userId);
-            params.push(clientIp, keywordId);
-            try {
-                let [result] = await pool.query(sql, params);
-                recordId = result.insertId;
-            } catch (err) {
-                err.desc = "middlewares-insertUserAction(): database insert error";
-                return next(err);
-            }
-    }
+    
     
     let newsList = channelList = eventsortingList = multipleperspectivesList = []
 
@@ -79,22 +62,6 @@ async function generalSearch (req, res, next) {
         eventsortingList: eventsortingList,
         multipleperspectivesList: multipleperspectivesList
     }, "Insert Success");
-}
-
-async function recordIncrease ( userId, keywordId, increase = 1 ) {
-    let sql = `
-        UPDATE user_search_record
-        SET search_counts=search_counts + ?
-        WHERE user_id = ? AND keyword_id = ?
-    `;
-    let params = [ increase, userId, keywordId ];
-    try {
-        let [result] = await pool.query(sql, params);
-        return;
-    } catch (err) {
-        err.desc = "middlewares-recordIncrease(): database increase error";
-        return next(err);
-    }
 }
 
 // other search
@@ -113,7 +80,7 @@ async function historyRecord (req, res, next) {
         SELECT DISTINCT kd.keyword_id, kd.keyword_text
         FROM user_search_record AS usr
         JOIN keyword_data AS kd ON kd.keyword_id = usr.keyword_id
-        WHERE usr.user_id = 1
+        WHERE usr.user_id = ?
         ORDER BY kd.keyword_id DESC
         LIMIT 10;
     `;
