@@ -21,10 +21,15 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
   int? _currentUserId;
   bool _isEventSortingMode = false;
 
-  // 💥 NEW: 儲存從 API 獲取的分數數據
+  // 儲存從 API 獲取的分數數據
   int _totalScore = 0;
   int _totalRater = 0;
-  // 💥 NEW: 計算平均分數 (四捨五入到小數點後一位)
+  // 儲存實際的留言人數 (從 total_comment 欄位獲取)
+  int _commentCount = 0;
+  // 模擬收藏狀態 (假設此頁面也需要)
+  bool isFavorite = false;
+
+  // 計算平均分數 (四捨五入到小數點後一位)
   double get _averageScore => _totalRater > 0 ? (_totalScore / _totalRater) : 0.0;
 
   // 修正：只保留 $baseUrl。
@@ -51,7 +56,7 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
     });
   }
 
-  // 💥 NEW: 重新獲取事件詳情，用於評分或留言後更新 UI
+  // 重新獲取事件詳情，用於評分或留言後更新 UI
   Future<void> _refreshViewDetails() async {
     // 設置新的 Future，並觸發 UI 刷新
     setState(() {
@@ -70,13 +75,17 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
         if (data['data'].isNotEmpty) {
           final view = data['data'][0];
 
-          // 💥 NEW: 獲取並保存分數數據
+          // MODIFIED: 獲取並保存分數數據 和 留言數量
           if (mounted) {
             setState(() {
               // 假設 API 欄位為 'total_score' 和 'total_rater'
               _totalScore = view['total_score'] as int? ?? 0;
               _totalRater = view['total_rater'] as int? ?? 0;
+              // 獲取並保存留言數量
+              _commentCount = view['total_comment'] as int? ?? 0;
+
               print('Fetched Score: Total Score $_totalScore, Total Rater $_totalRater');
+              print('Fetched Comment Count: $_commentCount');
             });
           }
 
@@ -92,26 +101,91 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
     }
   }
 
-  // 通用用戶行為 API 函式
-  Future<void> _insertUserAction(String actionType, String dataType, {String? text, int? score}) async {
+  // 💥 MODIFIED: 通用用戶行為 API 函式 (已新增 anonymous 參數和處理)
+  Future<void> _insertUserAction(
+      String actionType,
+      String dataType,
+      {
+        String? text,
+        int? score,
+        String? anonymous, // 💥 修正點：新增匿名名稱參數
+      }
+      ) async {
     // 假設您的後端路由是 $baseUrl/user/:actionType/:dataType
     final url = '$_userActionBaseUrl/user/$actionType/$dataType';
 
     final body = <String, dynamic>{
-      // 確保傳遞給後端的 userId 和 dataId 是 int 類型 (或 null for view/share)
-      'userId': _currentUserId,
       'dataId': widget.id,
-      if (text != null && text.isNotEmpty) 'text': text,
-      if (score != null) 'score': score,
     };
+    // 確保 currentUserId 不為 null 才傳入 body
+    if (_currentUserId != null) {
+      body['userId'] = _currentUserId;
+    }
 
+
+    // 處理特例 actionType
     if (actionType == 'view' || actionType == 'share') {
       body['clientIp'] = '127.0.0.1';
-      // 僅在 view/share 動作時移除 userId，讓後端使用 clientIp
       body.remove('userId');
+    } else if (actionType == 'deleteComment') {
+      // 假設 text 傳遞的是 commentId
+      if (text != null && int.tryParse(text) != null) {
+        body['commentId'] = int.parse(text);
+      } else {
+        print('Error: deleteComment action missing valid commentId in text parameter.');
+        return;
+      }
+      body.remove('text'); // 移除 text
+    } else if (actionType == 'editComment') {
+      // 假設 text 傳遞的是 'commentId:::newText'
+      if (text != null && text.contains(':::')) {
+        final parts = text.split(':::');
+        if (parts.length == 2 && int.tryParse(parts[0]) != null) {
+          body['commentId'] = int.parse(parts[0]);
+          body['text'] = parts[1];
+        } else {
+          print('Error: editComment action text format is invalid.');
+          return;
+        }
+      } else {
+        print('Error: editComment action missing new text or ID.');
+        return;
+      }
+    } else {
+      // 處理一般 comment 和 score
+      if (text != null && text.isNotEmpty) body['text'] = text;
+      if (score != null) body['score'] = score;
+
+      // 🌟 新增：如果存在匿名名稱，則傳遞給後端 🌟
+      if (anonymous != null && anonymous.isNotEmpty) body['anonymous'] = anonymous;
+
+      // 如果是非 view/share 操作，但沒有 currentUserId，則阻止操作
+      if (_currentUserId == null) {
+        print('Error: Action $actionType requires a logged-in user.');
+        return;
+      }
+    }
+
+
+    // 收藏/取消收藏操作
+    if (actionType == 'bookmark') {
+      // 在前端先更新狀態以達到即時回饋
+      setState(() {
+        isFavorite = !isFavorite;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isFavorite ? '已加入收藏' : '已移除收藏'),
+          duration: const Duration(seconds: 1),
+        ),
+      );
     }
 
     body.removeWhere((key, value) => value == null);
+
+    print('Sending API to: $url');
+    print('Request Body: ${json.encode(body)}');
 
     try {
       final response = await http.post(
@@ -122,13 +196,13 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
 
       if (response.statusCode == 200) {
         print('Action $actionType recorded successfully!');
-        // 💥 NEW: 如果是 score 或 comment 成功，重新載入數據以更新分數
-        if (actionType == 'score' || actionType == 'comment') {
+        // 如果是 score, comment, deleteComment, editComment 成功，重新載入數據以更新分數和留言數
+        if (['score', 'comment', 'deleteComment', 'editComment'].contains(actionType)) {
           _refreshViewDetails();
         }
       } else {
         print('Failed to record action $actionType. Status: ${response.statusCode}');
-        if (actionType != 'view') {
+        if (actionType != 'view' && actionType != 'bookmark') {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('操作失敗: ${response.statusCode} - ${json.decode(response.body)['message'] ?? '伺服器錯誤'}')),
           );
@@ -136,7 +210,7 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
       }
     } catch (e) {
       print('Error recording action: $e');
-      if (actionType != 'view') {
+      if (actionType != 'view' && actionType != 'bookmark') {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('連線錯誤: $e')),
         );
@@ -144,8 +218,9 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
     }
   }
 
-  // 💥 NEW: 導航至 CommentsPage 的函式，傳遞分數和回調
+  // 導航至 CommentsPage 的函式 (保持不變，因為它傳遞了修正後的 _insertUserAction)
   void _navigateToCommentsPage() {
+    // 步驟 1: 檢查 currentUserId 是否為 null
     if (_currentUserId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('請先登入以使用評分/留言功能')),
@@ -153,15 +228,16 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
       return;
     }
 
+    // 步驟 2: 導航時，使用 ! 確保傳遞 int 給 CommentsPage
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => CommentsPage(
           dataId: widget.id,
-          currentUserId: _currentUserId,
+          currentUserId: _currentUserId!, // 💥 使用 ! 確保傳遞 int
           dataType: 'multipleperspectives',
           insertUserAction: _insertUserAction,
-          // 💥 NEW: 傳遞目前的分數數據和更新回調
+          // 傳遞目前的分數數據和更新回調
           totalScore: _totalScore,
           totalRater: _totalRater,
           onParentDataUpdated: _refreshViewDetails, // 傳遞回調函式
@@ -239,7 +315,6 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
                       ],
                     ),
                   ),
-                  // 💥 NEW: 顯示分數
                   _buildScoreCard(),
                   _buildViewpointSection(viewpoints),
                   _buildChartSection(viewpoints),
@@ -257,7 +332,7 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
 
   // --- 輔助 Widget 函式 ---
 
-  // 💥 NEW: 顯示分數的 Widget
+  // 顯示分數的 Widget (保持不變)
   Widget _buildScoreCard() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -472,72 +547,147 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
     );
   }
 
-  Widget _buildBottomActions() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.shade300, width: 1)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          // 💥 MODIFIED: 評分/留言
-          _buildActionIcon(
-              icon: Icons.message,
-              label: '評分/留言',
-              onTap: _navigateToCommentsPage // 呼叫統一的導航函式
-          ),
-          _buildActionIcon(
-              icon: Icons.chat_bubble_outline,
-              label: '聊天機器人',
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('聊天機器人功能已啟用')),
-                );
-              }
-          ),
-
-          _buildActionIcon(
-              icon: Icons.bookmark,
-              label: '收藏',
-              onTap: () {
-                if (_currentUserId != null) {
-                  _insertUserAction('bookmark', 'multipleperspectives');
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('已收藏此觀點')),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('請先登入以使用收藏功能')),
-                  );
-                }
-              }
-          ),
-          _buildActionIcon(
-              icon: Icons.share,
-              label: '分享',
-              onTap: () {
-                _insertUserAction('share', 'multipleperspectives');
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('分享功能已啟用')),
-                );
-              }
-          ),
-        ],
+  // 復刻 EventSortingDetailPage 的留言按鈕樣式 (圓角邊框帶計數)
+  Widget _buildCommentAndRatingButton() {
+    return InkWell(
+      onTap: _navigateToCommentsPage, // 呼叫統一的導航函式
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.grey[300]!),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.chat_bubble_outline, // 模仿原版圖標
+              size: 20,
+              color: Colors.grey[600],
+            ),
+            const SizedBox(width: 8),
+            Text(
+              // 顯示實際的留言數量
+              '${_commentCount}則',
+              style: TextStyle(color: Colors.grey[600], fontSize: 14),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildActionIcon({required IconData icon, required String label, required VoidCallback onTap}) {
+  // 復刻 EventSortingDetailPage 的機器人按鈕樣式 (藍色圓形)
+  Widget _buildFloatingActionRobotButton() {
+    return InkWell(
+      onTap: () {
+        if (_currentUserId != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('點擊了聊天機器人，待實作導航')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('請先登入以使用聊天機器人')),
+          );
+        }
+      },
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: const BoxDecoration(
+          color: Colors.blue,
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(Icons.smart_toy, color: Colors.white, size: 24),
+      ),
+    );
+  }
+
+  // 復刻 EventSortingDetailPage 的右側動作圖標樣式
+  Widget _buildActionIcon({
+    required IconData icon,
+    required String label, // 雖然不用 label，但保留簽名
+    required VoidCallback onTap,
+    required Color iconColor,
+  }) {
     return InkWell(
       onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Container(
+        padding: const EdgeInsets.all(12), // 模仿原版右側按鈕的 padding
+        child: Icon(
+          icon,
+          color: iconColor,
+          size: 24,
+        ),
+      ),
+    );
+  }
+
+
+  // 復刻 EventSortingDetailPage 的底部操作欄
+  Widget _buildBottomActions() {
+    return Container(
+      // 復刻原版 BAR 的 padding, 裝飾 (背景色與陰影)
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.4),
+            spreadRadius: 1,
+            blurRadius: 3,
+            offset: const Offset(0, -1),
+          ),
+        ],
+      ),
+      child: Row(
         children: [
-          Icon(icon, color: Colors.grey.shade700),
-          const SizedBox(height: 4),
-          Text(label, style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
+          // 1. 留言/評分按鈕 (圓角邊框帶計數樣式)
+          _buildCommentAndRatingButton(),
+
+          const Spacer(), // 分隔留言按鈕和聊天機器人按鈕
+
+          // 2. 機器人圖示 (圓形藍色樣式)
+          _buildFloatingActionRobotButton(),
+
+          const Spacer(), // 分隔機器人按鈕和右側按鈕組
+
+          // 3. 右側按鈕組 (收藏與分享)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 收藏按鈕
+              _buildActionIcon(
+                icon: isFavorite ? Icons.bookmark : Icons.bookmark_outline, // 根據狀態切換圖標
+                label: '收藏',
+                iconColor: isFavorite ? Colors.blue : Colors.grey.shade600!,
+                onTap: () {
+                  if (_currentUserId != null) {
+                    // _insertUserAction 會自動切換 isFavorite 狀態並顯示 Snackbar
+                    _insertUserAction('bookmark', 'multipleperspectives');
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('請先登入以使用收藏功能')),
+                    );
+                  }
+                },
+              ),
+
+              // 分享按鈕
+              _buildActionIcon(
+                icon: Icons.share_outlined,
+                label: '分享',
+                iconColor: Colors.grey.shade600!,
+                onTap: () {
+                  _insertUserAction('share', 'multipleperspectives');
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('分享功能已啟用')),
+                  );
+                },
+              ),
+            ],
+          ),
         ],
       ),
     );

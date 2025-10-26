@@ -4,37 +4,72 @@ import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:math';
-// 🌟 修正：引入 shared_preferences 用於用戶狀態持久化 🌟
 import 'package:shared_preferences/shared_preferences.dart';
 
 // 引入配置檔 (假設 config.dart 包含了 baseUrl)
 import 'config.dart';
 // 如果您還沒有創建 BookmarkPage.dart，請將這行註釋掉
 import 'BookmarkPage.dart';
+// 💥 1. 新增：引入 ViewNewsContent 頁面
+import 'ViewNewsContent.dart';
 
 // 新聞資料模型
 class News {
+  // 💥 2. 欄位調整：保留 ViewNewsContent 需要的欄位，但更新註釋
+  final int id; // 為了 ViewNewsContent 傳遞 news_id
+  final int channelId; // 為了 ViewNewsContent 傳遞 channel_id
+  final int commentsCount; // 為了 ViewNewsContent 顯示 total_comment
+
   final String title;
-  final String url;
+  final String url; // origin_url
   final String? coverImage;
   final String? publishDate;
+  final String? sourceName; // 為了 channel 欄位
 
   News({
+    required this.id,
+    required this.channelId,
+    required this.commentsCount,
     required this.title,
     required this.url,
     this.coverImage,
     this.publishDate,
+    this.sourceName,
   });
 
   factory News.fromJson(Map<String, dynamic> json) {
+    // 確保 ID 欄位是 int
+    final newsId = int.tryParse(json['news_id']?.toString() ?? '0') ?? 0;
+    final channelId = int.tryParse(json['channel_id']?.toString() ?? '1') ?? 1;
+    final commentsCount = int.tryParse(json['total_comment']?.toString() ?? '0') ?? 0;
 
     return News(
-      title: json['news_title'],
-      url: json['origin_url'],
+      id: newsId,
+      channelId: channelId,
+      commentsCount: commentsCount,
+      title: json['news_title'] ?? '無標題',
+      url: json['origin_url'] ?? '#',
       // 使用 baseUrl
-      coverImage: json['cover_image'] != null ? '$baseUrl/image/${json['cover_image']}' : null,
+      coverImage: json['cover_image'] != null && int.tryParse(json['cover_image'].toString()) != null
+          ? '$baseUrl/image/${json['cover_image']}'
+          : null,
       publishDate: json['news_date'],
+      sourceName: json['news_source'], // 假設 news_source 欄位可用作 channel 名稱
     );
+  }
+
+  // 輔助函式：將 News 物件轉換成 ViewNewsContent 期望的 Map 格式
+  Map<String, dynamic> toNewsDataMap() {
+    return {
+      'id': id,
+      'title': title,
+      'channel_id': channelId,
+      'channel': sourceName ?? '未知來源', // 使用 sourceName 作為 channel 名稱
+      'news_date': publishDate,
+      'comments': commentsCount,
+      // 這裡傳遞 news_id 作為 cover_image 的 ID，讓 ViewNewsContent 決定如何處理
+      'cover_image': id,
+    };
   }
 }
 
@@ -208,7 +243,8 @@ class _MapPageState extends State<MapPage> {
         Uri.parse('$baseUrl/news?locationId=$locationId&locationType=$locationType'),
       );
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data = jsonDecode(response.body);
+        // 💥 修正：使用 utf8.decode 確保中文字元正確解析
+        final Map<String, dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
         final List<dynamic> newsData = data['data'];
         final fetchedNews = newsData.map((json) => News.fromJson(json)).toList();
 
@@ -218,9 +254,10 @@ class _MapPageState extends State<MapPage> {
           });
         }
       } else {
-        throw Exception('無法取得新聞資料');
+        throw Exception('無法取得新聞資料 (Status: ${response.statusCode})');
       }
     } catch (e) {
+      print('Fetch news error: $e');
       if (mounted) {
         setState(() {
           _newsList = [];
@@ -318,6 +355,18 @@ class _MapPageState extends State<MapPage> {
           SnackBar(content: Text('該地點沒有 ${targetScope == 'country' ? '國家' : targetScope == 'state' ? '州/省' : '地區'} 的新聞資料。'))
       );
     }
+  }
+
+  // 💥 3. 新增：導航到 ViewNewsContent 頁面
+  void _navigateToNewsContentPage(News newsItem) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ViewNewsContent(
+          newsData: newsItem.toNewsDataMap(),
+        ),
+      ),
+    );
   }
 
 
@@ -584,9 +633,8 @@ class _MapPageState extends State<MapPage> {
                     child: ListTile(
                       title: Text(news.title),
                       subtitle: Text(news.publishDate ?? ''),
-                      onTap: () {
-                        // TODO: 點擊後開啟新聞連結
-                      },
+                      // 💥 3. 實作 onTap 導航邏輯
+                      onTap: () => _navigateToNewsContentPage(news),
                     ),
                   );
                 },
@@ -691,7 +739,8 @@ class _MapPageState extends State<MapPage> {
     try {
       final response = await http.get(Uri.parse('$baseUrl/location'));
       if (mounted && response.statusCode == 200) {
-        final Map<String, dynamic> data = jsonDecode(response.body);
+        // 💥 修正：使用 utf8.decode 確保中文字元正確解析
+        final Map<String, dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
         setState(() {
           _locations = data['data'];
           _isLoading = false;
@@ -731,7 +780,8 @@ class _MapPageState extends State<MapPage> {
     try {
       final response = await http.get(uri);
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        // 💥 修正：使用 utf8.decode 確保中文字元正確解析
+        final data = json.decode(utf8.decode(response.bodyBytes));
         final List<dynamic> results = data['data'];
         final userData = results.firstWhere(
               (user) => user['user_id'] == _currentUserId, // 使用 _currentUserId
@@ -1039,10 +1089,11 @@ class _MapPageState extends State<MapPage> {
           IconButton(
             icon: const Icon(Icons.bookmark),
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const BookmarkPage()),
-              );
+              // 假設 BookmarkPage 存在
+              // Navigator.push(
+              //   context,
+              //   MaterialPageRoute(builder: (context) => const BookmarkPage()),
+              // );
             },
           ),
           const SizedBox(width: 8),
