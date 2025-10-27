@@ -5,22 +5,24 @@ const { insertChannel } = require('./channelController');
 const { insertImage, deleteImage } = require('./imageController');
 const { insertGroup } = require('./groupController');
 const { searchLocation } = require('./locationController');
-const { insertRelation, deleteRelation } = require('./relationController') ;
+const { insertRelation, deleteRelation } = require('./relationController');
 
 // search
 async function searchNews(req, res, next) {
-    
-    let { mode, order, limit } = req.query ?? {}
-    let { id, url, keyword, locationId, locationType } = req.body ?? {}
-    
+    let { mode, order, limit } = req.query || {}
+    let { id, url, keyword, groupId, groupType, locationId, locationType } = req.body ?? {};
+
     // 檢查必要欄位 & 格式
     try {
-        [ mode, order, limit, id, url, locationId, locationType ] = await checkRequireField ([
-            { field: 'mode'         , data: mode         , type: 'string' , other: ['non_null'                ] , enum: ['simple', 'complex'] , default: 'simple'},
-            { field: 'order'        , data: order        , type: 'string' , other: ['non_null'                ] , enum: ['general', 'heat', 'view', 'share', 'search', 'bookmark', 'comment'] , default: 'heat'},
+        [ mode, order, limit, id, url, keyword, groupId, groupType, locationId, locationType ] = await checkRequireField ([
+            { field: 'mode'         , data: mode         , type: 'string' , other: ['non_null'                ] , enum: ['id', 'simple', 'complex'] , default: 'simple'},
+            { field: 'order'        , data: order        , type: 'string' , other: ['non_null'                ] , enum: ['general', 'heat', 'view', 'share', 'search', 'bookmark', 'comment'] , default: 'general'},
             { field: 'limit'        , data: limit        , type: 'number' , other: ['non_null'                ] , default: 300                        },
             { field: 'id'           , data: id           , type: 'array'  , other: ['lth', 'number_into_array'] , array_filter: "number"              },
             { field: 'url'          , data: url          , type: 'string' , other: ['lth'                     ]                                       },
+            { field: 'keyword'      , data: keyword      , type: 'array'  , other: ['lth', 'string_into_array'] , array_filter: "string"              },
+            { field: 'groupId'      , data: groupId      , type: 'number' , other: ['lth'                     ]                                       },
+            { field: 'groupType'    , data: groupType    , type: 'string' , other: ['lth'                     ] , enum: ['data', 'detail']            },
             { field: 'locationId'   , data: locationId   , type: 'number' , other: ['lth'                     ]                                       },
             { field: 'locationType' , data: locationType , type: 'string' , other: ['lth'                     ] , enum: ['region', 'country', 'state']}
         ]);
@@ -28,96 +30,231 @@ async function searchNews(req, res, next) {
         err.desc = "middlewares-searchNews(): Missing or Invalid required fields";
         return next(err);
     }
-    
-    let sql = `
-        SELECT 
-            nd.news_id AS newsId,
-            nd.channel_id AS channelId,
-            cd.channel_name AS channelName,
-            nd.news_title AS newsTitle,
-            nd.news_date AS publishDate
-        FROM news_data nd
-            JOIN channel_data cd
-        WHERE 1
-    `;
-    
+
+    // 選擇模式
+    let searchMode = "general";
+    if ( id ) searchMode = "id";
+    else if ( keyword ) searchMode = "keyword";
+    else if ( groupId && groupType ) searchMode = "group";
+    else if ( locationId && locationType) searchMode = "location";
+
+    let idList = [];
+    let sql = null;
     let params = [];
-    let simpleList = [];
-    if (id) {
-        sql += ` AND nd.news_id IN (?)`;
-        params.push(id);
-    }
-
-    try {
-        sql += `
-            ORDER BY nd.total_heat DESC
-            LIMIT ?
-        `;
-        params.push(limit)
-        let [result] = await pool.query(sql, params);
-        simpleList = result
-    } catch (err) {
-        err.desc = 'middlewares-searchNews(): database search error';
-        return next(err);
-    }
-
-
-    if ( mode == "simple") return res.apiSuccess(simpleList, 'Search Success');
-    else {
-        // body
-        // 
-    }
     
-    /*else if (url) {
-        sql += ` AND nd.origin_url = ?`;
-        params.push(url);
-    }*/
-
-
-    // ****************************************************************************************************************
-    // 直接使用前端傳來的地點 ID 和類型
-    if (locationId) {
+    // 1. 統一查詢 idList
+    // general : 直接查找 [ news 主頁 ]
+    if ( searchMode == "general" ) {
         sql = `
-            SELECT
-                nd.*,
-                GROUP_CONCAT(DISTINCT ls.state_name_en) AS state_names,
-                GROUP_CONCAT(DISTINCT lc.country_name_en) AS country_names
-            FROM
-                news_data AS nd
-            LEFT JOIN
-                news_location AS nl ON nd.news_id = nl.news_id
-            LEFT JOIN
-                location_states AS ls ON nl.location_state_id = ls.state_id
-            LEFT JOIN
-                location_countries AS lc ON nl.location_country_id = lc.country_id
-            WHERE
-                1
+            SELECT nd.news_id
+            FROM news_data nd
+            WHERE 1
         `;
-        if (locationType === 'state') {
-            sql += ` AND nl.location_state_id = ?`;
-            params.push(locationId);
-        } else if (locationType === 'country') {
-            sql += ` AND nl.location_country_id = ?`;
-            params.push(locationId);
-        } else if (locationType === 'region') {
-            // 🌟 關鍵修正：添加 region 的查詢條件 🌟
-            // 假設 news_location 表中 Region ID 欄位名為 location_region_id
-            sql += ` AND nl.location_region_id = ?`;
-            params.push(locationId);
-        }
-        sql += ` GROUP BY nd.news_id`;
+        params = [];
+        
+    }
+    // id : 直接查找 id
+    if ( searchMode == "id" ) {
+        idList = id;
+    }
+    // keyword : 查找 關鍵字 [ search 使用 ]
+    if ( searchMode == "keyword" ) {
 
+    }
+    // group : 查找 news_group
+    if ( searchMode == "group" ) {
+        sql = `
+            SELECT nd.news_id
+            FROM news_data nd
+            JOIN news_group ng USING (news_id)
+            WHERE ng.group_${groupType}_id = ?
+        `;
+        params = [groupId];
+    }
+    // location : 查找 news_location
+    if ( searchMode == "location" ) {
+        sql = `
+            SELECT nd.news_id
+            FROM news_data nd
+            JOIN news_location nl USING (news_id)
+            WHERE nl.location_${locationType}_id = ?
+        `;
+        params = [locationId];
+    }
+
+    // ORDER
+    let ORDER_SQL = null;
+    if (order=="general") {
+
+    }
+    else if (order=="heat") { ORDER_SQL = `ORDER BY nd.total_heat DESC`; }
+    else { ORDER_SQL = `ORDER BY nd.total_recent_${order} DESC`; }
+
+    if ( searchMode != "id" ) {
+        if (order) sql += (ORDER_SQL + '\n');
+        sql += `LIMIT ?`;
+        params.push(limit);
         try {
             let [result] = await pool.query(sql, params);
-            return res.apiSuccess(result, 'Search Success');
+            idList = result.map(o => o?.news_id).filter(v => v != null).map(Number);
         } catch (err) {
-            err.desc = 'middlewares-searchNews(): database search error';
+            err.desc = 'middlewares-searchNews(): database search error ( idList Search )';
             return next(err);
         }
     }
-    // ****************************************************************************************************************
 
+    if ( !idList || idList.length == 0 ) return res.apiSuccess([], "Search Success");
+    if ( mode == "id" ) return res.apiSuccess({idList: idList}, "Search Success");
+
+    // 2. 選擇 simple / complex , 用 idLList 查詢
     
+    // SIMPLE
+    let simpleList = [];
+    sql = `
+        SELECT 
+            nd.news_id   AS newsId,
+            cd.channel_name AS channelName,
+            id.image_origin_url AS coverImageUrl,
+            id.image_text AS coverImageAlt,
+            nd.news_title AS newsTitle,
+            nd.news_date  AS publishDate
+        FROM news_data nd
+            JOIN channel_data cd USING (channel_id)
+            LEFT JOIN image_data id ON nd.cover_image = id.image_id
+        WHERE nd.news_id IN (?)
+    `;
+    
+    // ORDER
+    if ( searchMode=="id" && ORDER_SQL ) sql += ( ORDER_SQL + '\n' );
+    params = [idList];
+
+    try {
+        let [result] = await pool.query(sql, params);
+        simpleList = result;
+        if (mode == "simple")
+            return res.apiSuccess({simpleList: simpleList}, "Search Success");
+    } catch (err) {
+        err.desc = 'middlewares-searchNews(): database search error ( simpleList search )';
+        return next(err);
+    }
+
+    // COMPLEX
+    let complexList = simpleList;
+    
+    // news_body
+    sql = `
+        SELECT 
+            nb.news_id,
+            nb.body_type,
+            nb.body_text,
+            nb.body_order,
+            id.image_origin_url,
+            id.image_text
+        FROM news_body AS nb
+        LEFT JOIN image_data AS id
+            ON id.image_id = nb.body_image
+        WHERE nb.news_id IN (?)
+        ORDER BY nb.news_id, nb.body_order;
+    `;
+    const bodyGrouped = {};
+    try {
+        let [result] = await pool.query(sql, params);
+
+        result.forEach(r => {
+            if (!bodyGrouped[r.news_id]) bodyGrouped[r.news_id] = [];
+            bodyGrouped[r.news_id].push(r);
+        });
+    }  catch (err) {
+        err.desc = 'middlewares-searchNews(): database search error ( complexList search - body )';
+        return next(err);
+    }
+
+    // news_location
+    sql = `
+        SELECT 
+            nl.news_id,
+            nl.location_region_id,
+            lr.region_name_en AS region_name_en,
+            lr.region_name_zh_tw AS region_name_zh_tw,
+            nl.location_country_id,
+            lc.country_name_en AS country_name_en,
+            lc.country_name_zh_tw AS country_name_zh_tw,
+            nl.location_state_id,
+            ls.state_name_en AS state_name_en,
+            ls.state_name_zh_tw AS state_name_zh_tw
+        FROM news_location nl
+        LEFT JOIN location_regions lr ON nl.location_region_id = lr.region_id
+        LEFT JOIN location_countries lc ON nl.location_country_id = lc.country_id
+        LEFT JOIN location_states ls ON nl.location_state_id = ls.state_id
+        WHERE nl.news_id IN (?);
+    `;
+    const locationGrouped = {};
+    try {
+        let [rows] = await pool.query(sql, params);
+
+        rows.forEach(r => {
+            if (!locationGrouped[r.news_id]) locationGrouped[r.news_id] = [];
+
+            if (r.location_region_id) {
+                locationGrouped[r.news_id].push({
+                    locationId: r.location_region_id,
+                    locationType: 'region',
+                    locationNameEn: r.region_name_en,
+                    locationNameZh: r.region_name_zh_tw
+                });
+            }
+            if (r.location_country_id) {
+                locationGrouped[r.news_id].push({
+                    locationId: r.location_country_id,
+                    locationType: 'country',
+                    locationNameEn: r.country_name_en,
+                    locationNameZh: r.country_name_zh_tw
+                });
+            }
+            if (r.location_state_id) {
+                locationGrouped[r.news_id].push({
+                    locationId: r.location_state_id,
+                    locationType: 'state',
+                    locationNameEn: r.state_name_en,
+                    locationNameZh: r.state_name_zh_tw
+                });
+            }
+        });
+
+    } catch (err) {
+        err.desc = 'middlewares-searchNews(): database search error ( complexList search - location )';
+        return next(err);
+    }
+
+    // 寫入 complexList
+    complexList = complexList.map(item => {
+        const newsId = item.newsId;
+        const bodys = bodyGrouped[newsId] || [];
+        const locs = locationGrouped[newsId] || [];
+
+        const newsBody = bodys
+            .map(r => {
+                if (r.body_type === 'image') {
+                    if (!r.image_origin_url) return null;
+                    return {
+                        img: {
+                            src: r.image_origin_url,
+                            alt: r.image_text || ''
+                        }
+                    };
+                }
+                return { text: r.body_text || '' };
+            })
+            .filter(Boolean);
+
+        return {
+            ...item,
+            newsBody,
+            newsLocation: locs
+        };
+    });
+
+    return res.apiSuccess({complexList: complexList}, "Search Success");
 }
 
 // insert
