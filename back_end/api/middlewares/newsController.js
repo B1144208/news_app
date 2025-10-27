@@ -9,50 +9,90 @@ const { insertRelation, deleteRelation } = require('./relationController') ;
 
 // search
 async function searchNews(req, res, next) {
-    let id = req.params?.id;
-    let { url, locationId, locationType } = req.query ?? {};
-
+    
+    let { mode, order, limit } = req.query ?? {}
+    let { id, url, keyword, locationId, locationType } = req.body ?? {}
+    
     // 檢查必要欄位 & 格式
     try {
-        [ id, url, locationId, locationType ] = await checkRequireField ([
-            { field: 'id'           , data: id           , type: 'number' , other: ['lth'] },
-            { field: 'url'          , data: url          , type: 'string' , other: ['lth'] },
-            { field: 'locationId'   , data: locationId   , type: 'number' , other: ['lth'] },
-            { field: 'locationType' , data: locationType , type: 'string' , other: ['lth'] }
+        [ mode, order, limit, id, url, locationId, locationType ] = await checkRequireField ([
+            { field: 'mode'         , data: mode         , type: 'string' , other: ['non_null'                ] , enum: ['simple', 'complex'] , default: 'simple'},
+            { field: 'order'        , data: order        , type: 'string' , other: ['non_null'                ] , enum: ['general', 'heat', 'view', 'share', 'search', 'bookmark', 'comment'] , default: 'heat'},
+            { field: 'limit'        , data: limit        , type: 'number' , other: ['non_null'                ] , default: 300                        },
+            { field: 'id'           , data: id           , type: 'array'  , other: ['lth', 'number_into_array'] , array_filter: "number"              },
+            { field: 'url'          , data: url          , type: 'string' , other: ['lth'                     ]                                       },
+            { field: 'locationId'   , data: locationId   , type: 'number' , other: ['lth'                     ]                                       },
+            { field: 'locationType' , data: locationType , type: 'string' , other: ['lth'                     ] , enum: ['region', 'country', 'state']}
         ]);
     } catch (err) {
         err.desc = "middlewares-searchNews(): Missing or Invalid required fields";
         return next(err);
     }
-
+    
     let sql = `
-        SELECT
-            nd.*,
-            GROUP_CONCAT(DISTINCT ls.state_name_en) AS state_names,
-            GROUP_CONCAT(DISTINCT lc.country_name_en) AS country_names
-        FROM
-            news_data AS nd
-        LEFT JOIN
-            news_location AS nl ON nd.news_id = nl.news_id
-        LEFT JOIN
-            location_states AS ls ON nl.location_state_id = ls.state_id
-        LEFT JOIN
-            location_countries AS lc ON nl.location_country_id = lc.country_id
-        WHERE
-            1
+        SELECT 
+            nd.news_id AS newsId,
+            nd.channel_id AS channelId,
+            cd.channel_name AS channelName,
+            nd.news_title AS newsTitle,
+            nd.news_date AS publishDate
+        FROM news_data nd
+            JOIN channel_data cd
+        WHERE 1
     `;
+    
     let params = [];
-
+    let simpleList = [];
     if (id) {
-        sql += ` AND nd.news_id = ?`;
+        sql += ` AND nd.news_id IN (?)`;
         params.push(id);
     }
-    else if (url) {
+
+    try {
+        sql += `
+            ORDER BY nd.total_heat DESC
+            LIMIT ?
+        `;
+        params.push(limit)
+        let [result] = await pool.query(sql, params);
+        simpleList = result
+    } catch (err) {
+        err.desc = 'middlewares-searchNews(): database search error';
+        return next(err);
+    }
+
+
+    if ( mode == "simple") return res.apiSuccess(simpleList, 'Search Success');
+    else {
+        // body
+        // 
+    }
+    
+    /*else if (url) {
         sql += ` AND nd.origin_url = ?`;
         params.push(url);
-    }
+    }*/
+
+
+    // ****************************************************************************************************************
     // 直接使用前端傳來的地點 ID 和類型
-    else if (locationId) {
+    if (locationId) {
+        sql = `
+            SELECT
+                nd.*,
+                GROUP_CONCAT(DISTINCT ls.state_name_en) AS state_names,
+                GROUP_CONCAT(DISTINCT lc.country_name_en) AS country_names
+            FROM
+                news_data AS nd
+            LEFT JOIN
+                news_location AS nl ON nd.news_id = nl.news_id
+            LEFT JOIN
+                location_states AS ls ON nl.location_state_id = ls.state_id
+            LEFT JOIN
+                location_countries AS lc ON nl.location_country_id = lc.country_id
+            WHERE
+                1
+        `;
         if (locationType === 'state') {
             sql += ` AND nl.location_state_id = ?`;
             params.push(locationId);
@@ -65,17 +105,19 @@ async function searchNews(req, res, next) {
             sql += ` AND nl.location_region_id = ?`;
             params.push(locationId);
         }
-    }
+        sql += ` GROUP BY nd.news_id`;
 
-    sql += ` GROUP BY nd.news_id`;
-
-    try {
-        let [result] = await pool.query(sql, params);
-        return res.apiSuccess(result, 'Search Success');
-    } catch (err) {
-        err.desc = 'middlewares-searchNews(): database search error';
-        return next(err);
+        try {
+            let [result] = await pool.query(sql, params);
+            return res.apiSuccess(result, 'Search Success');
+        } catch (err) {
+            err.desc = 'middlewares-searchNews(): database search error';
+            return next(err);
+        }
     }
+    // ****************************************************************************************************************
+
+    
 }
 
 // insert

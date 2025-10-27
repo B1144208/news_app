@@ -155,8 +155,8 @@ async function insertUserAction (req, res, next) {
     // 檢查必要欄位 & 格式 - actionType, dataType, userId, dataId, clientIp, anonymous, text, score
     try {
         [ actionType, dataType, userId, dataId, anonymous, text, score, region_id, country_id, state_id ] = await checkRequireField ([
-            { field: 'actionType'   , data: actionType  , type: 'string'    , other: ['non_null'],  enum: ['view', 'share', 'search', 'bookmark', 'comment', 'score', 'location'] },
-            { field: 'dataType'     , data: dataType    , type: 'string'    , other: ['non_null'],  enum: ['news', 'channel', 'eventsorting','multipleperspectives'] },
+            { field: 'actionType'   , data: actionType  , type: 'string'    , other: ['non_null'], enum: ['view', 'share', 'search', 'bookmark', 'comment', 'score', 'location'] },
+            { field: 'dataType'     , data: dataType    , type: 'string'    , other: ['non_null'], enum: ['news', 'channel', 'eventsorting','multipleperspectives'] },
             { field: 'userId'       , data: userId      , type: 'number'    , other: ['lth']                    },
             { field: 'dataId'       , data: dataId      , type: 'number'    , other: dataIdCheck                },
             { field: 'anonymous'    , data: anonymous   , type: 'string'    , other: ['lth']                    },

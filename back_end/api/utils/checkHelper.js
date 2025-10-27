@@ -3,7 +3,7 @@ async function checkRequireField ( requireFields, funcName="Unknown Function" ) 
     @ Check Require Field
     @ field, data: necessary raw
     @ type  : number, string, image, array, object
-    @ other : [ jump, lth, non_null, non_trim, non_string_number, string_into_array, news_detail ]
+    @ other : [ jump, lth, non_null, non_change, non_string_number, number_into_array, string_into_array, news_detail ]
     @       1. jump : 若 invalidType 或 nonNull && isNull 時, 則直接跳過
     @       2. lth  : Lenient Type Handling (寬鬆型別處理) 若 type 錯誤, 則設成 null
     @       3. non_null : 不能為空
@@ -14,6 +14,7 @@ async function checkRequireField ( requireFields, funcName="Unknown Function" ) 
     @       7. news_detail: detail 處理
     @ array_filter : type ( 過濾 array 中的值 )
     @ enum  : [] 可以包含的值
+    @ default: null 時的預設值
     */
     
     let errors = [];
@@ -21,7 +22,7 @@ async function checkRequireField ( requireFields, funcName="Unknown Function" ) 
 
     for (const fieldObj of requireFields) {
         
-        const { field, data, type, other, array_filter: array_type, enum:enum_value } = fieldObj;
+        const { field, data, type, other, array_filter: array_type, enum:enum_value, default:default_value } = fieldObj;
 
         // 檢查 必須有 field, data
         if ( (!('field' in fieldObj) || !typeof field === 'string' || !field.trim() === '') || !('data' in fieldObj) ) {
@@ -48,12 +49,14 @@ async function checkRequireField ( requireFields, funcName="Unknown Function" ) 
         // 處理 其他 資料格式
         const arrayFilter = ('array_filter' in fieldObj)? true: false;
         const hasEnum = ('enum' in fieldObj)? true: false;
+        const hasDefault = ('default' in fieldObj)? true: false;
 
         // 若資料為空且可以為空
         if ( checkDataNull ( changeData ) ) {
             if ( jump && nonNull ) continue;
+            if ( hasDefault ) { newData.push( default_value ); continue; }
             nonNull? 
-                errors.push(`'${field}' 11 must not be null`): 
+                errors.push(`'${field}' must not be null`): 
                 !nonChange && ( newData.push( changeData ) );
             continue;
         }
@@ -186,6 +189,7 @@ async function checkRequireField ( requireFields, funcName="Unknown Function" ) 
         // 檢查資料為空
         if ( checkDataNull ( changeData ) ) {
             if ( jump && nonNull ) continue;
+            if ( hasDefault ) { newData.push( default_value ); continue; }
             nonNull? 
                 errors.push(`'${field}' must not be null`): 
                 !nonChange && ( changeData = null );
