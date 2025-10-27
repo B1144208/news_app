@@ -141,6 +141,7 @@ async function searchNews(req, res, next) {
     
     // SIMPLE
     let simpleList = [];
+    const ph = idList.map(() => '?').join(',');
     sql = `
         SELECT 
             nd.news_id   AS newsId,
@@ -152,12 +153,14 @@ async function searchNews(req, res, next) {
         FROM news_data nd
             JOIN channel_data cd USING (channel_id)
             LEFT JOIN image_data id ON nd.cover_image = id.image_id
-        WHERE nd.news_id IN (?)
+        WHERE nd.news_id IN (${ph})
+        ORDER BY FIELD(nd.news_id, ${ph})
     `;
+    params = [...idList, ...idList];
+    //params.push(idList);
     
     // ORDER
-    if ( searchMode=="id" && ORDER_SQL ) sql += ( ORDER_SQL + '\n' );
-    params = [idList];
+    //if ( searchMode=="id" && ORDER_SQL ) sql += ( ORDER_SQL + '\n' );
 
     try {
         let [result] = await pool.query(sql, params);
