@@ -91,7 +91,7 @@ async function searchNews(req, res, next) {
     else { ORDER_SQL = `ORDER BY nd.total_recent_${order} DESC`; }
 
     if ( searchMode != "id" ) {
-        if (order) sql += (ORDER_SQL + '\n');
+        if (ORDER_SQL) sql += (ORDER_SQL + '\n');
         sql += `LIMIT ?`;
         params.push(limit);
         try {
