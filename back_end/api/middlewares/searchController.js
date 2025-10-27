@@ -2,15 +2,16 @@ const pool = require('../connect_db');
 const { checkRequireField } = require('../utils/checkHelper');
 const { callAndCatchApiSuccess } = require('../utils/fakeHelper');
 const { insertKeyword } = require('./keywordController');
+const { searchNews } = require('./newsController');
 
 // general search
 async function generalSearch (req, res, next) {
-    let keyword = req.query?.keyword;
-    let userId = req.body?.userId
+    //let keyword = req.query?.keyword;
+    let {userId, keyword} = req.body ?? {}
     const clientIp = req.clientIp;
     try {
         [ keyword, userId ] = await checkRequireField ([
-            { field: 'keyword'      , data: keyword     , type: 'string'    , other: ['non_null']               },
+            { field: 'keyword'      , data: keyword     , type: 'array'     , other: ['non_null', 'string_into_array'] , array_filter: "string"              },
             { field: 'userId'       , data: userId      , type: 'number'    , other: ['lth']                    },
             { field: 'clientIp'     , data: clientIp                        , other: ['non_null', 'non_change'] },
         ]);
@@ -20,31 +21,33 @@ async function generalSearch (req, res, next) {
     }
 
     // get keywordId
-    let keywordId = null
-    let fakeReq = {
-        query: { text: keyword }
-    }
+    let keywordId = []
     try {
-        let insertKeywordResult = await callAndCatchApiSuccess ( insertKeyword, fakeReq );
-        keywordId = insertKeywordResult.insertId;
+        for (const keyword_text of keyword) {
+            const fakeReq = { query: { text: keyword_text } };
+            const insertKeywordResult = await callAndCatchApiSuccess(insertKeyword, fakeReq);
+            keywordId.push(insertKeywordResult.insertId);
+        }
     } catch (err) {
         err.desc = "middlewares-insertUserAction(): Insert Keyword Error";
         return next(err);
     }
 
-    let sql = `
-            INSERT INTO user_search_record (
-            ${userId? "user_id,": ""}
-            user_ip,
-            keyword_id
-        ) VALUES ( ${userId? "?,": ""} ?, ? )
+    const cols = `${userId ? 'user_id,' : ''} user_ip, keyword_id`;
+    const rowPlaceholder = userId ? '(?, ?, ?)' : '(?, ?)';
+    const SQL_VALUES = keywordId.map(() => rowPlaceholder).join(', ');
+    sql = `
+        INSERT INTO user_search_record (${cols})
+        VALUES ${SQL_VALUES}
     `;
-    let params = [];
-    if (userId) params.push(userId);
-    params.push(clientIp, keywordId);
+    params = [];
+    for (const kid of keywordId) {
+        if (userId) params.push(userId);
+        params.push(clientIp, kid);
+    }
+
     try {
         let [result] = await pool.query(sql, params);
-        recordId = result.insertId;
     } catch (err) {
         err.desc = "middlewares-insertUserAction(): database insert error";
         return next(err);
@@ -53,10 +56,21 @@ async function generalSearch (req, res, next) {
     
     let newsList = channelList = eventsortingList = multipleperspectivesList = []
 
-    // ---------- 查找 4 個 dataType , 做成 list 回傳 -------------------------------------------------------------------------------------
+    // ---------- 查找 4 個 dataType , 做成 list 回傳 ----------
+    // newsList
+    fakeReq = {
+        query: { limit: 100 },
+        body: { keyword: keyword}
+    }
+    try {
+        let searchNewsResult = await callAndCatchApiSuccess ( searchNews, fakeReq );
+        newsList = searchNewsResult.simpleList;
+    } catch (err) {
+        err.desc = "middlewares-insertUserAction(): Insert Keyword Error";
+        return next(err);
+    }
 
     return res.apiSuccess({
-        insertId: recordId,
         newsList: newsList,
         channelList: channelList,
         eventsortingList: eventsortingList,

@@ -16,7 +16,7 @@ async function searchNews(req, res, next) {
     try {
         [ mode, order, limit, id, url, keyword, groupId, groupType, locationId, locationType ] = await checkRequireField ([
             { field: 'mode'         , data: mode         , type: 'string' , other: ['non_null'                ] , enum: ['id', 'simple', 'complex'] , default: 'simple'},
-            { field: 'order'        , data: order        , type: 'string' , other: ['non_null'                ] , enum: ['general', 'heat', 'view', 'share', 'search', 'bookmark', 'comment'] , default: 'general'},
+            { field: 'order'        , data: order        , type: 'string' , other: ['non_null'                ] , enum: ['general', 'heat', 'latest', 'view', 'share', 'search', 'bookmark', 'comment'] , default: 'general'},
             { field: 'limit'        , data: limit        , type: 'number' , other: ['non_null'                ] , default: 300                        },
             { field: 'id'           , data: id           , type: 'array'  , other: ['lth', 'number_into_array'] , array_filter: "number"              },
             { field: 'url'          , data: url          , type: 'string' , other: ['lth'                     ]                                       },
@@ -58,8 +58,37 @@ async function searchNews(req, res, next) {
         idList = id;
     }
     // keyword : 查找 關鍵字 [ search 使用 ]
+    // ------------- 增加 keyword_relation 查詢 ------------------------------------------------------------------------------
     if ( searchMode == "keyword" ) {
+        // 分值
+        const W = { title: 5, keyword: 3, body: 2, image: 1 };
+        const perKwScore =
+            `( (nd.news_title LIKE ?) * ${W.title} ) +` +
+            ` ( COALESCE(kd.keyword_text LIKE ?, 0) * ${W.keyword} ) +` +
+            ` ( COALESCE(nb.body_text    LIKE ?, 0) * ${W.body} ) +` +
+            ` ( COALESCE(id.image_text   LIKE ?, 0) * ${W.image} )`;
 
+        // 多關鍵字的總分：各關鍵字的分數相加
+        const scoreSql = keyword.map(() => perKwScore).join(' + ');
+
+        sql = `
+            SELECT
+            nd.news_id,
+            ${scoreSql} AS score
+            FROM news_data nd
+            LEFT JOIN news_body        nb ON nb.news_id     = nd.news_id
+            LEFT JOIN image_data       id ON id.image_id    = nb.body_image
+            LEFT JOIN relation_keyword rk ON rk.relation_id = nd.relation_id
+            LEFT JOIN keyword_data     kd ON kd.keyword_id  = rk.keyword_id
+            GROUP BY nd.news_id
+            HAVING score > 0
+            ORDER BY score DESC, MAX(nd.news_date) DESC
+            
+        `;
+        params = keyword.flatMap(k => {
+            const v = `%${k}%`;
+            return [v, v, v, v];
+        });
     }
     // group : 查找 news_group
     if ( searchMode == "group" ) {
@@ -88,7 +117,9 @@ async function searchNews(req, res, next) {
 
     }
     else if (order=="heat") { ORDER_SQL = `ORDER BY nd.total_heat DESC`; }
+    else if (order=="latest") { ORDER_SQL = `ORDER BY nd.created_at DESC`; }
     else { ORDER_SQL = `ORDER BY nd.total_recent_${order} DESC`; }
+
 
     if ( searchMode != "id" ) {
         if (ORDER_SQL) sql += (ORDER_SQL + '\n');
