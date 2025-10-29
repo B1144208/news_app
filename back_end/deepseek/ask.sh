@@ -12,5 +12,4 @@ curl -s http://localhost:11434/api/generate \
 | jq -r '.response' \
 | sed 's/\\u003c/</g; s/\\u003e/>/g' \
 | tr '\n' '\r' \
-| sed 's/<think>.*<\/think>//g' \
-| tr '\r' '\n'
+| sed 's/<think>.*<\/think>//g'
