@@ -16,7 +16,7 @@ router.get('/', (req, res) => {
 });
 //新增
 const permissionRouter = require('./permission'); 
-router.use('/permission', permissionRouter); 
+router.use('/permission', permissionRouter);
 //新增
 const authRouter = require('./auth');
 router.use('/auth', authRouter);
@@ -42,6 +42,10 @@ const incrementRouter = require('./increment')
 const valueRouter = require('./value')
 const testRouter = require('./test')
 
+// ==========新增TTS路由==========
+const ttsRouter = require('./tts')
+// ==============================
+
 // 使用模組
 router.use('/user', userRouter)
 //router.use('/user/ip', getClientIp, userRouter)
@@ -62,5 +66,9 @@ router.use('/search', searchRouter)
 router.use('/increment',incrementRouter)
 router.use('/value', valueRouter)
 router.use('/test', testRouter)
+
+// ==========使用TTS路由==========
+router.use('/tts', ttsRouter)
+// ==============================
 
 module.exports = router;
