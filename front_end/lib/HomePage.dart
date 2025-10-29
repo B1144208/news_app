@@ -13,6 +13,7 @@ import 'SearchPage.dart';
 import 'BookmarkPage.dart';
 import 'MemberCenterPage.dart';
 import 'SignupPage.dart';
+import 'GroupCustomizePage.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -23,22 +24,23 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 1;
-  String _selectedCategory = '熱門';
+  String _selectedCategory = '全部';
+  int? _selectedGroupId; // 新增：選中的分類ID
   String _selectedDuration = '15分鐘';
-  String _selectedSortType = '總熱度'; // 新增：排序方式
+  String _selectedSortType = '總熱度'; // 新增:排序方式
 
-  final List<String> _categories = ['熱門', '娛樂', '天氣', '國際', '運動'];
+  List<Map<String, dynamic>> _categories = []; // 改為動態列表
   final List<String> _durations = ['15分鐘', '30分鐘', '45分鐘', '1小時', '一直'];
-  final List<String> _sortTypes = ['總熱度', '瀏覽數量', '分享數量', '收藏數量', '留言數量']; // 新增：排序選項
+  final List<String> _sortTypes = ['總熱度', '瀏覽數量', '分享數量', '收藏數量', '留言數量']; // 新增:排序選項
 
   List<Map<String, dynamic>> _newsData = [];
-  List<Map<String, dynamic>> _allNewsData = []; // 新增：儲存所有新聞資料
+  List<Map<String, dynamic>> _allNewsData = []; // 新增:儲存所有新聞資料
   bool _isLoading = false;
-  bool _isLoadingMore = false; // 新增：載入更多資料的狀態
+  bool _isLoadingMore = false; // 新增:載入更多資料的狀態
   String? _error;
-  int _currentPage = 0; // 新增：當前頁碼
-  final int _newsPerPage = 30; // 新增：每頁新聞數量
-  final ScrollController _scrollController = ScrollController(); // 新增：滾動控制器
+  int _currentPage = 0; // 新增:當前頁碼
+  final int _newsPerPage = 30; // 新增:每頁新聞數量
+  final ScrollController _scrollController = ScrollController(); // 新增:滾動控制器
 
   // 快速播放相關變數
   bool _isPlayerVisible = false;
@@ -46,15 +48,124 @@ class _HomePageState extends State<HomePage> {
   double _playbackSpeed = 1.0;
   int _currentNewsIndex = 0;
 
-  // 新增：倒數計時相關變數
+  // 新增:倒數計時相關變數
   Timer? _countdownTimer;
   int _remainingSeconds = 0;
 
   @override
   void initState() {
     super.initState();
-    _fetchNews();
+    _fetchCategories(); // 先載入分類
     _scrollController.addListener(_onScroll); // 新增：監聽滾動事件
+  }
+
+  // 新增：獲取分類列表
+  Future<void> _fetchCategories() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getInt('UserID'); // 修復:使用正確的鍵名
+      final isLoggedIn = prefs.getBool('IsLogin') ?? false;
+
+      print('_fetchCategories - 登入狀態: $isLoggedIn, UserID: $userId');
+
+      List<Map<String, dynamic>> categories = [];
+
+      if (isLoggedIn && userId != null) {
+        // 已登入：獲取用戶自訂分類
+        print('📡 發送請求到 groupcustomize/general, userId: $userId');
+
+        final response = await http.post(
+          Uri.parse('http://localhost:3000/api/groupcustomize/general'),
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode({'userId': userId}),
+        );
+
+        print('📡 groupcustomize/general 回應: ${response.statusCode}');
+
+        if (response.statusCode == 200) {
+          final responseData = json.decode(response.body);
+          print('📡 groupcustomize/general 資料: ${responseData['success']}, 數量: ${responseData['data']?.length}');
+
+          if (responseData['success'] == true && responseData['data'] != null) {
+            List<dynamic> customList = responseData['data'];
+
+            // 使用 Set 來追蹤已添加的 group_id，避免重複
+            Set<int> addedGroupIds = {};
+
+            // 過濾出啟用的分類 (group_order > 0) 並去除重複
+            for (var item in customList) {
+              if (item['group_order'] != null &&
+                  item['group_order'] > 0 &&
+                  !addedGroupIds.contains(item['group_id'])) {
+                categories.add({
+                  'group_id': item['group_id'],
+                  'group_name': item['group_name'] ?? '未命名',
+                  'group_order': item['group_order'],
+                });
+                addedGroupIds.add(item['group_id']);
+              }
+            }
+
+            // 按 group_order 排序
+            categories.sort((a, b) => (a['group_order'] ?? 0).compareTo(b['group_order'] ?? 0));
+          }
+        }
+      } else {
+        // 未登入：獲取預設分類列表
+        print('未登入,使用預設分類');
+
+        final response = await http.get(
+          Uri.parse('http://localhost:3000/api/group'),
+        );
+
+        print('group 回應: ${response.statusCode}');
+
+        if (response.statusCode == 200) {
+          final responseData = json.decode(response.body);
+          if (responseData['success'] == true && responseData['data'] != null) {
+            List<dynamic> groupList = responseData['data'];
+
+            // 使用 Set 來避免重複
+            Set<int> addedGroupIds = {};
+
+            for (var item in groupList) {
+              if (!addedGroupIds.contains(item['group_id'])) {
+                categories.add({
+                  'group_id': item['group_id'],
+                  'group_name': item['group_name'] ?? '未命名',
+                });
+                addedGroupIds.add(item['group_id']);
+              }
+            }
+
+            // 按 group_id 排序
+            categories.sort((a, b) => (a['group_id'] ?? 0).compareTo(b['group_id'] ?? 0));
+          }
+        }
+      }
+
+      print('✅ 最終分類數量: ${categories.length}');
+      categories.forEach((cat) => print('   - ${cat['group_name']} (ID: ${cat['group_id']})'));
+
+      setState(() {
+        // 在最前面添加"全部"選項
+        _categories = [
+          {'group_id': null, 'group_name': '全部'},
+          ...categories,
+        ];
+      });
+
+      // 分類載入完成後再載入新聞
+      _fetchNews();
+    } catch (error) {
+      print('❌ 獲取分類失敗: $error');
+      setState(() {
+        _categories = [
+          {'group_id': null, 'group_name': '全部'},
+        ];
+      });
+      _fetchNews();
+    }
   }
 
   // 新增：滾動監聽
@@ -109,14 +220,78 @@ class _HomePageState extends State<HomePage> {
     });
 
     try {
-      final response = await http.get(
-        Uri.parse('http://localhost:3000/api/news'),
-      );
+      http.Response response;
+
+      // 根據 API 說明:
+      // - GET 請求,query 參數: mode, order, limit
+      // - body 需要傳入分類/位置/關鍵字等過濾條件
+      // - body 至少要有 {} 否則會報錯
+
+      if (_selectedGroupId != null) {
+        // 查詢特定分類
+        print('查詢特定分類新聞 - groupId: $_selectedGroupId');
+
+        final uri = Uri.parse('http://localhost:3000/api/news').replace(
+          queryParameters: {
+            'mode': 'simple',
+            'order': 'general',
+            'limit': '300',
+          },
+        );
+
+        final request = http.Request('GET', uri);
+        request.headers['Content-Type'] = 'application/json';
+        request.body = json.encode({
+          'groupId': _selectedGroupId,
+          'groupType': 'detail',
+        });
+
+        final streamedResponse = await request.send();
+        response = await http.Response.fromStream(streamedResponse);
+
+        print('特定分類回應: ${response.statusCode}');
+        if (response.statusCode == 200) {
+          print('回應內容前200字: ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}...');
+        }
+      } else {
+        // 選擇"全部"時,查詢所有新聞
+        print('查詢所有新聞');
+
+        final uri = Uri.parse('http://localhost:3000/api/news').replace(
+          queryParameters: {
+            'mode': 'simple',
+            'order': 'general',
+            'limit': '300',
+          },
+        );
+
+        final request = http.Request('GET', uri);
+        request.headers['Content-Type'] = 'application/json';
+        request.body = json.encode({});  // 傳空物件
+
+        final streamedResponse = await request.send();
+        response = await http.Response.fromStream(streamedResponse);
+
+        print('所有新聞回應: ${response.statusCode}');
+      }
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         if (responseData['success'] == true) {
-          List<dynamic> newsList = responseData['data'];
+          List<dynamic> newsList = responseData['data'] ?? [];
+
+          print('獲取到新聞數量: ${newsList.length}');
+
+          // 如果沒有新聞資料
+          if (newsList.isEmpty) {
+            setState(() {
+              _allNewsData = [];
+              _newsData = [];
+              _isLoading = false;
+              _error = null; // 不顯示錯誤,只是空列表
+            });
+            return;
+          }
 
           // 獲取所有相關的頻道和圖片資料
           final channelData = await _fetchChannelData();
@@ -155,6 +330,7 @@ class _HomePageState extends State<HomePage> {
         throw Exception('伺服器錯誤: ${response.statusCode}');
       }
     } catch (error) {
+      print('❌ 載入新聞錯誤: $error');
       setState(() {
         _error = '載入新聞時發生錯誤: $error';
         _isLoading = false;
@@ -558,7 +734,7 @@ class _HomePageState extends State<HomePage> {
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.red,
+                              color: Colors.red.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(color: Colors.red),
                             ),
@@ -592,7 +768,7 @@ class _HomePageState extends State<HomePage> {
                     borderRadius: BorderRadius.circular(8),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.grey,
+                        color: Colors.grey.withOpacity(0.3),
                         spreadRadius: 1,
                         blurRadius: 2,
                         offset: const Offset(0, 1),
@@ -655,35 +831,84 @@ class _HomePageState extends State<HomePage> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey,
-                  spreadRadius: 1,
-                  blurRadius: 2,
+          GestureDetector(
+            onTap: () async {
+              // 點擊三條線圖標進入自訂分類頁面
+              final prefs = await SharedPreferences.getInstance();
+              final userId = prefs.getInt('UserID'); // 修復:使用正確的鍵名
+              final isLoggedIn = prefs.getBool('IsLogin') ?? false;
+
+              print('點擊自訂按鈕 - 登入狀態: $isLoggedIn, UserID: $userId');
+
+              if (!isLoggedIn || userId == null) {
+                // 未登入,提示用戶登入
+                print('⚠️ 未登入或 UserID 為 null');
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('請先登入以自訂分類'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                }
+                return;
+              }
+
+              print('導航到自訂分類頁面, UserID: $userId');
+
+              // 導航到自訂分類頁面
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => GroupCustomizePage(userId: userId),
                 ),
-              ],
+              );
+
+              // 從自訂頁面返回後重新載入分類
+              if (result == true || result == null) {
+                print('從自訂頁面返回,重新載入分類');
+                _fetchCategories();
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.3),
+                    spreadRadius: 1,
+                    blurRadius: 2,
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.menu, size: 20),
             ),
-            child: const Icon(Icons.menu, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: _categories.map((category) {
-                  final isSelected = category == _selectedCategory;
+            child: SizedBox(
+              height: 40, // 固定高度以避免裁切
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: _categories.length,
+                itemBuilder: (context, index) {
+                  final category = _categories[index];
+                  final categoryName = category['group_name'] ?? '未命名';
+                  final groupId = category['group_id'];
+                  final isSelected = _selectedCategory == categoryName;
+
                   return Container(
                     margin: const EdgeInsets.only(right: 8),
                     child: GestureDetector(
                       onTap: () {
+                        print('📌 點擊分類: $categoryName (ID: $groupId)');
                         setState(() {
-                          _selectedCategory = category;
+                          _selectedCategory = categoryName;
+                          _selectedGroupId = groupId; // 設定選中的分類ID
                         });
+                        _fetchNews(); // 重新載入該分類的新聞
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(
@@ -695,24 +920,27 @@ class _HomePageState extends State<HomePage> {
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.grey,
+                              color: Colors.grey.withOpacity(0.3),
                               spreadRadius: 1,
                               blurRadius: 2,
                             ),
                           ],
                         ),
-                        child: Text(
-                          category,
-                          style: TextStyle(
-                            color: isSelected ? Colors.white : Colors.black,
-                            fontWeight:
-                            isSelected ? FontWeight.bold : FontWeight.normal,
+                        child: Center(
+                          child: Text(
+                            categoryName,
+                            style: TextStyle(
+                              color: isSelected ? Colors.white : Colors.black,
+                              fontWeight:
+                              isSelected ? FontWeight.bold : FontWeight.normal,
+                              fontSize: 14,
+                            ),
                           ),
                         ),
                       ),
                     ),
                   );
-                }).toList(),
+                },
               ),
             ),
           ),
