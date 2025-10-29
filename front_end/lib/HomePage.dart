@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:async';
 import 'config.dart';
 import 'LoginPage.dart';
 import 'AdminPage.dart';
@@ -24,13 +25,20 @@ class _HomePageState extends State<HomePage> {
   int _selectedIndex = 1;
   String _selectedCategory = '熱門';
   String _selectedDuration = '15分鐘';
+  String _selectedSortType = '總熱度'; // 新增：排序方式
 
   final List<String> _categories = ['熱門', '娛樂', '天氣', '國際', '運動'];
   final List<String> _durations = ['15分鐘', '30分鐘', '45分鐘', '1小時', '一直'];
+  final List<String> _sortTypes = ['總熱度', '瀏覽數量', '分享數量', '收藏數量', '留言數量']; // 新增：排序選項
 
   List<Map<String, dynamic>> _newsData = [];
+  List<Map<String, dynamic>> _allNewsData = []; // 新增：儲存所有新聞資料
   bool _isLoading = false;
+  bool _isLoadingMore = false; // 新增：載入更多資料的狀態
   String? _error;
+  int _currentPage = 0; // 新增：當前頁碼
+  final int _newsPerPage = 30; // 新增：每頁新聞數量
+  final ScrollController _scrollController = ScrollController(); // 新增：滾動控制器
 
   // 快速播放相關變數
   bool _isPlayerVisible = false;
@@ -38,10 +46,56 @@ class _HomePageState extends State<HomePage> {
   double _playbackSpeed = 1.0;
   int _currentNewsIndex = 0;
 
+  // 新增：倒數計時相關變數
+  Timer? _countdownTimer;
+  int _remainingSeconds = 0;
+
   @override
   void initState() {
     super.initState();
     _fetchNews();
+    _scrollController.addListener(_onScroll); // 新增：監聽滾動事件
+  }
+
+  // 新增：滾動監聽
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent * 0.9) {
+      if (!_isLoadingMore && _allNewsData.isNotEmpty) {
+        _loadMoreNews();
+      }
+    }
+  }
+
+  // 新增：載入更多新聞
+  Future<void> _loadMoreNews() async {
+    if (_isLoadingMore) return;
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    // 模擬載入延遲
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    setState(() {
+      if (_newsData.length >= 60) {
+        // 如果已有60個新聞，刪除前30個
+        _newsData.removeRange(0, 30);
+        _currentPage++;
+      }
+
+      // 載入接下來的30個新聞
+      int startIndex = (_currentPage + 1) * _newsPerPage;
+      int endIndex = startIndex + _newsPerPage;
+
+      if (startIndex < _allNewsData.length) {
+        endIndex = endIndex > _allNewsData.length ? _allNewsData.length : endIndex;
+        _newsData.addAll(_allNewsData.sublist(startIndex, endIndex));
+        _currentPage++;
+      }
+
+      _isLoadingMore = false;
+    });
   }
 
   // 獲取新聞資料
@@ -49,6 +103,9 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       _isLoading = true;
       _error = null;
+      _currentPage = 0;
+      _newsData.clear();
+      _allNewsData.clear();
     });
 
     try {
@@ -65,20 +122,30 @@ class _HomePageState extends State<HomePage> {
           final channelData = await _fetchChannelData();
           final imageData = await _fetchImageData();
 
+          List<Map<String, dynamic>> processedNews = newsList.map<Map<String, dynamic>>((news) {
+            return {
+              'id': news['news_id'],
+              'title': news['news_title'] ?? '無標題',
+              'channel_id': news['channel_id'],
+              'channel': channelData[news['channel_id']] ?? '未知頻道',
+              'publish_date': _formatDate(news['news_date']),
+              'comments': news['total_comment'] ?? 0,
+              'views': news['total_view'] ?? 0,
+              'shares': news['total_share'] ?? 0,
+              'bookmarks': news['total_bookmark'] ?? 0,
+              'cover_img': imageData[news['cover_image']],
+              'news_date': news['news_date'],
+              'cover_image_id': news['cover_image'],
+            };
+          }).toList();
+
+          // 根據選擇的排序方式排序
+          _sortNews(processedNews);
+
           setState(() {
-            _newsData = newsList.map<Map<String, dynamic>>((news) {
-              return {
-                'id': news['news_id'],
-                'title': news['news_title'] ?? '無標題',
-                'channel_id': news['channel_id'],
-                'channel': channelData[news['channel_id']] ?? '未知頻道',
-                'publish_date': _formatDate(news['news_date']),
-                'comments': news['total_comment'] ?? 0,
-                'cover_img': imageData[news['cover_image']],
-                'news_date': news['news_date'],
-                'cover_image_id': news['cover_image'],
-              };
-            }).toList();
+            _allNewsData = processedNews;
+            // 初始載入前30個新聞
+            _newsData = _allNewsData.take(_newsPerPage).toList();
             _isLoading = false;
           });
         } else {
@@ -95,6 +162,35 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  // 新增：根據排序方式排序新聞
+  void _sortNews(List<Map<String, dynamic>> newsList) {
+    switch (_selectedSortType) {
+      case '瀏覽數量':
+        newsList.sort((a, b) => (b['views'] as int).compareTo(a['views'] as int));
+        break;
+      case '分享數量':
+        newsList.sort((a, b) => (b['shares'] as int).compareTo(a['shares'] as int));
+        break;
+      case '收藏數量':
+        newsList.sort((a, b) => (b['bookmarks'] as int).compareTo(a['bookmarks'] as int));
+        break;
+      case '留言數量':
+        newsList.sort((a, b) => (b['comments'] as int).compareTo(a['comments'] as int));
+        break;
+      case '總熱度':
+      default:
+      // 總熱度 = 瀏覽數 + 分享數*2 + 收藏數*3 + 留言數*2
+        newsList.sort((a, b) {
+          int heatA = (a['views'] as int) + (a['shares'] as int) * 2 +
+              (a['bookmarks'] as int) * 3 + (a['comments'] as int) * 2;
+          int heatB = (b['views'] as int) + (b['shares'] as int) * 2 +
+              (b['bookmarks'] as int) * 3 + (b['comments'] as int) * 2;
+          return heatB.compareTo(heatA);
+        });
+        break;
+    }
+  }
+
   // 獲取頻道資料
   Future<Map<int, String>> _fetchChannelData() async {
     try {
@@ -108,8 +204,7 @@ class _HomePageState extends State<HomePage> {
           List<dynamic> channels = responseData['data'];
           Map<int, String> channelMap = {};
           for (var channel in channels) {
-            channelMap[channel['channel_id']] =
-                channel['channel_name'] ?? '未知頻道';
+            channelMap[channel['channel_id']] = channel['channel_name'] ?? '未知頻道';
           }
           return channelMap;
         }
@@ -176,13 +271,63 @@ class _HomePageState extends State<HomePage> {
     };
   }
 
+  // 新增：解析時間字串為秒數
+  int _parseDurationToSeconds(String duration) {
+    if (duration == '一直') return 86400; // 24小時
+
+    final match = RegExp(r'(\d+)(分鐘|小時)').firstMatch(duration);
+    if (match != null) {
+      final value = int.parse(match.group(1)!);
+      final unit = match.group(2);
+
+      if (unit == '分鐘') {
+        return value * 60;
+      } else if (unit == '小時') {
+        return value * 3600;
+      }
+    }
+    return 900; // 預設15分鐘
+  }
+
+  // 新增：格式化剩餘時間顯示
+  String _formatRemainingTime() {
+    if (_remainingSeconds <= 0) return '0分鐘';
+
+    final hours = _remainingSeconds ~/ 3600;
+    final minutes = (_remainingSeconds % 3600) ~/ 60;
+
+    if (hours > 0) {
+      return '$hours小時${minutes}分鐘';
+    } else {
+      return '$minutes分鐘';
+    }
+  }
+
   // 快速播放功能
   void _startQuickPlay() {
     if (_newsData.isNotEmpty) {
+      // 初始化倒數計時
+      _remainingSeconds = _parseDurationToSeconds(_selectedDuration);
+
+      // 取消現有的計時器
+      _countdownTimer?.cancel();
+
       setState(() {
         _isPlayerVisible = true;
         _isPlaying = true;
         _currentNewsIndex = 0;
+      });
+
+      // 啟動倒數計時
+      _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        setState(() {
+          if (_remainingSeconds > 0) {
+            _remainingSeconds--;
+          } else {
+            // 時間到，停止播放
+            _closePlayer();
+          }
+        });
       });
     }
   }
@@ -192,6 +337,22 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       _isPlaying = !_isPlaying;
     });
+
+    if (_isPlaying) {
+      // 恢復倒數計時
+      _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        setState(() {
+          if (_remainingSeconds > 0) {
+            _remainingSeconds--;
+          } else {
+            _closePlayer();
+          }
+        });
+      });
+    } else {
+      // 暫停倒數計時
+      _countdownTimer?.cancel();
+    }
   }
 
   // 上一篇新聞
@@ -227,18 +388,19 @@ class _HomePageState extends State<HomePage> {
 
   // 關閉播放器
   void _closePlayer() {
+    _countdownTimer?.cancel();
     setState(() {
       _isPlayerVisible = false;
       _isPlaying = false;
+      _remainingSeconds = 0;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // 在這裡創建頁面列表，確保每次 build 都使用最新的數據
     final List<Widget> pages = [
       const MapPage(),
-      _buildHomePage(), // 每次 build 都重新創建首頁
+      _buildHomePage(),
       const AIPage(),
     ];
 
@@ -247,7 +409,7 @@ class _HomePageState extends State<HomePage> {
       body: SafeArea(
         child: Stack(
           children: [
-            pages[_selectedIndex], // 使用本地的 pages 變數
+            pages[_selectedIndex],
             if (_isPlayerVisible) _buildMusicPlayer(),
           ],
         ),
@@ -262,18 +424,17 @@ class _HomePageState extends State<HomePage> {
         _buildTopToolBar(),
         _buildSearchBar(),
         _buildCategoryFilter(),
-        _buildQuickPlaySection(),
+        _buildQuickPlaySection(), // 修改後的快速播放區塊
         Expanded(child: _buildNewsList()),
       ],
     );
   }
 
-  // ========== 注意：新聞導入邏輯完全來自v2 (HomePage_1_.dart) 已驗證可正常運作 ==========
-  // ========== 工具欄：支持登入系統 (v1) + 簡化結構 (v2) ==========
+  // ========== 工具欄：支持登入系統 ==========
   Widget _buildTopToolBar() {
     return FutureBuilder<bool>(
       future: SharedPreferences.getInstance().then(
-        (prefs) => prefs.getBool('IsLogin') ?? false,
+            (prefs) => prefs.getBool('IsLogin') ?? false,
       ),
       builder: (context, snapshot) {
         final isLoggedIn = snapshot.data ?? false;
@@ -283,7 +444,7 @@ class _HomePageState extends State<HomePage> {
           child: Row(
             children: [
               if (!isLoggedIn)
-                // 未登入狀態 - 顯示登入和註冊按鈕 (來自v1)
+              // 未登入狀態 - 顯示登入和註冊按鈕
                 Row(
                   children: [
                     ElevatedButton(
@@ -338,7 +499,7 @@ class _HomePageState extends State<HomePage> {
                   ],
                 )
               else
-                // 已登入狀態 - 顯示用戶頭像 (來自v1)
+              // 已登入狀態 - 顯示用戶頭像
                 FutureBuilder<Map<String, dynamic>>(
                   future: _getUserInfo(),
                   builder: (context, userSnapshot) {
@@ -397,7 +558,7 @@ class _HomePageState extends State<HomePage> {
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.red.withOpacity(0.1),
+                              color: Colors.red,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(color: Colors.red),
                             ),
@@ -413,7 +574,7 @@ class _HomePageState extends State<HomePage> {
 
               const Spacer(),
 
-              // 收藏按鈕 (兩個版本相同)
+              // 收藏按鈕
               GestureDetector(
                 onTap: () {
                   Navigator.push(
@@ -431,7 +592,7 @@ class _HomePageState extends State<HomePage> {
                     borderRadius: BorderRadius.circular(8),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.grey.withOpacity(0.3),
+                        color: Colors.grey,
                         spreadRadius: 1,
                         blurRadius: 2,
                         offset: const Offset(0, 1),
@@ -523,7 +684,6 @@ class _HomePageState extends State<HomePage> {
                         setState(() {
                           _selectedCategory = category;
                         });
-                        // TODO: 實現分類篩選功能
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(
@@ -546,7 +706,7 @@ class _HomePageState extends State<HomePage> {
                           style: TextStyle(
                             color: isSelected ? Colors.white : Colors.black,
                             fontWeight:
-                                isSelected ? FontWeight.bold : FontWeight.normal,
+                            isSelected ? FontWeight.bold : FontWeight.normal,
                           ),
                         ),
                       ),
@@ -561,50 +721,102 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // 修改後的快速播放區塊
   Widget _buildQuickPlaySection() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey,
+            spreadRadius: 1,
+            blurRadius: 3,
+          ),
+        ],
+      ),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.orange,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: GestureDetector(
-              onTap: _startQuickPlay,
-              child: const Row(
-                children: [
-                  Icon(Icons.play_circle_fill, color: Colors.white, size: 20),
-                  SizedBox(width: 8),
-                  Text(
-                    '快速播放',
-                    style: TextStyle(color: Colors.white, fontSize: 14),
+          // 左半部：快速播放
+          Expanded(
+            child: Row(
+              children: [
+                const Icon(Icons.flash_on, color: Colors.orange, size: 24),
+                const SizedBox(width: 8),
+                const Text(
+                  '快速播放',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                ],
-              ),
+                  child: DropdownButton<String>(
+                    value: _selectedDuration,
+                    underline: Container(),
+                    items: _durations.map((duration) {
+                      return DropdownMenuItem<String>(
+                        value: duration,
+                        child: Text(duration, style: const TextStyle(fontSize: 14)),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedDuration = value!;
+                      });
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: _startQuickPlay,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  ),
+                  child: const Text('確認', style: TextStyle(fontSize: 14)),
+                ),
+              ],
             ),
           ),
-          const Spacer(),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: DropdownButton<String>(
-              value: _selectedDuration,
-              items: _durations.map((duration) {
-                return DropdownMenuItem(
-                  value: duration,
-                  child: Text(duration),
-                );
-              }).toList(),
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() {
-                    _selectedDuration = value;
-                  });
-                }
-              },
-            ),
+
+          const SizedBox(width: 16),
+
+          // 右半部：排序方式
+          Row(
+            children: [
+              const Icon(Icons.sort, color: Colors.grey, size: 20),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: DropdownButton<String>(
+                  value: _selectedSortType,
+                  underline: Container(),
+                  items: _sortTypes.map((sortType) {
+                    return DropdownMenuItem<String>(
+                      value: sortType,
+                      child: Text(sortType, style: const TextStyle(fontSize: 14)),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedSortType = value!;
+                    });
+                    _fetchNews(); // 重新整理頁面
+                  },
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -613,150 +825,184 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildNewsList() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
     }
 
     if (_error != null) {
       return Center(
-        child: Text(
-          _error!,
-          style: const TextStyle(color: Colors.red, fontSize: 16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              _error!,
+              style: TextStyle(color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _fetchNews,
+              child: const Text('重新載入'),
+            ),
+          ],
         ),
       );
     }
 
     if (_newsData.isEmpty) {
-      return const Center(
-        child: Text(
-          '沒有新聞資料',
-          style: TextStyle(fontSize: 16, color: Colors.grey),
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.article_outlined, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              '目前沒有新聞資料',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _fetchNews,
+              child: const Text('重新載入'),
+            ),
+          ],
         ),
       );
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: ListView.builder(
-        itemCount: _newsData.length,
-        itemBuilder: (context, index) {
-          final news = _newsData[index];
-          print('Building news item $index: ${news['title']}');
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      child: RefreshIndicator(
+        onRefresh: _fetchNews,
+        child: ListView.builder(
+          controller: _scrollController,
+          itemCount: _newsData.length + (_isLoadingMore ? 1 : 0),
+          itemBuilder: (context, index) {
+            // 顯示載入更多指示器
+            if (index == _newsData.length) {
+              return Container(
+                padding: const EdgeInsets.all(16),
+                alignment: Alignment.center,
+                child: const CircularProgressIndicator(),
+              );
+            }
 
-          return Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey,
-                  spreadRadius: 1,
-                  blurRadius: 3,
-                ),
-              ],
-            ),
-            child: InkWell(
-              onTap: () {
-                print('News item tapped: ${news['title']}');
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ViewNewsContent(newsData: news),
-                  ),
-                );
-              },
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 80,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: news['cover_img'] != null &&
-                              news['cover_img'].isNotEmpty
-                          ? Image.network(
-                              news['cover_img'],
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                print('Image load error: $error');
-                                return const Icon(Icons.image,
-                                    color: Colors.grey);
-                              },
-                            )
-                          : const Icon(Icons.image, color: Colors.grey),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          news['channel'] ?? '未知頻道',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          news['title'] ?? '無標題',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            color: Colors.black,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Text(
-                              news['publish_date'] ?? '未知時間',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 12,
-                              ),
-                            ),
-                            const Spacer(),
-                            Icon(
-                              Icons.chat_bubble_outline,
-                              color: Colors.grey[600],
-                              size: 14,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${news['comments'] ?? 0}',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+            final news = _newsData[index];
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey,
+                    spreadRadius: 1,
+                    blurRadius: 3,
                   ),
                 ],
               ),
-            ),
-          );
-        },
+              child: InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ViewNewsContent(newsData: news),
+                    ),
+                  );
+                },
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 80,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: news['cover_img'] != null && news['cover_img'].isNotEmpty
+                            ? Image.network(
+                          news['cover_img'],
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Icon(Icons.image, color: Colors.grey);
+                          },
+                        )
+                            : const Icon(Icons.image, color: Colors.grey),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            news['channel'] ?? '未知頻道',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            news['title'] ?? '無標題',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: Colors.black,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Text(
+                                news['publish_date'] ?? '未知時間',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const Spacer(),
+                              Icon(
+                                Icons.chat_bubble_outline,
+                                color: Colors.grey[600],
+                                size: 14,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${news['comments'] ?? 0}',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
 
+  // 修改後的播放器
   Widget _buildMusicPlayer() {
     if (_newsData.isEmpty) return Container();
-
-    final currentNews = _newsData[_currentNewsIndex];
 
     return Positioned(
       bottom: 0,
@@ -783,29 +1029,20 @@ class _HomePageState extends State<HomePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.flash_on, color: Colors.orange, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    '大綱：剩餘15分鐘',
-                    //currentNews['title'],
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: Colors.black,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  Row(
+                    children: [
+                      const Icon(Icons.flash_on, color: Colors.orange, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        '快速播放：剩餘${_formatRemainingTime()}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  /*
-                  Text(
-                    currentNews['publish_date'],
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 12,
-                    ),
-                  ),
-                  */
                 ],
               ),
             ),
@@ -818,10 +1055,7 @@ class _HomePageState extends State<HomePage> {
                 GestureDetector(
                   onTap: _adjustPlaybackSpeed,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.grey),
                       borderRadius: BorderRadius.circular(4),
@@ -851,10 +1085,7 @@ class _HomePageState extends State<HomePage> {
 
                 // 下一篇按鈕
                 IconButton(
-                  onPressed:
-                      _currentNewsIndex < _newsData.length - 1
-                          ? _nextNews
-                          : null,
+                  onPressed: _currentNewsIndex < _newsData.length - 1 ? _nextNews : null,
                   icon: const Icon(Icons.skip_next),
                   iconSize: 24,
                 ),
@@ -878,7 +1109,11 @@ class _HomePageState extends State<HomePage> {
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
-          BoxShadow(color: Colors.grey, spreadRadius: 1, blurRadius: 3),
+          BoxShadow(
+            color: Colors.grey,
+            spreadRadius: 1,
+            blurRadius: 3,
+          ),
         ],
       ),
       child: BottomNavigationBar(
@@ -907,6 +1142,8 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
+    _countdownTimer?.cancel();
+    _scrollController.dispose();
     super.dispose();
   }
 }
