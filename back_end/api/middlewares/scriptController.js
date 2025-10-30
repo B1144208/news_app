@@ -4,40 +4,46 @@ const { callAndCatchApiSuccess } = require('../utils/fakeHelper');
 const { execFile } = require('child_process');
 const path = require('path');
 
-// ---- search ----
+// ---- general ----
 async function generalScript(req, res, next) {
-  return;
+    return;
+
 }
 
-// ---- insert ----
+// ---- reporter ----
 async function reporterScript(req, res, next) {
   return;
 }
 
-// ---- update ----
+// ---- chat ----
 async function chatScript(req, res, next) {
   return;
 }
 
-// ---- delete ----
+// ---- quick ----
 async function quickScript(req, res, next) {
   return;
 }
 
-// ---- 呼叫 ask.sh 腳本 ----
-async function callAskScript(question) {
-  return new Promise((resolve, reject) => {
-    const scriptPath = path.join(__dirname, '../ask.sh'); // 指向 ask.sh 檔案
+// ---- call ask.sh ----
+async function callAskScript(req, res, next) {
+  try {
+    const { question } = req.body;
+    const scriptPath = path.join(__dirname, "../ask.sh"); // 指向 ask.sh 檔案
 
-    execFile('bash', [scriptPath, question], (error, stdout, stderr) => {
+    execFile("bash", [scriptPath, question], (error, stdout, stderr) => {
       if (error) {
-        console.error('執行 ask.sh 出錯：', stderr);
-        reject(error);
-      } else {
-        resolve(stdout.trim());
+        console.error("執行 ask.sh 出錯：", stderr);
+        return res.status(500).json({ error: "Failed to execute ask.sh" });
       }
+
+      const response = stdout.trim();
+      res.json({ response });
     });
-  });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to execute ask.sh" });
+  }
 }
 
 // ---- 匯出所有函式 ----
