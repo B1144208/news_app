@@ -1,16 +1,20 @@
 #!/bin/bash
 # 用法： ./ask.sh "QUESTION"
 
-QUESTION="$*"
-SAFE_PROMPT=${QUESTION//\"/\\\"}
 
-curl -s http://localhost:11434/api/generate -d '{
-  "model": "deepseek-r1:7b",
-  \"prompt\": \"${SAFE_PROMPT}\",
-  "stream": false
-}'
-| jq -r '.response' \
-| sed 's/\\u003c/</g; s/\\u003e/>/g' \
-| tr '\n' '\r' \
-| sed 's/<think>.*<\/think>//g' \
-| tr '\r' '\n'
+set -euo pipefail
+
+QUESTION="${1:-}"
+
+# 用 jq 安全組 JSON payload
+payload=$(jq -n \
+  --arg model   "deepseek-r1:7b" \
+  --arg prompt  "$QUESTION" \
+  --argjson stream false \
+  '{model:$model, prompt:$prompt, stream:$stream}')
+
+curl -s -H 'Content-Type: application/json' \
+  http://localhost:11434/api/generate \
+  -d "$payload" \
+| jq -r '.response // ""' \
+| perl -0777 -pe 's{<think>.*?</think>}{}gs'
