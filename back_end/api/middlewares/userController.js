@@ -76,6 +76,16 @@ async function sendPhoneCode(phone, code) {
   return true;
 }
 
+async function sendEmailCode(email, code) {
+  console.log(`\n========== EMAIL VERIFICATION CODE ==========`);
+  console.log(`To: ${email}`);
+  console.log(`Code: ${code}`);
+  console.log(`Valid for: ${VERIFICATION_CONFIG.codeExpiry / 1000} seconds`);
+  console.log(`=============================================\n`);
+  return true;
+}
+
+
 function getVerificationKey(target, type = 'email') {
   return `${type}:${target}`;
 }
@@ -521,7 +531,7 @@ async function sendEmailVerificationCode(req, res) {
     await sendEmailCode(email, code);
 
     // ✅ 改為 res.apiSuccess()，並添加 return
-    return res.apiSuccess('驗證碼已發送，請檢查郵箱（開發環境：驗證碼已打印到控制台）');
+    res.apiSuccess('驗證碼已發送，請檢查郵箱（開發環境：驗證碼已打印到控制台）');
   } catch (error) {
     console.error('發送郵箱驗證碼錯誤:', error);
     // ✅ 改為 res.apiError()，並添加 return
@@ -632,7 +642,7 @@ async function sendPhoneVerificationCode(req, res) {
     await sendPhoneCode(phone, code);
 
     // ✅ 改為 res.apiSuccess()，並添加 return
-    return res.apiSuccess('驗證碼已發送，請檢查簡訊（開發環境：驗證碼已打印到控制台）');
+    res.apiSuccess('驗證碼已發送，請檢查簡訊（開發環境：驗證碼已打印到控制台）');
   } catch (error) {
     console.error('發送手機驗證碼錯誤:', error);
     // ✅ 改為 res.apiError()，並添加 return
