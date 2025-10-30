@@ -1,8 +1,7 @@
 const express = require('express')
 const router = express.Router()
-const { generalScript, reporterScript, chatScript, quickScript } = require('../middlewares/scriptController')
+const { generalScript, reporterScript, chatScript, quickScript, callAskScript } = require('../middlewares/scriptController')
 
-const { callAskScript } = require("../middlewares/scriptController.js")
 
 
 
@@ -18,15 +17,15 @@ router.post("/ask", async (req, res) => {
 });
 
 // general mode
-router.post('/', generalScript);
+router.post('/general', generalScript);
 
 // reporter mode
-router.post('/', reporterScript);
+router.post('/reporter', reporterScript);
 
 // chat mode
-router.post('/', chatScript);
+router.post('/chat', chatScript);
 
 // quick mode
-router.post('/', quickScript);
+router.post('/quick', quickScript);
 
 module.exports = router
