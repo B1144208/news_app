@@ -59,93 +59,56 @@ class _HomePageState extends State<HomePage> {
     _scrollController.addListener(_onScroll); // 新增：監聽滾動事件
   }
 
-  // 新增：獲取分類列表
+  // 新增:獲取分類列表
   Future<void> _fetchCategories() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getInt('UserID'); // 修復:使用正確的鍵名
+      final userId = prefs.getInt('UserID');
       final isLoggedIn = prefs.getBool('IsLogin') ?? false;
 
-      print('_fetchCategories - 登入狀態: $isLoggedIn, UserID: $userId');
+      print('🔍 _fetchCategories - 登入狀態: $isLoggedIn, UserID: $userId');
 
       List<Map<String, dynamic>> categories = [];
 
-      if (isLoggedIn && userId != null) {
-        // 已登入：獲取用戶自訂分類
-        print('📡 發送請求到 groupcustomize/general, userId: $userId');
+      // 先獲取所有 group_data
+      final groupResponse = await http.get(
+        Uri.parse('http://localhost:3000/api/group'),
+      );
 
-        final response = await http.post(
-          Uri.parse('http://localhost:3000/api/groupcustomize/general'),
-          headers: {'Content-Type': 'application/json'},
-          body: json.encode({'userId': userId}),
-        );
+      if (groupResponse.statusCode != 200) {
+        throw Exception('獲取分類資料失敗');
+      }
 
-        print('📡 groupcustomize/general 回應: ${response.statusCode}');
+      final groupData = json.decode(groupResponse.body);
+      if (groupData['success'] != true || groupData['data'] == null) {
+        throw Exception('分類資料格式錯誤');
+      }
 
-        if (response.statusCode == 200) {
-          final responseData = json.decode(response.body);
-          print('📡 groupcustomize/general 資料: ${responseData['success']}, 數量: ${responseData['data']?.length}');
+      print('📡 獲取到 ${groupData['data'].length} 個分類');
 
-          if (responseData['success'] == true && responseData['data'] != null) {
-            List<dynamic> customList = responseData['data'];
+      // 使用 Set 來追蹤已添加的 group_id,確保不重複
+      Set<int> addedGroupIds = {};
 
-            // 使用 Set 來追蹤已添加的 group_id，避免重複
-            Set<int> addedGroupIds = {};
+      for (var item in groupData['data']) {
+        int? groupId = item['group_id'];
 
-            // 過濾出啟用的分類 (group_order > 0) 並去除重複
-            for (var item in customList) {
-              if (item['group_order'] != null &&
-                  item['group_order'] > 0 &&
-                  !addedGroupIds.contains(item['group_id'])) {
-                categories.add({
-                  'group_id': item['group_id'],
-                  'group_name': item['group_name'] ?? '未命名',
-                  'group_order': item['group_order'],
-                });
-                addedGroupIds.add(item['group_id']);
-              }
-            }
-
-            // 按 group_order 排序
-            categories.sort((a, b) => (a['group_order'] ?? 0).compareTo(b['group_order'] ?? 0));
-          }
-        }
-      } else {
-        // 未登入：獲取預設分類列表
-        print('未登入,使用預設分類');
-
-        final response = await http.get(
-          Uri.parse('http://localhost:3000/api/group'),
-        );
-
-        print('group 回應: ${response.statusCode}');
-
-        if (response.statusCode == 200) {
-          final responseData = json.decode(response.body);
-          if (responseData['success'] == true && responseData['data'] != null) {
-            List<dynamic> groupList = responseData['data'];
-
-            // 使用 Set 來避免重複
-            Set<int> addedGroupIds = {};
-
-            for (var item in groupList) {
-              if (!addedGroupIds.contains(item['group_id'])) {
-                categories.add({
-                  'group_id': item['group_id'],
-                  'group_name': item['group_name'] ?? '未命名',
-                });
-                addedGroupIds.add(item['group_id']);
-              }
-            }
-
-            // 按 group_id 排序
-            categories.sort((a, b) => (a['group_id'] ?? 0).compareTo(b['group_id'] ?? 0));
-          }
+        if (groupId != null && !addedGroupIds.contains(groupId)) {
+          categories.add({
+            'group_id': groupId,
+            'group_name': item['group_name'] ?? '未命名',
+          });
+          addedGroupIds.add(groupId);
+          print('   ✅ 添加: ${item['group_name']} (ID: $groupId)');
+        } else {
+          print('   ⚠️ 跳過重複: ${item['group_name']} (ID: $groupId)');
         }
       }
 
+      // 按 group_id 排序
+      categories.sort((a, b) => (a['group_id'] ?? 0).compareTo(b['group_id'] ?? 0));
+
       print('✅ 最終分類數量: ${categories.length}');
-      categories.forEach((cat) => print('   - ${cat['group_name']} (ID: ${cat['group_id']})'));
+      print('✅ 分類 IDs: $addedGroupIds');
 
       setState(() {
         // 在最前面添加"全部"選項
@@ -222,57 +185,34 @@ class _HomePageState extends State<HomePage> {
     try {
       http.Response response;
 
-      // 根據 API 說明:
-      // - GET 請求,query 參數: mode, order, limit
-      // - body 需要傳入分類/位置/關鍵字等過濾條件
-      // - body 至少要有 {} 否則會報錯
-
       if (_selectedGroupId != null) {
-        // 查詢特定分類
-        print('查詢特定分類新聞 - groupId: $_selectedGroupId');
+        // 查詢特定分類 - 使用 POST 請求
+        print('📡 查詢特定分類新聞 - groupId: $_selectedGroupId');
 
-        final uri = Uri.parse('http://localhost:3000/api/news').replace(
-          queryParameters: {
-            'mode': 'simple',
-            'order': 'general',
-            'limit': '300',
-          },
+        response = await http.post(
+          Uri.parse('http://localhost:3000/api/news?mode=simple&order=general&limit=300'),
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode({
+            'groupId': _selectedGroupId,
+            'groupType': 'data',  // ✅ 使用 'data' (news_group 表中的 group_data_id)
+          }),
         );
 
-        final request = http.Request('GET', uri);
-        request.headers['Content-Type'] = 'application/json';
-        request.body = json.encode({
-          'groupId': _selectedGroupId,
-          'groupType': 'detail',
-        });
-
-        final streamedResponse = await request.send();
-        response = await http.Response.fromStream(streamedResponse);
-
-        print('特定分類回應: ${response.statusCode}');
+        print('📡 特定分類回應: ${response.statusCode}');
         if (response.statusCode == 200) {
-          print('回應內容前200字: ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}...');
+          print('📡 回應內容前200字: ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}');
         }
       } else {
-        // 選擇"全部"時,查詢所有新聞
-        print('查詢所有新聞');
+        // 查詢所有新聞 - 使用 POST 請求 + 空 body
+        print('📡 查詢所有新聞');
 
-        final uri = Uri.parse('http://localhost:3000/api/news').replace(
-          queryParameters: {
-            'mode': 'simple',
-            'order': 'general',
-            'limit': '300',
-          },
+        response = await http.post(
+          Uri.parse('http://localhost:3000/api/news?mode=simple&order=general&limit=300'),
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode({}),  // ✅ 傳空物件
         );
 
-        final request = http.Request('GET', uri);
-        request.headers['Content-Type'] = 'application/json';
-        request.body = json.encode({});  // 傳空物件
-
-        final streamedResponse = await request.send();
-        response = await http.Response.fromStream(streamedResponse);
-
-        print('所有新聞回應: ${response.statusCode}');
+        print('📡 所有新聞回應: ${response.statusCode}');
       }
 
       if (response.statusCode == 200) {
@@ -280,7 +220,7 @@ class _HomePageState extends State<HomePage> {
         if (responseData['success'] == true) {
           List<dynamic> newsList = responseData['data'] ?? [];
 
-          print('獲取到新聞數量: ${newsList.length}');
+          print('✅ 獲取到新聞數量: ${newsList.length}');
 
           // 如果沒有新聞資料
           if (newsList.isEmpty) {
@@ -288,7 +228,7 @@ class _HomePageState extends State<HomePage> {
               _allNewsData = [];
               _newsData = [];
               _isLoading = false;
-              _error = null; // 不顯示錯誤,只是空列表
+              _error = null;
             });
             return;
           }
@@ -838,7 +778,7 @@ class _HomePageState extends State<HomePage> {
               final userId = prefs.getInt('UserID'); // 修復:使用正確的鍵名
               final isLoggedIn = prefs.getBool('IsLogin') ?? false;
 
-              print('點擊自訂按鈕 - 登入狀態: $isLoggedIn, UserID: $userId');
+              print('🔍 點擊自訂按鈕 - 登入狀態: $isLoggedIn, UserID: $userId');
 
               if (!isLoggedIn || userId == null) {
                 // 未登入,提示用戶登入
@@ -854,7 +794,7 @@ class _HomePageState extends State<HomePage> {
                 return;
               }
 
-              print('導航到自訂分類頁面, UserID: $userId');
+              print('✅ 導航到自訂分類頁面, UserID: $userId');
 
               // 導航到自訂分類頁面
               final result = await Navigator.push(
@@ -866,7 +806,7 @@ class _HomePageState extends State<HomePage> {
 
               // 從自訂頁面返回後重新載入分類
               if (result == true || result == null) {
-                print('從自訂頁面返回,重新載入分類');
+                print('🔄 從自訂頁面返回,重新載入分類');
                 _fetchCategories();
               }
             },
