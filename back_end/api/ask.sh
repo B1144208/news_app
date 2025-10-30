@@ -6,7 +6,7 @@ QUESTION="$1"
 curl -s http://localhost:11434/api/generate \
   -d '{
     \"model\": \"deepseek-r1:7b\",
-    \"prompt\": \"Hello\",
+    \"prompt\": \"$QUESTION\",
     \"stream\": false
   }' \
 | jq -r '.response' \
