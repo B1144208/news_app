@@ -328,6 +328,9 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                     TextFormField(
                       controller: _confirmPasswordController,
                       obscureText: _obscureConfirmPassword,
+                      onChanged: (value) {
+                        setState(() {});
+                      },
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return '請確認新密碼';
@@ -355,6 +358,66 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                         ),
                       ),
                     ),
+                    // ✅ 新增：密碼匹配檢查提示（類似註冊頁面風格）
+                    if (_newPasswordController.text.isNotEmpty &&
+                        _confirmPasswordController.text.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color:
+                                _newPasswordController.text ==
+                                        _confirmPasswordController.text
+                                    ? Colors.green[50]
+                                    : Colors.red[50],
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color:
+                                  _newPasswordController.text ==
+                                          _confirmPasswordController.text
+                                      ? Colors.green
+                                      : Colors.red,
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                _newPasswordController.text ==
+                                        _confirmPasswordController.text
+                                    ? Icons.check_circle
+                                    : Icons.error_outline,
+                                color:
+                                    _newPasswordController.text ==
+                                            _confirmPasswordController.text
+                                        ? Colors.green[700]
+                                        : Colors.red[700],
+                                size: 20,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  _newPasswordController.text ==
+                                          _confirmPasswordController.text
+                                      ? '密碼一致 ✓'
+                                      : '密碼不一致 ✗',
+                                  style: TextStyle(
+                                    color:
+                                        _newPasswordController.text ==
+                                                _confirmPasswordController.text
+                                            ? Colors.green[700]
+                                            : Colors.red[700],
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),

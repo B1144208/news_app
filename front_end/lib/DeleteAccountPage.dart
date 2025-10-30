@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'config.dart';
 import 'LoginPage.dart';
+import 'HomePage.dart';
 
 class DeleteAccountPage extends StatefulWidget {
   const DeleteAccountPage({super.key});
@@ -71,16 +72,16 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('帳號已刪除，即將返回登入頁面'),
+                content: Text('帳號已刪除，即將返回首頁'),
                 backgroundColor: Colors.green,
               ),
             );
 
-            // 2秒後跳轉到登入頁面
+            // 2秒後跳轉到頁面
             await Future.delayed(const Duration(seconds: 2));
             if (mounted) {
               Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (context) => const LoginPage()),
+                MaterialPageRoute(builder: (context) => const HomePage()),
                 (route) => false,
               );
             }
