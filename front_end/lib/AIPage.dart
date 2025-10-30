@@ -11,6 +11,9 @@ import 'config.dart'; // 假設 config.dart 包含 baseUrl
 // 引入導航頁面 (確保這些檔案存在且名稱正確)
 import 'LoginPage.dart';
 import 'BookmarkPage.dart'; // 👈 這裡就是您的收藏列表頁面
+import 'SignupPage.dart'; // 新增
+import 'AdminPage.dart'; // 新增
+import 'MemberCenterPage.dart'; // 新增
 
 class AIPage extends StatefulWidget {
   const AIPage({super.key});
@@ -122,10 +125,20 @@ class _AIPageState extends State<AIPage> {
 
   Future<void> _loadUserId() async {
     final prefs = await SharedPreferences.getInstance();
+    // 重新載入 _currentUserId，以便檢查登入狀態
     final userId = prefs.getInt('UserID');
 
     // 注意：這裡只更新 _currentUserId，不調用 setState，讓 _loadingFuture 結束後統一更新 UI
     _currentUserId = userId;
+  }
+
+  // 獲取用戶資訊 (從 HomePage 移植)
+  Future<Map<String, dynamic>> _getUserInfo() async {
+    final prefs = await SharedPreferences.getInstance();
+    return {
+      'account': prefs.getString('Account') ?? '',
+      'isAdmin': (prefs.getInt('UserLevel') ?? 0) >= 5,
+    };
   }
 
   // 🌟 修正點 4：統一載入數據和收藏狀態 🌟
@@ -340,6 +353,256 @@ class _AIPageState extends State<AIPage> {
     }
   }
 
+  // ========== 頂部工具欄 (從 HomePage 移植) ==========
+  Widget _buildTopToolBar() {
+    return FutureBuilder<bool>(
+      // 檢查是否登入
+      future: SharedPreferences.getInstance().then(
+            (prefs) => prefs.getBool('IsLogin') ?? false,
+      ),
+      builder: (context, snapshot) {
+        final isLoggedIn = snapshot.data ?? false;
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              if (!isLoggedIn)
+              // 未登入狀態 - 顯示登入和註冊按鈕
+                Row(
+                  children: [
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const LoginPage(),
+                          ),
+                        ).then((_) {
+                          // 登入後刷新頁面
+                          setState(() {
+                            _loadUserId().then((__) => _fetchData());
+                          });
+                        });
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black,
+                        elevation: 2,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        minimumSize: const Size(60, 32),
+                      ),
+                      child: const Text('登入', style: TextStyle(fontSize: 12)),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const SignupPage(),
+                          ),
+                        ).then((_) {
+                          // 註冊後刷新頁面
+                          setState(() {
+                            _loadUserId().then((__) => _fetchData());
+                          });
+                        });
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        elevation: 2,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        minimumSize: const Size(60, 32),
+                      ),
+                      child: const Text('註冊', style: TextStyle(fontSize: 12)),
+                    ),
+                  ],
+                )
+              else
+              // 已登入狀態 - 顯示用戶頭像
+                FutureBuilder<Map<String, dynamic>>(
+                  future: _getUserInfo(),
+                  builder: (context, userSnapshot) {
+                    final userAccount = userSnapshot.data?['account'] ?? '';
+                    final isAdmin = userSnapshot.data?['isAdmin'] ?? false;
+
+                    return Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () {
+                            if (isAdmin) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const AdminPage(),
+                                ),
+                              ).then((_) => setState(() {}));
+                            } else {
+                              // 導向會員中心頁面
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder:
+                                      (context) => const MemberCenterPage(),
+                                ),
+                              ).then((_) => setState(() {}));
+                            }
+                          },
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: isAdmin ? Colors.red : Colors.blue,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                            ),
+                            child: Center(
+                              child: Text(
+                                userAccount.isNotEmpty
+                                    ? userAccount[0].toUpperCase()
+                                    : 'U',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        if (isAdmin)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.red),
+                            ),
+                            child: const Text(
+                              '管理員',
+                              style: TextStyle(fontSize: 10, color: Colors.red),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                ),
+
+              const Spacer(),
+
+              // 收藏按鈕 (來自 HomePage)
+              GestureDetector(
+                onTap: () {
+                  // 檢查是否登入，未登入則導向登入頁面
+                  if (!isLoggedIn) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('請先登入以查看收藏')),
+                    );
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const LoginPage()),
+                    ).then((_) => setState(() {
+                      _loadUserId().then((__) => _fetchData());
+                    }));
+                    return;
+                  }
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const BookmarkPage(),
+                    ),
+                  );
+                },
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[600],
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.3),
+                        spreadRadius: 1,
+                        blurRadius: 2,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.bookmark,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+              ),
+
+              const SizedBox(width: 8),
+
+              // Switch for Event Sorting / Multiple Perspectives (原 AIPage 邏輯)
+              Switch(
+                value: !_isEventSortingMode,
+                onChanged: (bool value) {
+                  setState(() {
+                    _isEventSortingMode = !value;
+                    // # 🌟 搜尋功能修正 🌟
+                    // 切換模式後，如果正在搜尋，重新觸發篩選，確保切換後的列表是正確篩選的
+                    _filterData(_currentSearchKeyword);
+                  });
+                },
+                activeColor: Colors.blue,
+                inactiveTrackColor: Colors.grey.shade300,
+                inactiveThumbColor: Colors.white,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ========== 搜尋列 (從 AIPage 原本邏輯改為 HomePage 樣式) ==========
+  Widget _buildSearchBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: TextField(
+        controller: _searchController, // 綁定控制器
+        decoration: InputDecoration(
+          hintText: _isEventSortingMode ? "搜尋事件整理" : "搜尋多方觀點",
+          prefixIcon: const Icon(Icons.search, color: Colors.grey),
+          suffixIcon: _currentSearchKeyword.isNotEmpty
+              ? IconButton(
+            icon: const Icon(Icons.clear, color: Colors.grey, size: 20),
+            onPressed: () {
+              _searchController.clear(); // 清空輸入框
+              // _onSearchChanged 會被觸發，重新顯示完整列表
+            },
+          )
+              : null,
+          contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(25),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          fillColor: Colors.white,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -347,92 +610,10 @@ class _AIPageState extends State<AIPage> {
         child: Column(
           children: [
             // --- 頂部導覽列 ---
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              child: Row(
-                children: [
-                  // 人像圖標導航
-                  IconButton(
-                    icon: const Icon(Icons.account_circle),
-                    onPressed: () {
-                      if (_currentUserId == null) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const LoginPage()),
-                        ).then((_) => _loadUserId().then((__) => _fetchData()));
-                      } else {
-                        // TODO: 跳轉到個人資訊頁面
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('即將跳轉到個人資訊頁面')),
-                        );
-                      }
-                    },
-                  ),
-                  Expanded(
-                    child: TextField(
-                      // # 🌟 搜尋功能修正 🌟
-                      controller: _searchController, // 綁定控制器
-                      decoration: InputDecoration(
-                        hintText: _isEventSortingMode ? "搜尋事件" : "搜尋多方觀點",
-                        prefixIcon: const Icon(Icons.search),
-                        suffixIcon: _currentSearchKeyword.isNotEmpty
-                            ? IconButton(
-                          icon: const Icon(Icons.clear, size: 20),
-                          onPressed: () {
-                            _searchController.clear(); // 清空輸入框
-                            // _onSearchChanged 會被觸發，重新顯示完整列表
-                          },
-                        )
-                            : null,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 8),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24),
-                          borderSide: BorderSide.none,
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey.shade200,
-                      ),
-                      // 由於使用了 addListener，此處不需要 onSubmitted 或 onChanged
-                    ),
-                  ),
-                  // 右上角收藏按鈕導航
-                  IconButton(
-                    icon: Icon(
-                      _currentUserId != null ? Icons.bookmark : Icons.bookmark_border,
-                    ),
-                    onPressed: () {
-                      if (_currentUserId == null) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const LoginPage()),
-                        ).then((_) => _loadUserId().then((__) => _fetchData()));
-                      } else {
-                        // 導航到 BookmarkListPage.dart
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const BookmarkPage()),
-                        );
-                      }
-                    },
-                  ),
-                  Switch(
-                    value: !_isEventSortingMode,
-                    onChanged: (bool value) {
-                      setState(() {
-                        _isEventSortingMode = !value;
-                        // # 🌟 搜尋功能修正 🌟
-                        // 切換模式後，如果正在搜尋，重新觸發篩選，確保切換後的列表是正確篩選的
-                        _filterData(_currentSearchKeyword);
-                      });
-                    },
-                    activeColor: Colors.blue,
-                    inactiveTrackColor: Colors.grey.shade300,
-                    inactiveThumbColor: Colors.white,
-                  ),
-                ],
-              ),
-            ),
-            // AI技術協助聲明
+            _buildTopToolBar(), // 替換為新工具欄
+            // --- 搜尋列 ---
+            _buildSearchBar(), // 替換為新搜尋列
+            // AI技術協助聲明 (保留)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: Row(

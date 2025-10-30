@@ -5,7 +5,7 @@ const { getClientIp } = require('../utils/clientHelper');
 
 
 // general search
-router.get('/', getClientIp, generalSearch);
+router.post('/', getClientIp, generalSearch);
 
 // other search
 router.get('/history/:userId', historyRecord);

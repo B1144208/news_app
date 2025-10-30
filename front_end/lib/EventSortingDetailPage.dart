@@ -3,10 +3,10 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// 確保路徑正確
+// 假設這些檔案和配置存在於您的專案中
 import 'CommentsPage.dart';
 import 'MultiplePerspectivesDetailPage.dart';
-import 'config.dart';
+import 'config.dart'; // 確保這裡有定義 baseUrl
 import 'ViewnewsContent.dart';
 
 // 請確保您的 config.dart 中定義了 baseUrl
@@ -41,22 +41,26 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
   final String _userActionBaseUrl = '$baseUrl';
   final String _eventSortingUrl = '$baseUrl/EventSorting';
   final String _imageUrl = '$baseUrl/image';
-  // 新聞 API URL，用於第二層 API 呼叫
   final String _newsUrl = '$baseUrl/news';
 
   late Future<Map<String, dynamic>> _eventDetailsAndImagesFuture;
 
-  // 💥 保留: 儲存水平關聯事件的資料，用於確定箭頭導航目標
+  // 儲存水平關聯事件的資料，用於確定箭頭導航目標
   List<Map<String, dynamic>> _horizontalEventsDetails = [];
 
   List<dynamic> _allImages = [];
 
-  // 💥 NEW: 獲取下一個導航事件的 ID
-  int? get _nextEventId {
-    // 這裡假設浮動箭頭是用來導航到列表中的第一個相關事件
+  // 💥 MODIFIED: 獲取下一個導航事件的 ID 和 Title
+  Map<String, dynamic>? get _nextEventDetails {
+    // 這裡假設卡片是用來導航到列表中的第一個相關事件
     if (_horizontalEventsDetails.isNotEmpty) {
-      // 確保 id 存在且是 int
-      return _horizontalEventsDetails[0]['id'] as int? ?? -1;
+      final event = _horizontalEventsDetails[0];
+      final eventId = event['id'] as int?;
+      final eventTitle = event['title'] as String?;
+
+      if (eventId != null && eventId > 0 && eventTitle != null && eventTitle.isNotEmpty) {
+        return event;
+      }
     }
     return null;
   }
@@ -72,19 +76,22 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
 
   Future<void> _loadUserId() async {
     final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _currentUserId = prefs.getInt('UserID');
-      print('EventSortingDetailPage - Loaded UserID: $_currentUserId');
-    });
+    if (mounted) {
+      setState(() {
+        _currentUserId = prefs.getInt('UserID');
+        print('EventSortingDetailPage - Loaded UserID: $_currentUserId');
+      });
+    }
   }
 
   Future<void> _refreshEventDetails() async {
-    setState(() {
-      _eventDetailsAndImagesFuture = _fetchEventDetailsAndImages();
-    });
+    if (mounted) {
+      setState(() {
+        _eventDetailsAndImagesFuture = _fetchEventDetailsAndImages();
+      });
+    }
   }
 
-  // 💥 保留: 獲取單個 EventSorting 的詳情 (用於 horizontal_events)
   Future<Map<String, dynamic>?> _fetchSingleEventDetails(int eventId) async {
     final eventUri = Uri.parse(_eventSortingUrl).replace(queryParameters: {'id': eventId.toString()});
     try {
@@ -104,7 +111,7 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
     return null;
   }
 
-  // 💥 保留: 獲取所有 horizontal_events 的詳情 (現在只用於填充 _horizontalEventsDetails)
+  // 獲取所有 horizontal_events 的詳情 (用於導航目標)
   Future<void> _fetchHorizontalEventsDetails(List<int> eventIds) async {
     List<Future<Map<String, dynamic>?>> futures = eventIds.map((id) async {
       final details = await _fetchSingleEventDetails(id);
@@ -155,7 +162,6 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
                 'source': newsItem['news_source'] ?? '未知來源',
                 'image': newsItem['news_image'] as int? ?? -1,
 
-                // 確保 ViewNewsContent 所需的欄位也存在
                 'channel_id': newsItem['channel_id'] as int? ?? 1,
                 'channel': newsItem['news_source'] ?? '未知來源',
                 'news_date': newsItem['news_published_at'] ?? '未知時間',
@@ -226,7 +232,6 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
         newsIds = rawNewsIds.map((e) => e is int ? e : (e is String ? int.tryParse(e) : null)).where((e) => e != null).cast<int>().toList();
       }
 
-      // 2. 處理 horizontal_events 並觸發詳情獲取
       final dynamic rawHorizontalIds = event['horizontal_events'];
       List<int> horizontalIds = [];
       if (rawHorizontalIds is List) {
@@ -234,7 +239,6 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
       }
 
       if (horizontalIds.isNotEmpty) {
-        // 異步獲取水平事件詳情，用於浮動箭頭的導航目標
         _fetchHorizontalEventsDetails(horizontalIds);
       } else {
         if (mounted) {
@@ -347,9 +351,11 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
     }
 
     if (actionType == 'bookmark') {
-      setState(() {
-        isFavorite = !isFavorite;
-      });
+      if (mounted) {
+        setState(() {
+          isFavorite = !isFavorite;
+        });
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -459,34 +465,31 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
             final mainImageId = event['eventsorting_image'] as int? ?? -1;
             final mainImageUrl = _findImageUrlById(mainImageId);
 
-            // 💥 MODIFIED: 使用 Stack 包裹 SingleChildScrollView 和浮動箭頭
-            return Stack(
-              children: [
-                SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildDisclaimer(),
-                      // 💥 移除 _buildHorizontalEvents 相關的 UI
-
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12.0),
-                          child: _buildMainImage(mainImageUrl, context),
-                        ),
-                      ),
-                      _buildSummaryCard(event['eventsorting_summary'] ?? '無摘要內容。'),
-                      _buildScoreCard(),
-                      _buildTimelineSection(timelineItems),
-                      const SizedBox(height: 50),
-                    ],
+            // 💥 MODIFIED: 使用 SingleChildScrollView，並在內容末尾放置導航卡片
+            return SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildDisclaimer(),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12.0),
+                      child: _buildMainImage(mainImageUrl, context),
+                    ),
                   ),
-                ),
-                // 💥 NEW: 浮動箭頭
-                if (_nextEventId != null && (_nextEventId! > 0)) // 確保有有效的導航 ID
-                  _buildFloatingRightArrow(context),
-              ],
+                  _buildSummaryCard(event['eventsorting_summary'] ?? '無摘要內容。'),
+                  _buildScoreCard(),
+                  // 新聞脈絡整理部分
+                  _buildTimelineSection(timelineItems),
+
+                  // 💥 NEW: 將下一事件卡片放在新聞脈絡整理之後
+                  if (_nextEventDetails != null)
+                    _buildNextEventCard(_nextEventDetails!),
+
+                  const SizedBox(height: 50), // 留出底部空間
+                ],
+              ),
             );
           }
         },
@@ -495,45 +498,60 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
     );
   }
 
-  // 💥 NEW: 畫面右側浮動箭頭 Widget
-  Widget _buildFloatingRightArrow(BuildContext context) {
-    final int? nextId = _nextEventId;
+  // 💥 NEW: 位於新聞脈絡整理下方的導航卡片 Widget
+  Widget _buildNextEventCard(Map<String, dynamic> nextEvent) {
+    final int nextId = nextEvent['id'] as int? ?? -1;
+    final String title = nextEvent['title'] as String? ?? '未知事件';
 
-    // 再次檢查，以防萬一
-    if (nextId == null || nextId <= 0) return const SizedBox.shrink();
+    if (nextId <= 0) return const SizedBox.shrink();
 
-    return Positioned(
-      right: 10, // 距離右側邊緣 10 單位
-      top: MediaQuery.of(context).size.height * 0.4, // 垂直置中偏上
-      child: GestureDetector(
-        onTap: () {
-          _navigateToEventSortingDetailPage(nextId);
-        },
-        child: Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            color: Colors.blue.withOpacity(0.75), // 半透明藍色
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 5,
-                offset: const Offset(2, 2),
+    return GestureDetector(
+      onTap: () {
+        _navigateToEventSortingDetailPage(nextId);
+      },
+      child: Container(
+        height: 60,
+        // 💥 新增邊距，使其與 TimelineSection 分開，並在左右留白
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: Colors.blue.withOpacity(0.95), // 藍色半透明背景
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2), // 調整陰影強度
+              blurRadius: 5,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                '下一事件：$title',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-            ],
-          ),
-          child: const Icon(
-            Icons.arrow_forward_ios,
-            color: Colors.white,
-            size: 24,
-          ),
+            ),
+            const SizedBox(width: 10),
+            // 箭頭圖示
+            const Icon(
+              Icons.arrow_forward_ios,
+              color: Colors.white,
+              size: 20,
+            ),
+          ],
         ),
       ),
     );
   }
-
-  // 💥 REMOVED: 移除了 _buildHorizontalEvents 和 _buildHorizontalEventCard
 
   Widget _buildScoreCard() {
     return Padding(

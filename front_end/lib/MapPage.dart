@@ -16,15 +16,15 @@ import 'ViewNewsContent.dart';
 // 新聞資料模型
 class News {
   // 💥 2. 欄位調整：保留 ViewNewsContent 需要的欄位，但更新註釋
-  final int id; // 為了 ViewNewsContent 傳遞 news_id
-  final int channelId; // 為了 ViewNewsContent 傳遞 channel_id
-  final int commentsCount; // 為了 ViewNewsContent 顯示 total_comment
+  final int id; // newsId
+  final int channelId; // (從 channelName 轉換，假設為 1)
+  final int commentsCount; // (後端未提供，預設為 0)
 
-  final String title;
-  final String url; // origin_url
-  final String? coverImage;
-  final String? publishDate;
-  final String? sourceName; // 為了 channel 欄位
+  final String title; // newsTitle
+  final String url; // (後端未提供 origin_url，暫時留空或預設)
+  final String? coverImage; // coverImageUrl
+  final String? publishDate; // publishDate
+  final String? sourceName; // channelName
 
   News({
     required this.id,
@@ -37,24 +37,28 @@ class News {
     this.sourceName,
   });
 
+  // 🚨 修正點 1: 根據新的後端 JSON 欄位名稱進行調整 🚨
   factory News.fromJson(Map<String, dynamic> json) {
-    // 確保 ID 欄位是 int
-    final newsId = int.tryParse(json['news_id']?.toString() ?? '0') ?? 0;
-    final channelId = int.tryParse(json['channel_id']?.toString() ?? '1') ?? 1;
-    final commentsCount = int.tryParse(json['total_comment']?.toString() ?? '0') ?? 0;
+    // 確保 ID 欄位是 int (使用 'newsId')
+    final newsId = int.tryParse(json['newsId']?.toString() ?? '0') ?? 0;
+
+    // 後端未提供 channel_id 和 total_comment，使用預設值或安全值
+    final channelId = 1; // 預設值
+    final commentsCount = int.tryParse(json['total_comment']?.toString() ?? '0') ?? 0; // 後端未提供 total_comment
+
+    // 後端未提供 origin_url，使用預設值
+    final originUrl = json['origin_url'] ?? '#';
 
     return News(
       id: newsId,
       channelId: channelId,
       commentsCount: commentsCount,
-      title: json['news_title'] ?? '無標題',
-      url: json['origin_url'] ?? '#',
-      // 使用 baseUrl
-      coverImage: json['cover_image'] != null && int.tryParse(json['cover_image'].toString()) != null
-          ? '$baseUrl/image/${json['cover_image']}'
-          : null,
-      publishDate: json['news_date'],
-      sourceName: json['news_source'], // 假設 news_source 欄位可用作 channel 名稱
+      title: json['newsTitle'] ?? '無標題', // 使用 'newsTitle'
+      url: originUrl, // 保持不變，如果後端未來提供 origin_url
+      // 使用 'coverImageUrl' 欄位
+      coverImage: json['coverImageUrl'],
+      publishDate: json['publishDate'], // 使用 'publishDate'
+      sourceName: json['channelName'], // 使用 'channelName' 作為來源
     );
   }
 
@@ -68,7 +72,7 @@ class News {
       'news_date': publishDate,
       'comments': commentsCount,
       // 這裡傳遞 news_id 作為 cover_image 的 ID，讓 ViewNewsContent 決定如何處理
-      'cover_image': id,
+      'cover_image': coverImage, // 傳遞完整的 URL 讓 ViewNewsContent 處理
     };
   }
 }
@@ -86,7 +90,6 @@ class _MapPageState extends State<MapPage> {
 
   static const String _kUnselectOption = '--- [未選取] ---';
 
-  // 🌟 修正：改為 nullable int，用於儲存從 SharedPreferences 載入的實際用戶 ID 🌟
   int? _currentUserId;
   static const LatLng _taiwanCenter = LatLng(23.6978, 120.9605);
   static const double _kMaxSearchDistanceKm = 10000.0;
@@ -104,10 +107,8 @@ class _MapPageState extends State<MapPage> {
   bool _isPanelVisible = false;
   List<News> _newsList = [];
 
-  // === 分級新聞狀態：追蹤目前顯示的新聞類型 ===
   String _currentNewsScope = 'country';
 
-  // === 多級下拉選單相關狀態變數 ===
   String? _selectedRegion;
   String? _selectedCountry;
   String? _selectedState;
@@ -115,7 +116,6 @@ class _MapPageState extends State<MapPage> {
   List<String> _regions = [];
   List<String> _countries = [];
   List<String> _states = [];
-  // ===================================
 
   List<String> get _regionsForDropdown {
     if (_regions.isEmpty) return [_kUnselectOption];
@@ -132,27 +132,25 @@ class _MapPageState extends State<MapPage> {
     return [_kUnselectOption, ..._states];
   }
 
-  // === 輔助函式：安全地從 Map 中取得並解析 ID 為 int (處理 NULL, 0, 和 String) ===
   int? _safeId(String key, Map<String, dynamic> locationData) {
     final value = locationData[key];
-    if (value == null) return null; // 處理 JSON null
+    if (value == null) return null;
 
     if (value is int) {
-      return value == 0 ? null : value; // 處理數值 0
+      return value == 0 ? null : value;
     }
     if (value is String) {
-      if (value.isEmpty || value == '0') return null; // 處理空字串或字串 "0"
+      if (value.isEmpty || value == '0') return null;
       return int.tryParse(value);
     }
     return null;
   }
 
-  // 🌟 新增：讀取 UserID 的方法 🌟
   Future<void> _loadUserId() async {
     final prefs = await SharedPreferences.getInstance();
     if (mounted) {
       setState(() {
-        _currentUserId = prefs.getInt('UserID'); // 使用 'UserID'
+        _currentUserId = prefs.getInt('UserID');
         print('MapPage - Loaded UserID: $_currentUserId');
       });
     }
@@ -161,10 +159,8 @@ class _MapPageState extends State<MapPage> {
   @override
   void initState() {
     super.initState();
-    // 🌟 修正：優先載入用戶 ID，再載入地點和上次位置 🌟
     _loadUserId().then((_) {
       _fetchLocations(baseUrl).then((_) {
-        // 確保地點資料載入後才讀取上次位置
         if (!_isLoading && _error == null) {
           _loadLastLocation();
         } else {
@@ -176,7 +172,6 @@ class _MapPageState extends State<MapPage> {
 
   @override
   void dispose() {
-    // 儲存上次位置的邏輯
     int? countryIdToSave;
     if (_selectedLocation != null) {
       countryIdToSave = _safeId('country_id', _selectedLocation!);
@@ -185,7 +180,6 @@ class _MapPageState extends State<MapPage> {
     super.dispose();
   }
 
-  // === 輔助函數: 定位到台灣 (預設/後備) ===
   void _zoomToTaiwan() {
     LatLng targetCenter = _taiwanCenter;
     double targetZoom = 7;
@@ -221,7 +215,6 @@ class _MapPageState extends State<MapPage> {
     });
   }
 
-  // === 縮放控制函式 ===
   void _zoomIn() {
     setState(() {
       _currentZoom++;
@@ -236,17 +229,41 @@ class _MapPageState extends State<MapPage> {
     });
   }
 
-  // === 輔助函式：載入新聞並更新狀態 ===
+  // === 輔助函式：載入新聞並更新狀態 (修正 2: 處理新的資料路徑) ===
   Future<void> _fetchNewsAndSetState(String locationType, int locationId) async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/news?locationId=$locationId&locationType=$locationType'),
+      final response = await http.post(
+        Uri.parse('$baseUrl/news'),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode(<String, dynamic>{
+          'locationId': locationId,
+          'locationType': locationType,
+        }),
       );
+
       if (response.statusCode == 200) {
-        // 💥 修正：使用 utf8.decode 確保中文字元正確解析
-        final Map<String, dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
-        final List<dynamic> newsData = data['data'];
-        final fetchedNews = newsData.map((json) => News.fromJson(json)).toList();
+        final Map<String, dynamic> responseBody = jsonDecode(utf8.decode(response.bodyBytes));
+
+        print('Backend Response Body: $responseBody');
+
+        List<dynamic> newsData = [];
+
+        // 🚨 修正點 2: 深入解析到 'data' 欄位下的 'simpleList' 🚨
+        final dataField = responseBody['data'];
+
+        if (dataField != null && dataField is Map<String, dynamic>) {
+          final simpleList = dataField['simpleList'];
+
+          if (simpleList != null && simpleList is List<dynamic>) {
+            newsData = simpleList;
+          }
+        }
+
+        // ----------------------------------------------------
+
+        final fetchedNews = newsData.map((json) => News.fromJson(json as Map<String, dynamic>)).toList();
 
         if (mounted) {
           setState(() {
@@ -266,7 +283,6 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
-  // 輔助函式：計算兩點距離 (Haversine 公式)
   double _calculateHaversineDistance(LatLng start, LatLng end) {
     const R = 6371;
     final lat1Rad = start.latitude * pi / 180;
@@ -283,7 +299,6 @@ class _MapPageState extends State<MapPage> {
     return R * c;
   }
 
-  // 輔助函式: 尋找最近地點
   Map<String, dynamic>? _findNearestLocation(LatLng tapLatLng) {
     if (_locations.isEmpty) return null;
 
@@ -318,9 +333,6 @@ class _MapPageState extends State<MapPage> {
     return nearestLocation;
   }
 
-  // ===================================
-  // 新聞切換邏輯 (接收目標範圍參數)
-  // ===================================
   void _toggleNewsScope({required String targetScope}) {
     if (_selectedLocation == null) return;
 
@@ -357,7 +369,6 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
-  // 💥 3. 新增：導航到 ViewNewsContent 頁面
   void _navigateToNewsContentPage(News newsItem) {
     Navigator.push(
       context,
@@ -369,10 +380,6 @@ class _MapPageState extends State<MapPage> {
     );
   }
 
-
-  // ===================================
-  // UI 構建輔助函式
-  // ===================================
 
   Widget _buildDropdown(
       String hintText,
@@ -487,11 +494,8 @@ class _MapPageState extends State<MapPage> {
     final lat = _selectedLocation!['country_center_latitude'];
     final lon = _selectedLocation!['country_center_longitude'];
 
-    // 檢查個別的細分範圍是否存在 (使用安全檢查)
     final bool hasStateScope = _safeId('state_id', _selectedLocation!) != null;
     final bool hasRegionScope = _safeId('region_id', _selectedLocation!) != null;
-
-    // 判斷是否有任何細分地區可以切換 (State or Region)
     final bool hasSubScope = hasStateScope || hasRegionScope;
 
     String scopeText;
@@ -503,14 +507,13 @@ class _MapPageState extends State<MapPage> {
       scopeText = '$regionName (地區級)';
     }
 
-    // === 定義按鈕組件的函式 (雙按鈕邏輯) ===
     Widget buildStateRegionButtons() {
       if (_currentNewsScope != 'country') return const SizedBox.shrink();
 
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (hasRegionScope) // 只要有 Region ID 就顯示
+          if (hasRegionScope)
             Padding(
               padding: EdgeInsets.only(right: hasStateScope ? 8.0 : 0.0),
               child: ElevatedButton(
@@ -525,7 +528,7 @@ class _MapPageState extends State<MapPage> {
               ),
             ),
 
-          if (hasStateScope) // 只要有 State ID 就顯示
+          if (hasStateScope)
             ElevatedButton(
               onPressed: () => _toggleNewsScope(targetScope: 'state'),
               style: ElevatedButton.styleFrom(
@@ -539,8 +542,6 @@ class _MapPageState extends State<MapPage> {
         ],
       );
     }
-
-    // ============================
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -585,7 +586,6 @@ class _MapPageState extends State<MapPage> {
           ),
           const SizedBox(height: 20),
 
-          // === 新聞切換區域 (最終呈現) ===
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -619,7 +619,6 @@ class _MapPageState extends State<MapPage> {
             ],
           ),
           const Divider(),
-          // ===================================
 
           if (_newsList.isEmpty)
             const Text('目前沒有相關新聞。')
@@ -633,7 +632,6 @@ class _MapPageState extends State<MapPage> {
                     child: ListTile(
                       title: Text(news.title),
                       subtitle: Text(news.publishDate ?? ''),
-                      // 💥 3. 實作 onTap 導航邏輯
                       onTap: () => _navigateToNewsContentPage(news),
                     ),
                   );
@@ -644,10 +642,6 @@ class _MapPageState extends State<MapPage> {
       ),
     );
   }
-
-  // ===================================
-  // 下拉選單/搜尋/地圖點擊邏輯
-  // ===================================
 
   void _onRegionChanged(String? newRegion) {
     if (newRegion == _kUnselectOption || newRegion == null) {
@@ -734,12 +728,10 @@ class _MapPageState extends State<MapPage> {
     _searchController.clear();
   }
 
-  // === API: 獲取所有地點資料 ===
   Future<void> _fetchLocations(String baseUrl) async {
     try {
       final response = await http.get(Uri.parse('$baseUrl/location'));
       if (mounted && response.statusCode == 200) {
-        // 💥 修正：使用 utf8.decode 確保中文字元正確解析
         final Map<String, dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
         setState(() {
           _locations = data['data'];
@@ -767,9 +759,7 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
-  // === API: 讀取上次儲存的位置 ID ===
   Future<void> _loadLastLocation() async {
-    // 🌟 修正：未登入則不載入上次位置 🌟
     if (_currentUserId == null) {
       _zoomToTaiwan();
       return;
@@ -780,11 +770,10 @@ class _MapPageState extends State<MapPage> {
     try {
       final response = await http.get(uri);
       if (response.statusCode == 200) {
-        // 💥 修正：使用 utf8.decode 確保中文字元正確解析
         final data = json.decode(utf8.decode(response.bodyBytes));
         final List<dynamic> results = data['data'];
         final userData = results.firstWhere(
-              (user) => user['user_id'] == _currentUserId, // 使用 _currentUserId
+              (user) => user['user_id'] == _currentUserId,
           orElse: () => null,
         );
         if (userData != null) {
@@ -809,10 +798,8 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
-  // 設定地圖到上次位置
   void _setMapToLastLocation(int id, String idKey) {
     try {
-      // 找出匹配地點 (使用傳入的 ID 和 Key 來找到地點資料行)
       final Map<String, dynamic>? targetLocation = _locations.firstWhere(
             (loc) => _safeId(idKey, loc) == id,
         orElse: () => null,
@@ -823,30 +810,26 @@ class _MapPageState extends State<MapPage> {
         double? lng;
         double zoomLevel;
 
-        // 使用最精確的經緯度進行定位（如果有 State/Region 資訊）
         final stateLat = double.tryParse(targetLocation['state_center_latitude']?.toString() ?? '');
         final stateLng = double.tryParse(targetLocation['state_center_longitude']?.toString() ?? '');
         final countryLat = double.tryParse(targetLocation['country_center_latitude']?.toString() ?? '');
         final countryLng = double.tryParse(targetLocation['country_center_longitude']?.toString() ?? '');
 
 
-        if (stateLat != null && stateLng != null) { // 優先使用 State 中心點
+        if (stateLat != null && stateLng != null) {
           lat = stateLat;
           lng = stateLng;
           zoomLevel = 9.0;
-        } else if (countryLat != null && countryLng != null) { // 其次使用 Country 中心點
+        } else if (countryLat != null && countryLng != null) {
           lat = countryLat;
           lng = countryLng;
           zoomLevel = 7.0;
         } else {
-          // 如果沒有足夠的經緯度，則返回
           _zoomToTaiwan();
           return;
         }
 
         final LatLng targetLatLng = LatLng(lat, lng);
-
-        // 找到該地點的 Country ID
         final int? countryIdForNews = _safeId('country_id', targetLocation);
 
         if (countryIdForNews != null) {
@@ -865,12 +848,9 @@ class _MapPageState extends State<MapPage> {
             ];
             _selectedLocation = targetLocation;
             _isPanelVisible = true;
-
-            // 點擊後，強制新聞範圍為 'country'
             _currentNewsScope = 'country';
           });
 
-          // 使用 Country ID 抓取新聞
           _fetchNewsAndSetState('country', countryIdForNews);
         } else {
           _zoomToTaiwan();
@@ -884,9 +864,7 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
-  // === API: 儲存當前位置 ID ===
   Future<void> _saveLastLocation(int? countryId) async {
-    // 🌟 修正：未登入或 ID 為空則不儲存 🌟
     if (_currentUserId == null || countryId == null || countryId == 0) {
       return;
     }
@@ -912,7 +890,6 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
-  // === 核心邏輯：根據關鍵字搜尋並定位地圖 ===
   void _searchLocation(String query) {
     if (query.isEmpty) return;
 
@@ -978,16 +955,13 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
-// === 地圖點擊尋找最近地點邏輯 ===
   void _handleMapTap(TapPosition tapPosition, LatLng latlng) {
     final nearestLocation = _findNearestLocation(latlng);
     if (nearestLocation != null) {
-      // 1. 取得所有 ID
       final int? stateId = _safeId('state_id', nearestLocation);
       final int? countryId = _safeId('country_id', nearestLocation);
       final int? regionId = _safeId('region_id', nearestLocation);
 
-      // 2. 確定用於【定位】的 ID 和 Key (State > Country > Region)
       int? idToUseForLocation;
       String idKeyForLocation;
 
@@ -1007,12 +981,8 @@ class _MapPageState extends State<MapPage> {
         return;
       }
 
-      // 3. 執行定位和新聞抓取
       if (idToUseForLocation != null) {
-        // _setMapToLastLocation 會使用最精確的經緯度（State > Country）來定位地圖
         _setMapToLastLocation(idToUseForLocation, idKeyForLocation);
-
-        // 4. 儲存最後地點 (始終儲存 Country ID)
         final int? countryIdToSave = countryId;
         if (countryIdToSave != null) {
           _saveLastLocation(countryIdToSave);
@@ -1029,7 +999,6 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
-  // 處理點擊「定位/搜尋」按鈕的邏輯
   void _handleDropdownSearch() {
     String? searchTarget;
     int? countryIdToSave;
@@ -1065,12 +1034,9 @@ class _MapPageState extends State<MapPage> {
     }
 
     if (searchTarget != null) {
-      // 由於 _searchLocation 已經處理了定位和儲存邏輯，這裡直接呼叫即可
       _searchLocation(searchTarget);
 
       if (countryIdToSave != null) {
-        // 雖然 _searchLocation 內部已經執行儲存，但為了確保邏輯一致性，這裡可以保留
-        // 確保儲存的是國家 ID
         _saveLastLocation(countryIdToSave);
       }
     }
@@ -1101,7 +1067,6 @@ class _MapPageState extends State<MapPage> {
       ),
       body: Column(
         children: [
-          // 搜尋欄
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: TextField(
@@ -1119,7 +1084,6 @@ class _MapPageState extends State<MapPage> {
             ),
           ),
 
-          // === 下拉選單和搜尋按鈕區塊 ===
           if (!_isLoading && _error == null)
             Column(
               children: [
@@ -1127,7 +1091,6 @@ class _MapPageState extends State<MapPage> {
                 _buildSearchButton(),
               ],
             ),
-          // ==============================
 
           Expanded(
             child: _isLoading
@@ -1145,7 +1108,6 @@ class _MapPageState extends State<MapPage> {
                         options: MapOptions(
                           initialCenter: _currentCenter,
                           initialZoom: _currentZoom,
-                          // 🌟 修正：保留 cameraConstraint，因為您的 flutter_map 版本已支援 🌟
                           cameraConstraint: CameraConstraint.contain(
                             bounds: LatLngBounds(
                               LatLng(-90, -180),
@@ -1182,7 +1144,6 @@ class _MapPageState extends State<MapPage> {
                         ],
                       ),
 
-                      // 經緯度顯示框
                       Positioned(
                         right: 10,
                         top: 10,
@@ -1199,7 +1160,6 @@ class _MapPageState extends State<MapPage> {
                         ),
                       ),
 
-                      // 縮放按鈕
                       Positioned(
                         right: 10,
                         bottom: 10,

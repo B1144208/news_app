@@ -52,7 +52,7 @@ class _HomePageState extends State<HomePage> {
     });
 
     try {
-      final response = await http.get(
+      final response = await http.post(
         Uri.parse('http://localhost:3000/api/news'),
       );
 
