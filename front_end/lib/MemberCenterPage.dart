@@ -5,6 +5,7 @@ import 'PermissionHelper.dart';
 import 'LoginPage.dart';
 import 'ProfileEditPage.dart';
 import 'ChangePasswordPage.dart';
+import 'HomePage.dart';
 
 import 'DeleteAccountPage.dart';
 import 'SettingsPage.dart';
@@ -65,12 +66,15 @@ class _MemberCenterPageState extends State<MemberCenterPage> {
     try {
       final result = await _userService.logout();
       if (result['success']) {
+        // ⭐ 新增：明確清除 IsLogin 標誌
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('IsLogin', false);
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('登出成功'), backgroundColor: Colors.green),
         );
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const LoginPage()),
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const HomePage()),
           (route) => false,
         );
       } else {

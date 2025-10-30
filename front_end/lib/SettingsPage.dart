@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -7,6 +8,7 @@ import 'ChangePasswordPage.dart';
 import 'EmailVerificationPage.dart';
 import 'PhoneVerificationPage.dart';
 import 'DeleteAccountPage.dart';
+import 'main.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -342,8 +344,16 @@ class _SettingsPageState extends State<SettingsPage> {
                     subtitle: const Text('使用深色主題'),
                     value: _darkModeEnabled,
                     onChanged: (value) {
+                      // 1. 更新本地狀態（用於顯示開關狀態）
                       setState(() => _darkModeEnabled = value);
-                      _saveSetting('dark_mode_enabled', value);
+
+                      // 2. 使用 Provider 更新全局主題狀態
+                      // ✅ 改為 ThemeManager（與 main.dart 一致）
+                      // ✅ 使用 toggleTheme() 方法
+                      Provider.of<ThemeManager>(
+                        context,
+                        listen: false,
+                      ).toggleTheme();
                     },
                   ),
                   const Divider(height: 1),

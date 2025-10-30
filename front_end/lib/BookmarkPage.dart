@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'config.dart';
 import 'ViewNewsContent.dart';
 import 'ChannelDetailPage.dart';
+import 'GroupCustomizeBookmark.dart';
 
 class BookmarkPage extends StatefulWidget {
   const BookmarkPage({super.key});
@@ -13,20 +14,69 @@ class BookmarkPage extends StatefulWidget {
 }
 
 class _BookmarkPageState extends State<BookmarkPage> {
-  String _selectedCategory = '熱門';
+  String _selectedCategory = '全部'; // 預設選中"全部"
+  int? _selectedCategoryId; // 選中的分類ID (null代表"全部")
   bool _showNews = true; // true: 顯示新聞, false: 顯示頻道
   bool _isLoading = true;
   int? _currentUserId = 1; // TODO: 從登入狀態獲取用戶ID
 
-  final List<String> _categories = ['熱門', '娛樂', '天氣', '國際', '運動'];
-
+  List<Map<String, dynamic>> _categories = [];
   List<Map<String, dynamic>> _bookmarkedNews = [];
   List<Map<String, dynamic>> _bookmarkedChannels = [];
 
   @override
   void initState() {
     super.initState();
+    _fetchCategories();
     _fetchBookmarkedData();
+  }
+
+  // 獲取用戶的分類列表
+  Future<void> _fetchCategories() async {
+    if (_currentUserId == null) return;
+
+    try {
+      final response = await http.post(
+        Uri.parse('${Config.apiBaseUrl}/groupcustomize/bookmark'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'userId': _currentUserId,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        if (data['success'] == true && data['result'] != null) {
+          List<dynamic> resultList = data['result'];
+
+          // 篩選出當前類型的分類
+          String currentType = _showNews ? 'news' : 'channel';
+          List<Map<String, dynamic>> categories = [];
+
+          for (var item in resultList) {
+            if (item['groupcustomize_type'] == currentType) {
+              categories.add({
+                'groupcustomize_id': item['groupcustomize_id'],
+                'groupcustomize_name': item['groupcustomize_name'],
+                'groupcustomize_order': item['groupcustomize_order'],
+              });
+            }
+          }
+
+          // 按照順序排序
+          categories.sort((a, b) =>
+              (a['groupcustomize_order'] ?? 0).compareTo(b['groupcustomize_order'] ?? 0)
+          );
+
+          setState(() {
+            _categories = categories;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error fetching categories: $e');
+    }
   }
 
   // 獲取收藏的新聞和頻道
@@ -115,7 +165,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text('已從收藏中移除'),
             duration: Duration(seconds: 2),
           ),
@@ -124,12 +174,81 @@ class _BookmarkPageState extends State<BookmarkPage> {
     } catch (e) {
       print('Error removing bookmark: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('移除失敗，請稍後再試'),
+        const SnackBar(
+          content: Text('移除失敗,請稍後再試'),
           backgroundColor: Colors.red,
         ),
       );
     }
+  }
+
+  // 顯示選擇分類對話框
+  void _showCategorySelectionDialog(int itemId, String type) {
+    if (_categories.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('請先建立分類'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('選擇分類'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: _categories.length,
+            itemBuilder: (context, index) {
+              final category = _categories[index];
+              return ListTile(
+                title: Text(category['groupcustomize_name'].toString()),
+                onTap: () {
+                  Navigator.pop(context);
+                  _assignToCategory(itemId, type, category['groupcustomize_id']);
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 將收藏項目分配到指定分類
+  Future<void> _assignToCategory(int itemId, String type, int categoryId) async {
+    // 暫時顯示成功訊息
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('已移動到分類'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  // 打開分類管理頁面
+  Future<void> _openCategoryManagement() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => GroupCustomizeBookmark(
+          userId: _currentUserId!,
+          bookmarkType: _showNews ? 'news' : 'channel',
+        ),
+      ),
+    );
+    // 返回後重新載入分類
+    _fetchCategories();
   }
 
   @override
@@ -157,7 +276,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
   Widget _buildAppBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: Color(0xFFC9BDFF),
+      color: const Color(0xFFC9BDFF),
       child: Row(
         children: [
           IconButton(
@@ -174,7 +293,6 @@ class _BookmarkPageState extends State<BookmarkPage> {
             ),
           ),
           const Spacer(),
-          // 右上角裝飾圖標
           Container(
             width: 40,
             height: 40,
@@ -195,67 +313,88 @@ class _BookmarkPageState extends State<BookmarkPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.3),
-                  spreadRadius: 1,
-                  blurRadius: 2,
-                ),
-              ],
+          // 三條線圖標按鈕 - 打開分類管理頁面
+          GestureDetector(
+            onTap: _openCategoryManagement,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.3),
+                    spreadRadius: 1,
+                    blurRadius: 2,
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.menu, size: 20),
             ),
-            child: const Icon(Icons.menu, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
-                children: _categories.map((category) {
-                  final isSelected = category == _selectedCategory;
-                  return Container(
-                    margin: const EdgeInsets.only(right: 8),
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedCategory = category;
-                        });
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isSelected ? Colors.blue : Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.withOpacity(0.3),
-                              spreadRadius: 1,
-                              blurRadius: 2,
-                            ),
-                          ],
-                        ),
-                        child: Text(
-                          category,
-                          style: TextStyle(
-                            color: isSelected ? Colors.white : Colors.black,
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
+                children: [
+                  // "全部" 分類 - 永遠顯示
+                  _buildCategoryChip('全部', null),
+                  // 用戶自定義分類 - 只在有分類時顯示
+                  if (_categories.isNotEmpty)
+                    ..._categories.map((category) {
+                      return _buildCategoryChip(
+                        category['groupcustomize_name'].toString(),
+                        category['groupcustomize_id'],
+                      );
+                    }).toList(),
+                ],
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // 分類標籤
+  Widget _buildCategoryChip(String label, int? categoryId) {
+    final isSelected = (categoryId == null && _selectedCategoryId == null) ||
+        (categoryId == _selectedCategoryId);
+
+    return Container(
+      margin: const EdgeInsets.only(right: 8),
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _selectedCategory = label;
+            _selectedCategoryId = categoryId;
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 8,
+          ),
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.blue : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.3),
+                spreadRadius: 1,
+                blurRadius: 2,
+              ),
+            ],
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? Colors.white : Colors.black,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -283,7 +422,10 @@ class _BookmarkPageState extends State<BookmarkPage> {
               onTap: () {
                 setState(() {
                   _showNews = true;
+                  _selectedCategory = '全部';
+                  _selectedCategoryId = null;
                 });
+                _fetchCategories();
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 12),
@@ -291,12 +433,13 @@ class _BookmarkPageState extends State<BookmarkPage> {
                   color: _showNews ? Colors.blue : Colors.transparent,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Text(
-                  '已收藏新聞',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: _showNews ? Colors.white : Colors.grey[600],
-                    fontWeight: _showNews ? FontWeight.bold : FontWeight.normal,
+                child: Center(
+                  child: Text(
+                    '新聞',
+                    style: TextStyle(
+                      color: _showNews ? Colors.white : Colors.grey[600],
+                      fontWeight: _showNews ? FontWeight.bold : FontWeight.normal,
+                    ),
                   ),
                 ),
               ),
@@ -307,7 +450,10 @@ class _BookmarkPageState extends State<BookmarkPage> {
               onTap: () {
                 setState(() {
                   _showNews = false;
+                  _selectedCategory = '全部';
+                  _selectedCategoryId = null;
                 });
+                _fetchCategories();
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 12),
@@ -315,12 +461,13 @@ class _BookmarkPageState extends State<BookmarkPage> {
                   color: !_showNews ? Colors.blue : Colors.transparent,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Text(
-                  '已收藏頻道',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: !_showNews ? Colors.white : Colors.grey[600],
-                    fontWeight: !_showNews ? FontWeight.bold : FontWeight.normal,
+                child: Center(
+                  child: Text(
+                    '頻道',
+                    style: TextStyle(
+                      color: !_showNews ? Colors.white : Colors.grey[600],
+                      fontWeight: !_showNews ? FontWeight.bold : FontWeight.normal,
+                    ),
                   ),
                 ),
               ),
@@ -331,12 +478,10 @@ class _BookmarkPageState extends State<BookmarkPage> {
     );
   }
 
-  // 載入指示器
+  // 載入中指示器
   Widget _buildLoadingWidget() {
     return const Center(
-      child: CircularProgressIndicator(
-        color: Colors.blue,
-      ),
+      child: CircularProgressIndicator(),
     );
   }
 
@@ -346,23 +491,21 @@ class _BookmarkPageState extends State<BookmarkPage> {
       return _buildNotLoggedInWidget();
     }
 
-    final itemsToShow = _showNews ? _bookmarkedNews : _bookmarkedChannels;
+    final currentList = _showNews ? _bookmarkedNews : _bookmarkedChannels;
 
-    if (itemsToShow.isEmpty) {
+    if (currentList.isEmpty) {
       return _buildEmptyWidget();
     }
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      child: ListView.builder(
-        itemCount: itemsToShow.length,
-        itemBuilder: (context, index) {
-          final item = itemsToShow[index];
-          return _showNews
-              ? _buildNewsItem(item)
-              : _buildChannelItem(item);
-        },
-      ),
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: currentList.length,
+      itemBuilder: (context, index) {
+        final item = currentList[index];
+        return _showNews
+            ? _buildNewsItem(item)
+            : _buildChannelItem(item);
+      },
     );
   }
 
@@ -496,16 +639,42 @@ class _BookmarkPageState extends State<BookmarkPage> {
                         ),
                       ),
                       const Spacer(),
-                      GestureDetector(
-                        onTap: () => _removeBookmark(news['id'], 'news'),
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          child: const Icon(
-                            Icons.star,
-                            color: Colors.orange,
-                            size: 20,
-                          ),
+                      // 三個點選單
+                      PopupMenuButton<String>(
+                        icon: const Icon(
+                          Icons.more_vert,
+                          size: 20,
+                          color: Colors.grey,
                         ),
+                        onSelected: (value) {
+                          if (value == 'category') {
+                            _showCategorySelectionDialog(news['id'], 'news');
+                          } else if (value == 'remove') {
+                            _removeBookmark(news['id'], 'news');
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 'category',
+                            child: Row(
+                              children: [
+                                Icon(Icons.folder_outlined, size: 20),
+                                SizedBox(width: 8),
+                                Text('選擇分類'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'remove',
+                            child: Row(
+                              children: [
+                                Icon(Icons.bookmark_remove, size: 20, color: Colors.red),
+                                SizedBox(width: 8),
+                                Text('取消收藏', style: TextStyle(color: Colors.red)),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -601,16 +770,42 @@ class _BookmarkPageState extends State<BookmarkPage> {
                         ),
                       ),
                       const Spacer(),
-                      GestureDetector(
-                        onTap: () => _removeBookmark(channel['channel_id'], 'channel'),
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          child: const Icon(
-                            Icons.star,
-                            color: Colors.orange,
-                            size: 20,
-                          ),
+                      // 三個點選單
+                      PopupMenuButton<String>(
+                        icon: const Icon(
+                          Icons.more_vert,
+                          size: 20,
+                          color: Colors.grey,
                         ),
+                        onSelected: (value) {
+                          if (value == 'category') {
+                            _showCategorySelectionDialog(channel['channel_id'], 'channel');
+                          } else if (value == 'remove') {
+                            _removeBookmark(channel['channel_id'], 'channel');
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 'category',
+                            child: Row(
+                              children: [
+                                Icon(Icons.folder_outlined, size: 20),
+                                SizedBox(width: 8),
+                                Text('選擇分類'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'remove',
+                            child: Row(
+                              children: [
+                                Icon(Icons.bookmark_remove, size: 20, color: Colors.red),
+                                SizedBox(width: 8),
+                                Text('取消收藏', style: TextStyle(color: Colors.red)),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

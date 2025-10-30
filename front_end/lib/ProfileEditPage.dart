@@ -32,6 +32,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   // 郵箱驗證狀態
   bool _emailCodeSent = false;
   bool _emailVerifying = false;
+  bool _emailVerified = false; // ✅ 添加：郵箱驗證完成標記
   String? _emailErrorMessage;
   String? _emailSuccessMessage;
   int _emailResendCountdown = 0;
@@ -39,6 +40,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   // 手機驗證狀態
   bool _phoneCodeSent = false;
   bool _phoneVerifying = false;
+  bool _phoneVerified = false; // ✅ 添加：手機驗證完成標記
   String? _phoneErrorMessage;
   String? _phoneSuccessMessage;
   int _phoneResendCountdown = 0;
@@ -107,6 +109,9 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
         _birthdayController.text = birthday;
         _emailController.text = email;
         _phoneController.text = phone;
+        // ✅ 根據已保存的數據初始化驗證狀態
+        _emailVerified = email.isNotEmpty;
+        _phoneVerified = phone.isNotEmpty;
         _isLoading = false;
       });
 
@@ -208,6 +213,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
         await prefs.setString('UserEmail', _emailController.text);
 
         setState(() {
+          _emailVerified = true; // ✅ 設置驗證完成標記
           _emailSuccessMessage = '郵箱驗證成功！';
           _emailCodeController.text = '';
           _emailCodeSent = false;
@@ -308,6 +314,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
         await prefs.setString('UserPhone', _phoneController.text);
 
         setState(() {
+          _phoneVerified = true; // ✅ 設置驗證完成標記
           _phoneSuccessMessage = '手機驗證成功！';
           _phoneCodeController.text = '';
           _phoneCodeSent = false;
@@ -727,7 +734,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                         title: '電子郵件',
                         controller: _emailController,
                         onVerifyPressed: _showEmailVerificationDialog,
-                        isVerified: _emailController.text.isNotEmpty,
+                        isVerified: _emailVerified, // ✅ 改為使用驗證完成標記
                       ),
                       const SizedBox(height: 16),
 
@@ -736,7 +743,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                         title: '手機號碼',
                         controller: _phoneController,
                         onVerifyPressed: _showPhoneVerificationDialog,
-                        isVerified: _phoneController.text.isNotEmpty,
+                        isVerified: _phoneVerified, // ✅ 改為使用驗證完成標記
                       ),
                       const SizedBox(height: 32),
 
@@ -876,110 +883,170 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     required VoidCallback onVerifyPressed,
     required bool isVerified,
   }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
-            spreadRadius: 1,
-            blurRadius: 3,
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              if (isVerified)
-                Padding(
-                  padding: const EdgeInsets.only(left: 8.0),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.green[100],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.green[300]!),
-                    ),
-                    child: Text(
-                      '已認證',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.green[700],
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                )
-              else
-                Padding(
-                  padding: const EdgeInsets.only(left: 8.0),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.orange[100],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.orange[300]!),
-                    ),
-                    child: Text(
-                      '未認證',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.orange[700],
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: controller,
-                  enabled: true,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    hintText: '請輸入',
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton(
-                onPressed: controller.text.isEmpty ? null : onVerifyPressed,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      controller.text.isEmpty ? Colors.grey : Colors.blue,
-                  foregroundColor: Colors.white,
-                ),
-                child: Text(
-                  isVerified ? '已認證' : '認證',
-                  style: const TextStyle(fontSize: 12),
-                ),
+    return StatefulBuilder(
+      builder: (context, setState) {
+        // ✅ 為郵箱和手機添加格式檢查
+        bool isEmailField = title == '電子郵件';
+        bool isPhoneField = title == '手機號碼';
+        String _getPhoneErrorMessage(String phone) {
+          final digits = phone.replaceAll(RegExp(r'[^\d]'), '');
+
+          if (phone != digits) {
+            return '不能包含非數字字符';
+          }
+
+          if (digits.length < 8) {
+            return '至少需要 10 位數字';
+          }
+
+          if (digits.length > 15) {
+            return '最多 15 位數字';
+          }
+
+          return '格式不正確';
+        }
+
+        // 郵箱驗証：必須包含 @ 和 .
+        bool emailValid =
+            !isEmailField ||
+            (controller.text.contains('@') && controller.text.contains('.'));
+
+        // 手機驗証：必須是 8-15 位純數字
+        bool phoneValid =
+            !isPhoneField ||
+            (controller.text.replaceAll(RegExp(r'[^\d]'), '').length >= 10 &&
+                controller.text.replaceAll(RegExp(r'[^\d]'), '').length <= 15 &&
+                controller.text.replaceAll(RegExp(r'[^\d]'), '') ==
+                    controller.text);
+
+        bool hasValidFormat = emailValid && phoneValid;
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.3),
+                spreadRadius: 1,
+                blurRadius: 3,
               ),
             ],
           ),
-        ],
-      ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  if (isVerified)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8.0),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.green[100],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.green[300]!),
+                        ),
+                        child: Text(
+                          '已認證',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.green[700],
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8.0),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.orange[100],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.orange[300]!),
+                        ),
+                        child: Text(
+                          '未認證',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.orange[700],
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: controller,
+                      enabled: true,
+                      onChanged: (value) {
+                        setState(() {}); // ✅ 實時檢查格式
+                      },
+                      decoration: InputDecoration(
+                        border: const OutlineInputBorder(),
+                        hintText: '請輸入',
+                        // ✅ 只為郵箱添加格式錯誤提示
+                        errorText:
+                            isEmailField &&
+                                    controller.text.isNotEmpty &&
+                                    !emailValid
+                                ? '格式不正確'
+                                : (isPhoneField &&
+                                        controller.text.isNotEmpty &&
+                                        !phoneValid
+                                    ? _getPhoneErrorMessage(controller.text)
+                                    : null),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    // ✅ 修改：手機沒有格式限制，郵箱需要格式正確
+                    onPressed:
+                        controller.text.isEmpty || !hasValidFormat
+                            ? null
+                            : onVerifyPressed,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          controller.text.isEmpty || !hasValidFormat
+                              ? Colors.grey
+                              : Colors.blue,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: Text(
+                      isVerified ? '已認證' : '認證',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

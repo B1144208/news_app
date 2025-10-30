@@ -20,6 +20,7 @@ router.post('/signup', insertUser);
 
 // update
 router.put('/', updateUser);
+router.post('/', updateUser);
 
 router.get('/:actionType/:dataType', searchUserAction);
 router.post('/:actionType/:dataType', getClientIp, insertUserAction);
@@ -44,7 +45,6 @@ router.delete('/:actionType/:targetId', deleteUserAction);
  * - 'verify-phone-code': 驗證手機
  * - 'update-location': 更新地點資訊（原有）
  */
-router.put('/', updateUser);
 
 router.delete('/', async (req, res, next) => {
     res.send('This is the delete route');
