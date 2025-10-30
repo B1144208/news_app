@@ -37,6 +37,7 @@ const keywordRouter = require('./keyword')
 const eventsortingRouter = require('./eventsorting')
 const multipleperspectivesRouter = require('./multipleperspectives')
 const searchRouter = require('./search')
+const scriptRouter = require('./script')
 
 const incrementRouter = require('./increment')
 const valueRouter = require('./value')
@@ -62,6 +63,8 @@ router.use('/keyword', keywordRouter)
 router.use('/eventsorting', eventsortingRouter)
 router.use('/multipleperspectives', multipleperspectivesRouter)
 router.use('/search', searchRouter)
+
+router.use('/script',scriptRouter)
 
 router.use('/increment',incrementRouter)
 router.use('/value', valueRouter)
