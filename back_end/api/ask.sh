@@ -4,11 +4,11 @@
 QUESTION="$1"
 
 curl -s http://localhost:11434/api/generate \
-  -d "{
+  -d '{
     \"model\": \"deepseek-r1:7b\",
     \"prompt\": \"Hello\",
     \"stream\": false
-  }" \
+  }' \
 | jq -r '.response' \
 | sed 's/\\u003c/</g; s/\\u003e/>/g' \
 | tr '\n' '\r' \
