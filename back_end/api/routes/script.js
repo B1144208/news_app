@@ -2,7 +2,7 @@ const express = require('express')
 const router = express.Router()
 const { generalScript, reporterScript, chatScript, quickScript } = require('../middlewares/scriptController')
 
-import { callAskScript } from "../middlewares/scriptController.js";
+const { callAskScript } = require("../middlewares/scriptController.js")
 
 
 

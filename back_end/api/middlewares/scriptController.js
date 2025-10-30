@@ -1,7 +1,7 @@
 const pool = require('../connect_db');
 const { checkRequireField } = require('../utils/checkHelper');
 const { callAndCatchApiSuccess } = require('../utils/fakeHelper');
-import { execFile } from "child_process";
+const { execFile } =  require("child_process");
 import path from "path";
 
 // search
