@@ -6,7 +6,7 @@ const { batchNews } = require('../utils/batchHelper');
 
 
 // search
-router.post('/search', searchNews);
+router.post('/:search', searchNews);
 router.post('/:id', searchNews);
 
 // insert
