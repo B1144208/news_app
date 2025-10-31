@@ -233,7 +233,7 @@ class _MapPageState extends State<MapPage> {
   Future<void> _fetchNewsAndSetState(String locationType, int locationId) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/news'),
+        Uri.parse('$baseUrl/news/search'),
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
         },

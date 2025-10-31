@@ -38,6 +38,8 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
   double get _averageScore => _totalRater > 0 ? (_totalScore / _totalRater) : 0.0;
 
 
+  // 假設 _userActionBaseUrl, _eventSortingUrl, _imageUrl, _newsUrl 來自 config.dart
+  // 為方便演示，這裡使用字串插值
   final String _userActionBaseUrl = '$baseUrl';
   final String _eventSortingUrl = '$baseUrl/EventSorting';
   final String _imageUrl = '$baseUrl/image';
@@ -48,11 +50,10 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
   // 儲存水平關聯事件的資料，用於確定箭頭導航目標
   List<Map<String, dynamic>> _horizontalEventsDetails = [];
 
+  // 此列表用於儲存所有圖片的 ID -> URL 映射 (已棄用，但保留為兼容性)
   List<dynamic> _allImages = [];
 
-  // 💥 MODIFIED: 獲取下一個導航事件的 ID 和 Title
   Map<String, dynamic>? get _nextEventDetails {
-    // 這裡假設卡片是用來導航到列表中的第一個相關事件
     if (_horizontalEventsDetails.isNotEmpty) {
       final event = _horizontalEventsDetails[0];
       final eventId = event['id'] as int?;
@@ -111,7 +112,6 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
     return null;
   }
 
-  // 獲取所有 horizontal_events 的詳情 (用於導航目標)
   Future<void> _fetchHorizontalEventsDetails(List<int> eventIds) async {
     List<Future<Map<String, dynamic>?>> futures = eventIds.map((id) async {
       final details = await _fetchSingleEventDetails(id);
@@ -134,44 +134,69 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
     }
   }
 
-
+  /// 根據新聞 ID 列表，逐一向後端 /news/search 路由獲取新聞詳情。
+  /// 💥 修正: 使用 'simple' 模式，並逐一發送 POST 請求。
   Future<Map<String, dynamic>> _fetchNewsDetails(List<int> newsIds) async {
     List<dynamic> timeline = [];
 
-    final newsPromises = newsIds.map((id) {
-      final newsUri = Uri.parse('$_newsUrl/$id');
+    // 1. 檢查是否有 ID 需要查詢
+    if (newsIds.isEmpty) return {'eventsorting_timeline': []};
 
-      return http.get(newsUri).then((response) {
+    // 2. 設定正確的 POST URL
+    final newsUri = Uri.parse('$_newsUrl/search');
+
+    // 3. 逐一發送 POST 請求
+    final newsPromises = newsIds.map((id) {
+      // 構造 POST 請求的 Body：只傳遞單個 newsId，並要求 'simple' 模式
+      final body = json.encode({
+        'id': [id],
+        'mode': 'simple' // 💥 修正為 'simple'
+      });
+
+      return http.post(
+        newsUri,
+        headers: {'Content-Type': 'application/json'},
+        body: body,
+      ).then((response) {
         if (response.statusCode == 200) {
           try {
             final data = json.decode(utf8.decode(response.bodyBytes));
-            dynamic newsItem;
 
-            if (data['data'] is List && data['data'].isNotEmpty) {
-              newsItem = data['data'][0];
-            }
-            else if (data['data'] is Map<String, dynamic>) {
-              newsItem = data['data'];
-            }
+            // 💥 注意: 現在讀取的是 'simpleList'
+            final List<dynamic>? simpleList = data['data']?['simpleList'];
 
-            if (newsItem != null && newsItem is Map<String, dynamic>) {
+            if (simpleList?.isNotEmpty == true) {
+              final newsItem = simpleList![0] as Map<String, dynamic>;
+
+              // 從 simpleList 的結果中提取所需欄位
               return {
-                'id': newsItem['news_id'] as int? ?? id,
-                'title': newsItem['news_title'] ?? '無標題',
-                'time': newsItem['news_published_at'] ?? '未知時間',
-                'source': newsItem['news_source'] ?? '未知來源',
-                'image': newsItem['news_image'] as int? ?? -1,
+                'id': newsItem['newsId'] as int? ?? id,
+                'title': newsItem['newsTitle'] ?? '無標題',
+                'time': newsItem['publishDate'] ?? '未知時間',
+                'source': newsItem['channelName'] ?? '未知來源',
 
-                'channel_id': newsItem['channel_id'] as int? ?? 1,
-                'channel': newsItem['news_source'] ?? '未知來源',
-                'news_date': newsItem['news_published_at'] ?? '未知時間',
-                'comments': newsItem['total_comment'] as int? ?? 0,
-                'cover_image': newsItem['news_image'] as int? ?? -1,
+                // 輔助欄位：使用 coverImageUrl 替代 image_id
+                'image': -1, // 廢棄：不再使用 image_id
+                'cover_image_url': newsItem['coverImageUrl'] ?? '',
+
+                // 舊的欄位，保留兼容性
+                'channel_id': -1,
+                'channel': newsItem['channelName'] ?? '未知來源',
+                'news_date': newsItem['publishDate'] ?? '未知時間',
+                'comments': 0,
+                'cover_image': -1,
+
+                // 儲存 newsItem 供 ViewNewsContent 使用
+                'newsData': newsItem,
               };
+            } else {
+              print('Warning: Search API returned empty for single ID: $id (simpleList is empty)');
             }
           } catch (e) {
-            print('Error: Failed to decode JSON for News ID $id. $e');
+            print('Error: Failed to decode JSON or map for News ID $id. $e');
           }
+        } else {
+          print('API Error (Status ${response.statusCode}) for News ID $id. Response: ${response.body}');
         }
         return null;
       }).catchError((e) {
@@ -180,11 +205,15 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
       });
     }).toList();
 
+    // 4. 等待所有請求完成，並過濾掉失敗的 (null) 項目
     timeline = (await Future.wait(newsPromises)).where((item) => item != null).toList();
+
+    // 5. 排序
     timeline.sort((a, b) => (b['time'] as String).compareTo(a['time'] as String));
 
     return {'eventsorting_timeline': timeline};
   }
+
 
   Future<Map<String, dynamic>> _fetchEventDetailsAndImages() async {
     final eventUri = Uri.parse(_eventSortingUrl).replace(queryParameters: {'id': widget.id.toString()});
@@ -302,6 +331,7 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
     );
   }
 
+  // 💥 由於我們不再依賴 image_id，此函式已不再用於 Timeline 圖片查找
   String _findImageUrlById(int imageId) {
     if (_allImages.isEmpty || imageId <= 0) {
       return '';
@@ -465,7 +495,6 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
             final mainImageId = event['eventsorting_image'] as int? ?? -1;
             final mainImageUrl = _findImageUrlById(mainImageId);
 
-            // 💥 MODIFIED: 使用 SingleChildScrollView，並在內容末尾放置導航卡片
             return SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -483,9 +512,9 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
                   // 新聞脈絡整理部分
                   _buildTimelineSection(timelineItems),
 
-                  // 💥 NEW: 將下一事件卡片放在新聞脈絡整理之後
+                  // 💥 呼叫新的包裹函式
                   if (_nextEventDetails != null)
-                    _buildNextEventCard(_nextEventDetails!),
+                    _buildNextEventSection(_nextEventDetails!),
 
                   const SizedBox(height: 50), // 留出底部空間
                 ],
@@ -498,7 +527,32 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
     );
   }
 
-  // 💥 NEW: 位於新聞脈絡整理下方的導航卡片 Widget
+  // 💥 新增的函式，用於包裹卡片並添加標題
+  Widget _buildNextEventSection(Map<String, dynamic> nextEvent) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 16.0), // 在整個部分上方留出空間
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 💥 新增大標題
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.0),
+            child: Text(
+              '相關事件：',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          // 呼叫原有的卡片 Widget
+          _buildNextEventCard(nextEvent),
+        ],
+      ),
+    );
+  }
+
+  // 保持不變，只負責構建卡片本身
   Widget _buildNextEventCard(Map<String, dynamic> nextEvent) {
     final int nextId = nextEvent['id'] as int? ?? -1;
     final String title = nextEvent['title'] as String? ?? '未知事件';
@@ -511,15 +565,14 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
       },
       child: Container(
         height: 60,
-        // 💥 新增邊距，使其與 TimelineSection 分開，並在左右留白
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
-          color: Colors.blue.withOpacity(0.95), // 藍色半透明背景
+          color: Colors.blue.withOpacity(0.95),
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2), // 調整陰影強度
+              color: Colors.black.withOpacity(0.2),
               blurRadius: 5,
               offset: const Offset(0, 3),
             ),
@@ -530,7 +583,8 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
           children: [
             Expanded(
               child: Text(
-                '下一事件：$title',
+                // 💥 修正: 這裡將 '下一事件：' 改回 '事件標題'，因為標題在上方 Section 已經有了
+                '$title',
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -541,7 +595,6 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
               ),
             ),
             const SizedBox(width: 10),
-            // 箭頭圖示
             const Icon(
               Icons.arrow_forward_ios,
               color: Colors.white,
@@ -617,6 +670,7 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
     );
   }
 
+  // 💥 修正: _buildTimelineSection
   Widget _buildTimelineSection(List items) {
     return Container(
       margin: const EdgeInsets.only(top: 16, bottom: 8),
@@ -634,14 +688,10 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
           ...items.asMap().entries.map((entry) {
             final item = entry.value;
 
-            final timelineImageId = item['image'] as int? ?? -1;
-            final timelineImageUrl = _findImageUrlById(timelineImageId);
-
             final isLast = entry.key == items.length - 1;
 
             return _buildTimelineItem(
-                item,
-                timelineImageUrl,
+                item, // 💥 只傳遞 newsItem Map
                 isLast
             );
           }).toList(),
@@ -650,11 +700,15 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
     );
   }
 
-  Widget _buildTimelineItem(Map<String, dynamic> newsItem, String imageUrl, bool isLast) {
+  // 💥 修正 _buildTimelineItem 函式簽名和邏輯
+  Widget _buildTimelineItem(Map<String, dynamic> newsItem, bool isLast) {
     final int newsId = newsItem['id'] as int? ?? -1;
     final String time = newsItem['time'] ?? '';
     final String title = newsItem['title'] ?? '';
     final String source = newsItem['source'] ?? '';
+
+    // 💥 從 newsItem 中直接獲取 URL
+    final String timelineImageUrl = newsItem['cover_image_url'] as String? ?? '';
 
     return IntrinsicHeight(
       child: Row(
@@ -718,7 +772,7 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
                           const SizedBox(width: 8),
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8.0),
-                            child: _buildImage(imageUrl),
+                            child: _buildImage(timelineImageUrl), // 💥 使用 timelineImageUrl
                           ),
                         ],
                       ),
@@ -786,8 +840,6 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
       child: const Icon(Icons.image_not_supported, color: Colors.grey),
     );
   }
-
-  // --- 底部操作欄位 (Bottom Actions) ---
 
   Widget _buildCommentAndRatingButton() {
     return InkWell(
