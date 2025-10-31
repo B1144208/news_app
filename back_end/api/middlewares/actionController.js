@@ -39,14 +39,14 @@ async function searchUserAction (req, res, next) {
                 t1.comment_id,
                 t1.user_id,
                 t1.comment_text,
-                t1.ceated_at,
+                t1.created_at,
                 t2.anonymous_name,  /* 匿名名稱 */
                 t3.user_name        /* 來自 user_profile 的真實用戶名稱 */
             FROM user_comment t1
             LEFT JOIN anonymous_data t2 ON t1.anonymous_id = t2.anonymous_id
             LEFT JOIN user_profile t3 ON t1.user_id = t3.user_id  /* 🌟 使用正確的表名 user_profile 🌟 */
             WHERE t1.${dataIdFieldName} = ?
-            ORDER BY t1.ceated_at DESC
+            ORDER BY t1.created_at DESC
         `;
         let params = [ dataId ];
 
