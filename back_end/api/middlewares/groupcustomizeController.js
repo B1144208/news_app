@@ -298,13 +298,14 @@ async function updateGroupOrder(req, res, next) {
     // general : groupcustomize_general order update ( insert/update/delete/reset )
     if ( kind === "general" || kind === "reset") {
 
-        // 先search group_data 的 group_order
+        // 先search groupcustomize_general 的 group_order
         let originOrder = new Map();   // group_id, group_order
         let sql = `
             SELECT group_id, group_order
-            FROM group_data
+            FROM groupcustomize_general
+            WHERE user_id = ?
         `;
-        let params = [];
+        let params = [userId];
         try {
             let [result] = await pool.query(sql, params);
 
@@ -358,7 +359,7 @@ async function updateGroupOrder(req, res, next) {
         params.push(...isDeleteParams, userId, ...groupIdArray);
         try {
             let [result] = await pool.query(sql, params);
-            return res.apiSuccess(result, `Update Order Success - ${type}`);
+            return res.apiSuccess(result, `Update Order Success - ${kind}`);
         } catch (err) {
             err.desc = "middlewares-updateGroupOrder(): database update error-general";
             return next(err);
