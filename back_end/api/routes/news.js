@@ -7,7 +7,6 @@ const { batchNews } = require('../utils/batchHelper');
 
 // search
 router.post('/search', searchNews);
-router.post('/:id', searchNews);
 
 // insert
 router.post('/', insertNews);
@@ -19,7 +18,6 @@ router.put('/', async (req, res, next) => {
 });
 
 // delete
-router.delete('/', deleteNews);
 router.delete('/:id', deleteNews);
 
 module.exports = router

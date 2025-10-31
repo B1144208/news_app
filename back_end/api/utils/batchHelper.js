@@ -27,6 +27,8 @@ async function batchNews(req, res, next) {
         return next(err);
     }
 
+    console.log("batchHelper_0:", data);
+
     if ( data == null )
         return res.apiSuccess({}, "Batch Insert News Success");
 

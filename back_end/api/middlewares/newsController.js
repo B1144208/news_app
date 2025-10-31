@@ -31,6 +31,24 @@ async function searchNews(req, res, next) {
         return next(err);
     }
 
+    // 優先檢查 url
+    if ( url ) {
+        console.log("searchNews_1:", url);
+        let sql = `
+            SELECT news_id
+            FROM news_data
+            WHERE origin_url = ?
+        `;
+        let params = [url];
+        try {
+            let [result] = await pool.query(sql, params);
+            return res.apiSuccess(result, "Search Success");
+        } catch (err) {
+            err.desc = "middlewares-searchNews(): database search error";
+            return next(err);
+        }
+    }
+    console.log("searchNews_2:", url);
     // 選擇模式
     let searchMode = "general";
     if ( id ) searchMode = "id";
@@ -294,15 +312,16 @@ async function searchNews(req, res, next) {
 // insert
 async function insertNews(req, res, next) {
     let { url, channel, cover_img, title, publish_date, detail, group, location, keyword, comment } = req.body ?? {};
-
+    console.log("insertNews_0:", url)
     try {
         // 優先檢查 url 是否已經存在
         try {
             let fakeReq = {
-                query: {
+                body: {
                     url: url
                 }
             };
+            console.log("insertNews_1:", url)
             searchNewsResult = await callAndCatchApiSuccess ( searchNews, fakeReq );
             if ( searchNewsResult.length === 1 ) {
                 return res.apiSuccess ( {insertId: searchNewsResult[0].news_id}, "Search Success" );
@@ -311,6 +330,7 @@ async function insertNews(req, res, next) {
             err.desc = "middlewares-insertNews(): database search error";
             return next(err);
         }
+        console.log("insertNews_2:", url)
 
         // 檢查必要欄位 & 格式
         let requireFields = [

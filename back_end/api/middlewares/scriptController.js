@@ -3,26 +3,49 @@ const { checkRequireField } = require('../utils/checkHelper');
 const { callAndCatchApiSuccess } = require('../utils/fakeHelper');
 const { execFile } = require('child_process');
 const path = require('path');
+const { searchNews } = require('./newsController');
 
 // ---- general ----
 async function generalScript(req, res, next) {
-    return;
+    let { id } = req.params ?? {}
 
+    let fakeReq = {
+        body: {}
+    }
+    try {
+        let result = await callAndCatchApiSuccess(searchNews, fakeReq);
+        console.log("result", result);
+    } catch (err) {
+        err.desc = "middlewares-scriptController(): error";
+    }
+
+
+    // 先 genreate 一組 idList (searchNews {})
+    // 下一個 >> remove 第一個，聽第一個 
+    // 剩最後1個時再自動用最後1個id繼續 generate
+
+    //  [ {"text"}, {"text"}, {"text"} ]
+    return;
 }
 
 // ---- reporter ----
 async function reporterScript(req, res, next) {
-  return;
+    let { id } = req.params ?? {}
+    // 交給 generalScript 生成的一組id及text，用deepseek 產生 reporterScript
+    return;
 }
 
 // ---- chat ----
 async function chatScript(req, res, next) {
-  return;
+    let { id } = req.params ?? {}
+    // 交給 generalScript 生成的一組id及text，用deepseek 產生 chatScript
+    return;
 }
 
 // ---- quick ----
 async function quickScript(req, res, next) {
-  return;
+    // 用熱度高id直接生成一組id
+    return;
 }
 
 // ---- call ask.sh ----
