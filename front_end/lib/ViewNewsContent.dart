@@ -22,8 +22,6 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
   // 從API獲取的詳細資料
   Map<String, dynamic>? _newsDetail;
   List<Map<String, dynamic>> _newsBody = [];
-  Map<int, String> _imageUrls = {}; // 存儲圖片URL映射
-  Map<int, String> _imageTexts = {}; // 存儲圖片說明文字
   bool _isLoading = false;
   String? _error;
 
@@ -37,139 +35,119 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
   @override
   void initState() {
     super.initState();
-    _initializeNewsDetail();
+    _fetchNewsDetail();
   }
 
-  // 初始化新聞詳情 - 依序獲取各種資料
-  Future<void> _initializeNewsDetail() async {
+  // 使用 POST 請求獲取新聞詳細內容
+  Future<void> _fetchNewsDetail() async {
     setState(() {
       _isLoading = true;
       _error = null;
     });
 
     try {
-      // 1. 先獲取圖片資料
-      await _fetchImages();
-      // 2. 獲取新聞詳情
-      await _fetchNewsDetail();
-      // 3. 獲取新聞內容
-      await _fetchNewsBody();
-    } catch (error) {
-      setState(() {
-        _error = '載入新聞詳情時發生錯誤: $error';
-        _isLoading = false;
-      });
-    }
-  }
-
-  // 獲取圖片資料
-  Future<void> _fetchImages() async {
-    try {
-      final response = await http.get(
-        Uri.parse('http://localhost:3000/api/image'),
+      // 使用 POST 請求，mode 設為 'complex' 來獲取完整的新聞內容
+      final uri = Uri.parse('http://localhost:3000/api/news').replace(
+        queryParameters: {
+          'mode': 'complex',    // 獲取詳細內容（包含 newsBody）
+          'order': 'general',
+          'limit': '1',
+        },
       );
+
+      // 建立 POST 請求
+      final response = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'id': [widget.newsData['id']], // 指定要查詢的新聞 ID
+        }),
+      );
+
+      print('新聞詳細內容回應狀態碼: ${response.statusCode}');
+      print('新聞詳細內容回應內容: ${response.body}');
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
+
         if (responseData['success'] == true) {
-          List<dynamic> images = responseData['data'];
-          for (var image in images) {
-            _imageUrls[image['image_id']] = image['image_origin_url'] ?? '';
-            _imageTexts[image['image_id']] = image['image_text'] ?? '';
-          }
-        }
-      }
-    } catch (error) {
-      print('獲取圖片資料失敗: $error');
-    }
-  }
+          final complexList = responseData['data']['complexList'];
 
-  // 獲取新聞詳情 - 使用現有的 /api/news 端點
-  Future<void> _fetchNewsDetail() async {
-    try {
-      // 如果API支援通過參數查詢特定新聞
-      final response = await http.get(
-        Uri.parse('http://localhost:3000/api/news?news_id=${widget.newsData['id']}'),
-      );
+          if (complexList != null && complexList.isNotEmpty) {
+            final newsData = complexList[0];
 
-      if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-        if (responseData['success'] == true) {
-          List<dynamic> newsList = responseData['data'];
-          // 找到對應的新聞
-          final matchedNews = newsList.firstWhere(
-                (news) => news['news_id'] == widget.newsData['id'],
-            orElse: () => null,
-          );
-
-          if (matchedNews != null) {
             setState(() {
-              _newsDetail = matchedNews;
+              // 保存新聞基本資料
+              _newsDetail = {
+                'news_id': newsData['newsId'],
+                'news_title': newsData['newsTitle'],
+                'channel_name': newsData['channelName'],
+                'cover_image_url': newsData['coverImageUrl'],
+                'cover_image_alt': newsData['coverImageAlt'],
+                'publish_date': newsData['publishDate'],
+              };
+
+              // 解析 newsBody 資料
+              if (newsData['newsBody'] != null) {
+                _newsBody = _parseNewsBody(newsData['newsBody']);
+              }
+
+              _isLoading = false;
             });
           } else {
-            throw Exception('找不到對應的新聞');
+            throw Exception('找不到對應的新聞資料');
           }
+        } else {
+          throw Exception(responseData['message'] ?? '獲取新聞失敗');
         }
+      } else {
+        throw Exception('伺服器錯誤: ${response.statusCode}');
       }
     } catch (error) {
       print('獲取新聞詳情失敗: $error');
-      // 如果API調用失敗，使用傳入的基本資料
       setState(() {
+        _error = '載入新聞詳情時發生錯誤: $error';
+        _isLoading = false;
+
+        // 如果API調用失敗，使用傳入的基本資料
         _newsDetail = {
           'news_id': widget.newsData['id'],
           'news_title': widget.newsData['title'],
-          'channel_id': widget.newsData['channel_id'],
-          'news_date': widget.newsData['news_date'],
-          'total_comment': widget.newsData['comments'],
+          'channel_name': widget.newsData['channel'] ?? '未知頻道',
+          'publish_date': widget.newsData['news_date'],
         };
       });
     }
   }
 
-  // 獲取新聞內容 - 嘗試從相關API獲取 news_body 資料
-  Future<void> _fetchNewsBody() async {
-    try {
-      // 假設可以通過某個端點獲取新聞內容
-      // 這裡需要根據您實際的API結構調整
+  // 解析 newsBody 資料
+  List<Map<String, dynamic>> _parseNewsBody(List<dynamic> newsBody) {
+    List<Map<String, dynamic>> parsedBody = [];
+    int order = 0;
 
-      // 如果有專門的 news body API，可以這樣調用：
-      // final response = await http.get(
-      //   Uri.parse('http://localhost:3000/api/news/${widget.newsData['id']}/body'),
-      // );
+    for (var item in newsBody) {
+      order += 10;
 
-      // 暫時使用模擬邏輯，如果您有實際的 news_body API，請替換這部分
-      await Future.delayed(const Duration(milliseconds: 500)); // 模擬網路延遲
-
-      // 模擬從資料庫獲取的 news_body 資料
-      setState(() {
-        _newsBody = [
-          {
-            'body_order': 20,
-            'body_type': 'text',
-            'body_text': '這是新聞大綱。',
-            'body_image': null,
-          },
-          {
-            'body_order': 30,
-            'body_type': 'image',
-            'body_text': null,
-            'body_image': _newsDetail?['cover_image'],
-          },
-          {
-            'body_order': 40,
-            'body_type': 'text',
-            'body_text': '新聞的內文會在這裡顯示。',
-            'body_image': null,
-          },
-        ];
-        _isLoading = false;
-      });
-    } catch (error) {
-      print('獲取新聞內容失敗: $error');
-      setState(() {
-        _isLoading = false;
-      });
+      if (item['text'] != null) {
+        // 文字內容
+        parsedBody.add({
+          'body_order': order,
+          'body_type': 'text',
+          'body_text': item['text'],
+          'body_image': null,
+        });
+      } else if (item['img'] != null) {
+        // 圖片內容
+        parsedBody.add({
+          'body_order': order,
+          'body_type': 'image',
+          'body_text': item['img']['alt'],
+          'body_image': item['img']['src'],
+        });
+      }
     }
+
+    return parsedBody;
   }
 
   // 格式化日期時間
@@ -266,44 +244,35 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                 MaterialPageRoute(
                   builder: (context) => ChannelDetailPage(
                     channelId: widget.newsData['channel_id'] ?? 1,
-                    channelName: widget.newsData['channel'] ?? '新聞台',
+                    channelName: _newsDetail?['channel_name'] ?? widget.newsData['channel'] ?? '新聞台',
                     channelDescription: null,
-                    channelUrl: null,
                   ),
                 ),
               );
             },
             child: Container(
-              width: 120,
-              height: 40,
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
-                color: Colors.black,
+                color: Colors.grey[300],
                 borderRadius: BorderRadius.circular(4),
-                border: Border.all(
-                  color: Colors.blue,
-                ), // 添加邊框提示可點擊
               ),
-              child: const Center(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      '頻道圖片',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                    SizedBox(width: 4),
-                    Icon(
-                      Icons.arrow_forward_ios,
-                      color: Colors.white70,
-                      size: 12,
-                    ),
-                  ],
-                ),
+              child: const Icon(Icons.tv, size: 20, color: Colors.black54),
+            ),
+          ),
+
+          const SizedBox(width: 8),
+
+          // 新聞台名稱
+          Expanded(
+            child: Text(
+              _newsDetail?['channel_name'] ?? widget.newsData['channel'] ?? '新聞台',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
               ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -311,34 +280,35 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
     );
   }
 
-  // 新聞主要內容
+  // 新聞內容區域
   Widget _buildNewsContent() {
     if (_isLoading) {
-      return Container(
-        padding: const EdgeInsets.all(16),
-        child: const Center(
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(50.0),
           child: CircularProgressIndicator(),
         ),
       );
     }
 
     if (_error != null) {
-      return Container(
-        padding: const EdgeInsets.all(16),
-        child: Center(
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
+              const Icon(Icons.error_outline, size: 60, color: Colors.red),
               const SizedBox(height: 16),
               Text(
                 _error!,
-                style: TextStyle(color: Colors.grey[600]),
+                style: const TextStyle(color: Colors.red),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: _initializeNewsDetail,
-                child: const Text('重新載入'),
+                onPressed: _fetchNewsDetail,
+                child: const Text('重試'),
               ),
             ],
           ),
@@ -347,175 +317,216 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
     }
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      color: Colors.white,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 新聞標題 - 讀取 news_data.sql 的 news_title 欄位
-          Text(
-            _newsDetail?['news_title'] ?? widget.newsData['title'] ?? '無標題',
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              height: 1.3,
-              color: Colors.black87,
+          // 標題區域
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 新聞標題
+                Text(
+                  _newsDetail?['news_title'] ?? widget.newsData['title'] ?? '無標題',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    height: 1.3,
+                    color: Colors.black,
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                // 發布時間
+                Text(
+                  _formatDateTime(_newsDetail?['publish_date']),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
             ),
           ),
 
-          const SizedBox(height: 12),
+          const Divider(height: 1),
 
-          // 報導時間 - 讀取 news_data.sql 的 news_date 欄位
-          Text(
-            _formatDateTime(_newsDetail?['news_date'] ?? widget.newsData['news_date']),
-            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-          ),
-
-          const SizedBox(height: 20),
-
-          // 新聞內容 - 讀取 news_body.sql 中相同 news_id 的內容
+          // 新聞內容主體
           ..._buildNewsBodyContent(),
         ],
       ),
     );
   }
 
-  // 建立新聞內容區塊 - 從 news_body.sql 讀取資料
+  // 建立新聞內容主體
   List<Widget> _buildNewsBodyContent() {
-    List<Widget> widgets = [];
+    if (_newsBody.isEmpty) {
+      return [
+        const Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Text(
+            '暫無新聞內容',
+            style: TextStyle(color: Colors.grey),
+          ),
+        ),
+      ];
+    }
 
-    // 根據 body_order 排序
-    final sortedBody = _newsBody.toList()
-      ..sort((a, b) => (a['body_order'] as int).compareTo(b['body_order'] as int));
-
-    for (final body in sortedBody) {
-      if (body['body_type'] == 'text') {
-        // 文字內容 - 讀取 body_text 欄位
-        widgets.add(
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: Text(
-              body['body_text'] ?? '',
-              style: const TextStyle(fontSize: 16, height: 1.6, color: Colors.black87),
+    return _newsBody.map((bodyItem) {
+      if (bodyItem['body_type'] == 'text') {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          child: Text(
+            bodyItem['body_text'] ?? '',
+            style: const TextStyle(
+              fontSize: 16,
+              height: 1.6,
+              color: Colors.black87,
             ),
           ),
         );
-      } else if (body['body_type'] == 'image') {
-        // 圖片內容 - 讀取 body_image 欄位並透過外鍵連結 image_data.sql
-        widgets.add(_buildImageContent(body));
-      }
-    }
-
-    return widgets;
-  }
-
-  // 建立圖片內容區塊
-  Widget _buildImageContent(Map<String, dynamic> imageBody) {
-    final imageId = imageBody['body_image'];
-    final imageUrl = _imageUrls[imageId];
-    final imageText = _imageTexts[imageId];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // 新聞圖片 - 使用 image_origin_url
-        Container(
-          width: double.infinity,
-          height: 200,
-          margin: const EdgeInsets.only(bottom: 8),
-          decoration: BoxDecoration(
-            color: Colors.grey[300],
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: imageUrl != null && imageUrl.isNotEmpty
-                ? Image.network(
-              imageUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return const Icon(
-                  Icons.image,
-                  color: Colors.grey,
-                  size: 50,
-                );
-              },
-            )
-                : const Icon(Icons.image, color: Colors.grey, size: 50),
-          ),
-        ),
-
-        // 圖片說明 - 使用 image_text
-        if (imageText != null && imageText.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 20),
-            child: Row(
-              children: [
-                Icon(Icons.info_outline, size: 16, color: Colors.grey[600]),
-                const SizedBox(width: 4),
-                Expanded(
+      } else if (bodyItem['body_type'] == 'image') {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 圖片
+              if (bodyItem['body_image'] != null)
+                Image.network(
+                  bodyItem['body_image'],
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      height: 200,
+                      color: Colors.grey[300],
+                      child: const Center(
+                        child: Icon(Icons.broken_image, size: 50, color: Colors.grey),
+                      ),
+                    );
+                  },
+                ),
+              // 圖片說明
+              if (bodyItem['body_text'] != null && bodyItem['body_text'].toString().isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                   child: Text(
-                    imageText,
+                    bodyItem['body_text'],
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 14,
                       color: Colors.grey[600],
-                      height: 1.4,
+                      fontStyle: FontStyle.italic,
                     ),
                   ),
                 ),
-              ],
-            ),
+            ],
           ),
-      ],
-    );
+        );
+      }
+      return const SizedBox.shrink();
+    }).toList();
   }
 
   // 右側垂直按鈕欄
   Widget _buildRightButtonPanel() {
     return Positioned(
       right: 8,
-      top: 100,
+      top: 20,
+      bottom: 20,
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _buildRightButton(Icons.play_circle_outline, 'AI朗讀', Colors.blue),
-          const SizedBox(height: 12),
-          _buildRightButton(Icons.library_books_outlined, '事件整理', Colors.green),
-          const SizedBox(height: 12),
-          _buildRightButton(Icons.download_outlined, '下載', Colors.orange),
-          const SizedBox(height: 12),
-          _buildRightButton(Icons.flag_outlined, '檢舉', Colors.red),
+          // 收藏按鈕
+          _buildRightButton(
+            icon: isFavorite ? Icons.bookmark : Icons.bookmark_border,
+            label: '收藏',
+            onTap: () {
+              setState(() {
+                isFavorite = !isFavorite;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(isFavorite ? '已加入收藏' : '已取消收藏'),
+                  duration: const Duration(seconds: 1),
+                ),
+              );
+            },
+          ),
+
+          const SizedBox(height: 16),
+
+          // 留言按鈕
+          _buildRightButton(
+            icon: Icons.comment,
+            label: '${_comments.length}',
+            onTap: () {
+              setState(() {
+                showComments = true;
+              });
+            },
+          ),
+
+          const SizedBox(height: 16),
+
+          // 分享按鈕
+          _buildRightButton(
+            icon: Icons.share,
+            label: '分享',
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('分享功能開發中'),
+                  duration: Duration(seconds: 1),
+                ),
+              );
+            },
+          ),
         ],
       ),
     );
   }
 
-  // 右側單個按鈕
-  Widget _buildRightButton(IconData icon, String tooltip, Color color) {
-    return Container(
-      width: 48,
-      height: 48,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey,
-            spreadRadius: 1,
-            blurRadius: 3,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: IconButton(
-        icon: Icon(icon, color: color, size: 24),
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('$tooltip 功能開發中'),
-              duration: const Duration(seconds: 1),
+  // 右側按鈕組件
+  Widget _buildRightButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 48,
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black,
+              blurRadius: 4,
+              offset: const Offset(0, 2),
             ),
-          );
-        },
-        tooltip: tooltip,
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 24, color: Colors.black87),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 10,
+                color: Colors.black87,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -529,114 +540,43 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
         boxShadow: [
           BoxShadow(
             color: Colors.grey,
-            spreadRadius: 1,
-            blurRadius: 3,
-            offset: const Offset(0, -1),
+            blurRadius: 4,
+            offset: const Offset(0, -2),
           ),
         ],
       ),
       child: Row(
         children: [
-          // 留言按鈕
-          InkWell(
-            onTap: () {
-              setState(() {
-                showComments = !showComments;
-              });
-            },
-            borderRadius: BorderRadius.circular(20),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.grey[300]!),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.chat_bubble_outline,
-                    size: 20,
-                    color: Colors.grey[600],
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${_comments.length}則',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const Spacer(),
-
-          // 機器人圖示
-          InkWell(
-            onTap: () {
-              setState(() {
-                showChatBox = !showChatBox;
-              });
-            },
-            child: Container(
-              width: 48,
-              height: 48,
-              decoration: const BoxDecoration(
-                color: Colors.blue,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.smart_toy, color: Colors.white, size: 24),
-            ),
-          ),
-
-          const Spacer(),
-
-          // 右側按鈕組
-          Row(
-            children: [
-              // 收藏按鈕
-              InkWell(
-                onTap: () {
-                  setState(() {
-                    isFavorite = !isFavorite;
-                  });
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(isFavorite ? '已加入收藏' : '已移除收藏'),
-                      duration: const Duration(seconds: 1),
+          // AI 聊天按鈕
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  showChatBox = !showChatBox;
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.smart_toy, color: Colors.blue[700], size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'AI 助手',
+                      style: TextStyle(
+                        color: Colors.blue[700],
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  child: Icon(
-                    isFavorite ? Icons.bookmark : Icons.bookmark_outline,
-                    color: isFavorite ? Colors.blue : Colors.grey[600],
-                    size: 24,
-                  ),
+                  ],
                 ),
               ),
-
-              // 分享按鈕
-              InkWell(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('分享功能開發中'),
-                      duration: Duration(seconds: 1),
-                    ),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  child: Icon(
-                    Icons.share_outlined,
-                    color: Colors.grey[600],
-                    size: 24,
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ],
       ),
@@ -645,83 +585,96 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
 
   // 留言覆蓋層
   Widget _buildCommentsOverlay() {
-    return Container(
-      color: Colors.black,
-      child: Column(
-        children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  showComments = false;
-                });
-              },
-            ),
-          ),
-          Container(
-            height: MediaQuery.of(context).size.height * 0.6,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-            ),
+    return Positioned.fill(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            showComments = false;
+          });
+        },
+        child: Container(
+          color: Colors.black,
+          child: GestureDetector(
+            onTap: () {}, // 防止點擊內容區域時關閉
             child: Column(
               children: [
-                // 留言標題欄
+                const Spacer(),
+                // 留言面板
                 Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(color: Colors.grey[300]!),
+                  height: MediaQuery.of(context).size.height * 0.7,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
                     ),
                   ),
-                  child: Row(
+                  child: Column(
                     children: [
-                      const Text(
-                        '留言',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
+                      // 標題欄
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(20),
+                            topRight: Radius.circular(20),
+                          ),
+                          border: Border(
+                            bottom: BorderSide(color: Colors.grey[300]!),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            const Text(
+                              '留言',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${_comments.length}則',
+                              style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                            ),
+                            const Spacer(),
+                            IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: () {
+                                setState(() {
+                                  showComments = false;
+                                });
+                              },
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${_comments.length}則',
-                        style: TextStyle(color: Colors.grey[600], fontSize: 16),
+
+                      // 留言列表
+                      Expanded(
+                        child: ListView.separated(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: _comments.length,
+                          separatorBuilder: (context, index) =>
+                          const SizedBox(height: 16),
+                          itemBuilder: (context, index) {
+                            final comment = _comments[index];
+                            return _buildCommentItem(comment);
+                          },
+                        ),
                       ),
-                      const Spacer(),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () {
-                          setState(() {
-                            showComments = false;
-                          });
-                        },
-                      ),
+
+                      // 留言輸入框
+                      _buildCommentInput(),
                     ],
                   ),
                 ),
-
-                // 留言列表
-                Expanded(
-                  child: ListView.separated(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _comments.length,
-                    separatorBuilder: (context, index) =>
-                    const SizedBox(height: 16),
-                    itemBuilder: (context, index) {
-                      final comment = _comments[index];
-                      return _buildCommentItem(comment);
-                    },
-                  ),
-                ),
-
-                // 留言輸入框
-                _buildCommentInput(),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }

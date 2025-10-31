@@ -6,6 +6,10 @@ const { checkRequireField } = require('../utils/checkHelper');
 // ElevenLabs API 配置
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 const DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"; // Rachel - 預設英文語音
+const STACY = "hkfHEbBvdQFNX4uWHqRF"; //Standard Chinese, narrative & story
+const YU = "fQj4gJSexpu8RDE2Ii5m"; //Taiwan, conversational
+const KEVIN_TU = "BrbEfHMQu0fyclQR7lfh"; //Taiwan, narrative & story
+const ANNA_SU = "9lHjugDhwqoxA5MhX0az"; //Taiwan, social media
 const API_BASE_URL = "https://api.elevenlabs.io/v1";
 
 /**
