@@ -218,11 +218,22 @@ class _HomePageState extends State<HomePage> {
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         if (responseData['success'] == true) {
-          List<dynamic> newsList = responseData['data'] ?? [];
+          // ✅ 修復: 後端返回 {simpleList: [...]} 格式
+          List<dynamic> newsList;
+
+          if (responseData['data'] is List) {
+            newsList = responseData['data'];
+            print('📦 data 是 List 格式');
+          } else if (responseData['data'] is Map) {
+            newsList = responseData['data']['simpleList'] ?? [];
+            print('📦 data 是 Map 格式,提取 simpleList');
+          } else {
+            newsList = [];
+            print('⚠️ data 格式不明');
+          }
 
           print('✅ 獲取到新聞數量: ${newsList.length}');
 
-          // 如果沒有新聞資料
           if (newsList.isEmpty) {
             setState(() {
               _allNewsData = [];
@@ -233,24 +244,20 @@ class _HomePageState extends State<HomePage> {
             return;
           }
 
-          // 獲取所有相關的頻道和圖片資料
-          final channelData = await _fetchChannelData();
-          final imageData = await _fetchImageData();
-
+          // ✅ 修復: 使用後端 simple mode 返回的欄位 (camelCase)
           List<Map<String, dynamic>> processedNews = newsList.map<Map<String, dynamic>>((news) {
             return {
-              'id': news['news_id'],
-              'title': news['news_title'] ?? '無標題',
-              'channel_id': news['channel_id'],
-              'channel': channelData[news['channel_id']] ?? '未知頻道',
-              'publish_date': _formatDate(news['news_date']),
-              'comments': news['total_comment'] ?? 0,
-              'views': news['total_view'] ?? 0,
-              'shares': news['total_share'] ?? 0,
-              'bookmarks': news['total_bookmark'] ?? 0,
-              'cover_img': imageData[news['cover_image']],
-              'news_date': news['news_date'],
-              'cover_image_id': news['cover_image'],
+              'id': news['newsId'],
+              'title': news['newsTitle'] ?? '無標題',
+              'channel': news['channelName'] ?? '未知頻道',
+              'publish_date': _formatDate(news['publishDate']),
+              'cover_img': news['coverImageUrl'],
+              'cover_img_alt': news['coverImageAlt'] ?? '',
+              'news_date': news['publishDate'],
+              'comments': 0,
+              'views': 0,
+              'shares': 0,
+              'bookmarks': 0,
             };
           }).toList();
 
