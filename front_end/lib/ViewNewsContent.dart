@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'ChannelDetailPage.dart';
+import 'LoginPage.dart';
 
 class ViewNewsContent extends StatefulWidget {
   final Map<String, dynamic> newsData;
@@ -32,6 +34,13 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
     {'user': '用戶C', 'content': '希望能有更多這樣的報導', 'time': '5小時前', 'avatar': 'C'},
   ];
 
+  // AI朗讀模式相關變數
+  bool _showReadModes = false;
+  bool _isPlayerVisible = false;
+  bool _isPlaying = false;
+  String _selectedReadMode = '';
+  double _playbackSpeed = 1.0;
+
   @override
   void initState() {
     super.initState();
@@ -46,21 +55,19 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
     });
 
     try {
-      // 使用 POST 請求，mode 設為 'complex' 來獲取完整的新聞內容
-      final uri = Uri.parse('http://localhost:3000/api/news').replace(
+      final uri = Uri.parse('http://localhost:3000/api/news/search').replace(
         queryParameters: {
-          'mode': 'complex',    // 獲取詳細內容（包含 newsBody）
+          'mode': 'complex',
           'order': 'general',
           'limit': '1',
         },
       );
 
-      // 建立 POST 請求
       final response = await http.post(
         uri,
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
-          'id': [widget.newsData['id']], // 指定要查詢的新聞 ID
+          'id': [widget.newsData['id']],
         }),
       );
 
@@ -77,7 +84,6 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
             final newsData = complexList[0];
 
             setState(() {
-              // 保存新聞基本資料
               _newsDetail = {
                 'news_id': newsData['newsId'],
                 'news_title': newsData['newsTitle'],
@@ -87,7 +93,6 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                 'publish_date': newsData['publishDate'],
               };
 
-              // 解析 newsBody 資料
               if (newsData['newsBody'] != null) {
                 _newsBody = _parseNewsBody(newsData['newsBody']);
               }
@@ -109,7 +114,6 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
         _error = '載入新聞詳情時發生錯誤: $error';
         _isLoading = false;
 
-        // 如果API調用失敗，使用傳入的基本資料
         _newsDetail = {
           'news_id': widget.newsData['id'],
           'news_title': widget.newsData['title'],
@@ -129,7 +133,6 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
       order += 10;
 
       if (item['text'] != null) {
-        // 文字內容
         parsedBody.add({
           'body_order': order,
           'body_type': 'text',
@@ -137,7 +140,6 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
           'body_image': null,
         });
       } else if (item['img'] != null) {
-        // 圖片內容
         parsedBody.add({
           'body_order': order,
           'body_type': 'image',
@@ -169,6 +171,86 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
     return weekdays[weekday - 1];
   }
 
+  // 檢查登入狀態
+  Future<bool> _checkLoginStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('IsLogin') ?? false;
+  }
+
+  // 處理收藏按鈕點擊
+  Future<void> _handleBookmarkTap() async {
+    final isLoggedIn = await _checkLoginStatus();
+
+    if (!isLoggedIn) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('請先登入以使用收藏功能'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        // 可選：導航到登入頁面
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginPage()),
+        );
+      }
+      return;
+    }
+
+    setState(() {
+      isFavorite = !isFavorite;
+    });
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isFavorite ? '已加入收藏' : '已取消收藏'),
+          duration: const Duration(seconds: 1),
+        ),
+      );
+    }
+  }
+
+  // 開始朗讀
+  void _startReading(String mode) {
+    setState(() {
+      _selectedReadMode = mode;
+      _showReadModes = false;
+      _isPlayerVisible = true;
+      _isPlaying = true;
+    });
+  }
+
+  // 切換播放/暫停
+  void _togglePlayPause() {
+    setState(() {
+      _isPlaying = !_isPlaying;
+    });
+  }
+
+  // 調整播放倍速
+  void _adjustPlaybackSpeed() {
+    setState(() {
+      if (_playbackSpeed == 0.5) {
+        _playbackSpeed = 1.0;
+      } else if (_playbackSpeed == 1.0) {
+        _playbackSpeed = 2.0;
+      } else {
+        _playbackSpeed = 0.5;
+      }
+    });
+  }
+
+  // 關閉播放器
+  void _closePlayer() {
+    setState(() {
+      _isPlayerVisible = false;
+      _isPlaying = false;
+      _selectedReadMode = '';
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -178,43 +260,31 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
           children: [
             Column(
               children: [
-                // 自定義AppBar
                 _buildCustomAppBar(),
-
-                // 主要內容區域
                 Expanded(
                   child: Stack(
                     children: [
                       SingleChildScrollView(
-                        padding: const EdgeInsets.only(right: 60), // 為右側按鈕預留空間
+                        padding: const EdgeInsets.only(right: 60),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // 新聞主要內容
                             _buildNewsContent(),
-
-                            // 底部留白
                             const SizedBox(height: 80),
                           ],
                         ),
                       ),
-
-                      // 右側垂直按鈕欄
                       _buildRightButtonPanel(),
                     ],
                   ),
                 ),
-
-                // 底部操作欄
                 _buildBottomActionBar(),
               ],
             ),
 
-            // 留言覆蓋層
             if (showComments) _buildCommentsOverlay(),
-
-            // 聊天框覆蓋層
             if (showChatBox) _buildChatOverlay(),
+            if (_isPlayerVisible) _buildReadingPlayer(),
           ],
         ),
       ),
@@ -228,15 +298,11 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
       color: Color(0xFFC9BDFF),
       child: Row(
         children: [
-          // 返回按鈕
           IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.black),
             onPressed: () => Navigator.of(context).pop(),
           ),
-
           const SizedBox(width: 8),
-
-          // 新聞台小圖片 - 可點擊跳轉到頻道詳細頁面
           GestureDetector(
             onTap: () {
               Navigator.push(
@@ -260,10 +326,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
               child: const Icon(Icons.tv, size: 20, color: Colors.black54),
             ),
           ),
-
           const SizedBox(width: 8),
-
-          // 新聞台名稱
           Expanded(
             child: Text(
               _newsDetail?['channel_name'] ?? widget.newsData['channel'] ?? '新聞台',
@@ -321,13 +384,11 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 標題區域
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 新聞標題
                 Text(
                   _newsDetail?['news_title'] ?? widget.newsData['title'] ?? '無標題',
                   style: const TextStyle(
@@ -337,10 +398,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                     color: Colors.black,
                   ),
                 ),
-
                 const SizedBox(height: 12),
-
-                // 發布時間
                 Text(
                   _formatDateTime(_newsDetail?['publish_date']),
                   style: TextStyle(
@@ -351,10 +409,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
               ],
             ),
           ),
-
           const Divider(height: 1),
-
-          // 新聞內容主體
           ..._buildNewsBodyContent(),
         ],
       ),
@@ -394,7 +449,6 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 圖片
               if (bodyItem['body_image'] != null)
                 Image.network(
                   bodyItem['body_image'],
@@ -410,7 +464,6 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                     );
                   },
                 ),
-              // 圖片說明
               if (bodyItem['body_text'] != null && bodyItem['body_text'].toString().isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -440,21 +493,34 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          // AI朗讀模式選擇按鈕
+          _buildRightButton(
+            icon: Icons.play_arrow,
+            label: 'AI朗讀',
+            onTap: () {
+              setState(() {
+                _showReadModes = !_showReadModes;
+              });
+            },
+          ),
+
+          // 延伸的朗讀模式選項
+          if (_showReadModes) ...[
+            const SizedBox(height: 8),
+            _buildReadModeButton('一般朗讀'),
+            const SizedBox(height: 8),
+            _buildReadModeButton('新聞播報'),
+            const SizedBox(height: 8),
+            _buildReadModeButton('對話模式'),
+          ],
+
+          const SizedBox(height: 16),
+
           // 收藏按鈕
           _buildRightButton(
             icon: isFavorite ? Icons.bookmark : Icons.bookmark_border,
             label: '收藏',
-            onTap: () {
-              setState(() {
-                isFavorite = !isFavorite;
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(isFavorite ? '已加入收藏' : '已取消收藏'),
-                  duration: const Duration(seconds: 1),
-                ),
-              );
-            },
+            onTap: _handleBookmarkTap,
           ),
 
           const SizedBox(height: 16),
@@ -531,6 +597,31 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
     );
   }
 
+  // 朗讀模式按鈕
+  Widget _buildReadModeButton(String mode) {
+    return GestureDetector(
+      onTap: () => _startReading(mode),
+      child: Container(
+        width: 48,
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.blue[50],
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.blue, width: 1),
+        ),
+        child: Text(
+          mode,
+          style: TextStyle(
+            fontSize: 9,
+            color: Colors.blue[700],
+            fontWeight: FontWeight.bold,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ),
+    );
+  }
+
   // 底部操作欄
   Widget _buildBottomActionBar() {
     return Container(
@@ -546,39 +637,165 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
         ],
       ),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // AI 聊天按鈕
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  showChatBox = !showChatBox;
-                });
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.blue[50],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.smart_toy, color: Colors.blue[700], size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      'AI 助手',
-                      style: TextStyle(
-                        color: Colors.blue[700],
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
+          // AI 聊天按鈕（圓形置中）
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                showChatBox = !showChatBox;
+              });
+            },
+            child: Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: Colors.blue,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.blue,
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.smart_toy,
+                color: Colors.white,
+                size: 28,
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // 朗讀播放器
+  Widget _buildReadingPlayer() {
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey,
+              spreadRadius: 1,
+              blurRadius: 5,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // 左側資訊
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.volume_up, color: Colors.blue, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        _selectedReadMode,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Colors.blue,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _newsDetail?['news_title'] ?? widget.newsData['title'] ?? '無標題',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.black87,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+
+            // 右側控制按鈕
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 內文跳轉按鈕
+                IconButton(
+                  onPressed: () {
+                    // TODO: 實作內文跳轉功能
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('內文跳轉功能開發中'),
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.article_outlined),
+                  iconSize: 24,
+                ),
+
+                // 調整倍速按鈕
+                GestureDetector(
+                  onTap: _adjustPlaybackSpeed,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      '${_playbackSpeed}x',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(width: 8),
+
+                // 播放/暫停按鈕
+                IconButton(
+                  onPressed: _togglePlayPause,
+                  icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow),
+                  iconSize: 28,
+                ),
+
+                // 下一篇按鈕
+                IconButton(
+                  onPressed: () {
+                    // TODO: 實作下一篇功能
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('下一篇功能開發中'),
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.skip_next),
+                  iconSize: 24,
+                ),
+
+                // 關閉按鈕
+                IconButton(
+                  onPressed: _closePlayer,
+                  icon: const Icon(Icons.close),
+                  iconSize: 20,
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -595,11 +812,10 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
         child: Container(
           color: Colors.black,
           child: GestureDetector(
-            onTap: () {}, // 防止點擊內容區域時關閉
+            onTap: () {},
             child: Column(
               children: [
                 const Spacer(),
-                // 留言面板
                 Container(
                   height: MediaQuery.of(context).size.height * 0.7,
                   decoration: const BoxDecoration(
@@ -611,7 +827,6 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                   ),
                   child: Column(
                     children: [
-                      // 標題欄
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
@@ -651,8 +866,6 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                           ],
                         ),
                       ),
-
-                      // 留言列表
                       Expanded(
                         child: ListView.separated(
                           padding: const EdgeInsets.all(16),
@@ -665,8 +878,6 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                           },
                         ),
                       ),
-
-                      // 留言輸入框
                       _buildCommentInput(),
                     ],
                   ),
@@ -728,7 +939,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
             TextField(
               controller: _chatController,
               decoration: InputDecoration(
-                hintText: '請問有什麼要詢問的呢？',
+                hintText: '請問有什麼要詢問的呢?',
                 hintStyle: TextStyle(color: Colors.grey[500]),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(20),
@@ -764,7 +975,6 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 頭像
         Container(
           width: 40,
           height: 40,
@@ -785,7 +995,6 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
 
         const SizedBox(width: 12),
 
-        // 留言內容
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

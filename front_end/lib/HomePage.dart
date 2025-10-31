@@ -172,7 +172,7 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  // 獲取新聞資料
+  // 修復後的 _fetchNews() 方法
   Future<void> _fetchNews() async {
     setState(() {
       _isLoading = true;
@@ -186,39 +186,35 @@ class _HomePageState extends State<HomePage> {
       http.Response response;
 
       if (_selectedGroupId != null) {
-        // 查詢特定分類 - 使用 POST 請求
-        print('📡 查詢特定分類新聞 - groupId: $_selectedGroupId');
+        // 查詢特定分類 - ✅ 修復: 使用 /search 端點
+        print('🔡 查詢特定分類新聞 - groupId: $_selectedGroupId');
 
         response = await http.post(
-          Uri.parse('http://localhost:3000/api/news?mode=simple&order=general&limit=300'),
+          Uri.parse('http://localhost:3000/api/news/search?mode=simple&order=general&limit=300'),
           headers: {'Content-Type': 'application/json'},
           body: json.encode({
             'groupId': _selectedGroupId,
-            'groupType': 'data',  // ✅ 使用 'data' (news_group 表中的 group_data_id)
+            'groupType': 'data',
           }),
         );
 
-        print('📡 特定分類回應: ${response.statusCode}');
-        if (response.statusCode == 200) {
-          print('📡 回應內容前200字: ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}');
-        }
+        print('🔡 特定分類回應: ${response.statusCode}');
       } else {
-        // 查詢所有新聞 - 使用 POST 請求 + 空 body
-        print('📡 查詢所有新聞');
+        // 查詢所有新聞 - ✅ 修復: 使用 /search 端點
+        print('🔡 查詢所有新聞');
 
         response = await http.post(
-          Uri.parse('http://localhost:3000/api/news?mode=simple&order=general&limit=300'),
+          Uri.parse('http://localhost:3000/api/news/search?mode=simple&order=general&limit=300'),
           headers: {'Content-Type': 'application/json'},
-          body: json.encode({}),  // ✅ 傳空物件
+          body: json.encode({}),
         );
 
-        print('📡 所有新聞回應: ${response.statusCode}');
+        print('🔡 所有新聞回應: ${response.statusCode}');
       }
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         if (responseData['success'] == true) {
-          // ✅ 修復: 後端返回 {simpleList: [...]} 格式
           List<dynamic> newsList;
 
           if (responseData['data'] is List) {
@@ -244,7 +240,7 @@ class _HomePageState extends State<HomePage> {
             return;
           }
 
-          // ✅ 修復: 使用後端 simple mode 返回的欄位 (camelCase)
+          // 處理新聞數據
           List<Map<String, dynamic>> processedNews = newsList.map<Map<String, dynamic>>((news) {
             return {
               'id': news['newsId'],
@@ -266,7 +262,6 @@ class _HomePageState extends State<HomePage> {
 
           setState(() {
             _allNewsData = processedNews;
-            // 初始載入前30個新聞
             _newsData = _allNewsData.take(_newsPerPage).toList();
             _isLoading = false;
           });
