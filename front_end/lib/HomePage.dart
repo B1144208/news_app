@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:audioplayers/audioplayers.dart';
 import 'config.dart';
 import 'LoginPage.dart';
@@ -26,139 +27,68 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 1;
   String _selectedCategory = '全部';
-  int? _selectedGroupId;
-  String _selectedDuration = '5分鐘';
-  String _selectedSortType = '總熱度';
+  int? _selectedGroupId; // 新增:選中的分類ID
+  String _selectedSortType = '總熱度'; // 新增:排序方式
 
-  List<Map<String, dynamic>> _categories = [];
-  final List<String> _sortTypes = ['總熱度', '瀏覽數量', '分享數量', '收藏數量', '留言數量'];
+  List<Map<String, dynamic>> _categories = []; // 改為動態列表
+  final List<String> _sortTypes = ['總熱度', '瀏覽數量', '分享數量', '收藏數量', '留言數量']; // 新增:排序選項
 
   List<Map<String, dynamic>> _newsData = [];
-  List<Map<String, dynamic>> _allNewsData = [];
+  List<Map<String, dynamic>> _allNewsData = []; // 新增:儲存所有新聞資料
   bool _isLoading = false;
-  bool _isLoadingMore = false;
+  bool _isLoadingMore = false; // 新增:載入更多資料的狀態
   String? _error;
-  int _currentPage = 0;
-  final int _newsPerPage = 30;
-  final ScrollController _scrollController = ScrollController();
+  int _currentPage = 0; // 新增:當前頁碼
+  final int _newsPerPage = 30; // 新增:每頁新聞數量
+  final ScrollController _scrollController = ScrollController(); // 新增:滾動控制器
 
   // 快速播放相關變數
   bool _isPlayerVisible = false;
   bool _isPlaying = false;
   double _playbackSpeed = 1.0;
-  int _currentNewsIndex = 0;
+  //int _currentNewsIndex = 0;
 
-  // 新增：倒數計時相關變數
-  Timer? _countdownTimer;
-  int _remainingSeconds = 0;
-
-  // 🎵 新增：TTS 相關變數
+  // 新增:AudioPlayer 實例
   final AudioPlayer _audioPlayer = AudioPlayer();
-  bool _isLoadingAudio = false;
-  List<String> _customTexts = []; // 儲存自訂文本列表
-  int _currentTextIndex = 0; // 當前播放的文本索引
-  int _totalTexts = 0; // 總文章篇數
 
-  // 🎤 新增：後台文本輸入控制器
-  final TextEditingController _textInputController = TextEditingController();
-  final TextEditingController _articleCountController = TextEditingController(text: '5');
+  // 新增:後台文本串列
+  int paragraphCount = 6;
+  List<String> paragraphText = [
+    "開始為您播放今日焦點新聞，第一篇是快新聞，北市中正一警局下通牒　黃國昌明天未到案就送北檢偵辦。",
+    "第二篇是快新聞／好可怕！台南警匪追逐戰　歹徒持榔頭攻擊員警、所長被咬傷。",
+    "第三篇是青少年受情緒困擾 兒盟調查：逾2成想過輕生。",
+    "第四篇是喝咖啡讓人更長壽？　營養師：每天3至5杯效果最佳。",
+    "第五篇是腸病毒重症已奪8命！伊科11型來勢洶洶　疾管署：幼童是高風險族群。",
+    "接下來是各篇新聞的大致內容：「走讀活動」引發警方與民眾對峙，8名警員受傷，而主嫌黃國昌涉嫌違反《集會遊行法》及《聚眾妨害公務法》。台北市警局已通知黃國昌明早到案說服，如果他不來將送北檢處理。"
+  ];
+  int _currentParagraphIndex = 0; // 當前播放的文章索引
 
   @override
   void initState() {
     super.initState();
-    _fetchCategories();
-    _scrollController.addListener(_onScroll);
+    _fetchCategories(); // 先載入分類
+    _scrollController.addListener(_onScroll); // 新增:監聽滾動事件
 
-    // 🎵 監聽音訊播放完成事件
+    // 監聽音訊播放完成事件
     _audioPlayer.onPlayerComplete.listen((event) {
       _onAudioComplete();
     });
-  }
 
-  // 🎵 新增：音訊播放完成後自動播放下一篇
-  void _onAudioComplete() {
-    print('[TTS] 音訊播放完成');
-    if (_isPlaying && _currentTextIndex < _totalTexts - 1) {
-      print('[TTS] 自動播放下一篇');
-      _nextNews();
-    } else {
-      print('[TTS] 已播放完所有文章');
-      _closePlayer();
-    }
-  }
-
-  // 🎵 新增：生成自訂文本列表
-  void _generateCustomTexts() {
-    final count = int.tryParse(_articleCountController.text) ?? 5;
-    final baseText = _textInputController.text.isEmpty
-        ? '這是測試文本'
-        : _textInputController.text;
-
-    _customTexts.clear();
-    for (int i = 0; i < count; i++) {
-      _customTexts.add('第${i + 1}篇：$baseText');
-    }
-
-    _totalTexts = _customTexts.length;
-    print('[TTS] 生成 $_totalTexts 篇自訂文本');
-  }
-
-  // 🎵 新增：呼叫 TTS API 並播放
-  Future<void> _playTextToSpeech(String text) async {
-    setState(() {
-      _isLoadingAudio = true;
-    });
-
-    try {
-      print('[TTS] 開始轉換文本: ${text.substring(0, text.length > 30 ? 30 : text.length)}...');
-
-      final response = await http.post(
-        Uri.parse('http://localhost:3000/api/tts'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'text': text,
-          'voiceId': 'fQj4gJSexpu8RDE2Ii5m', // YU - Taiwan, conversational
-          'stability': 0.5,
-          'similarity_boost': 0.75,
-          'model_id': 'eleven_multilingual_v2'
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        print('[TTS] 音訊轉換成功，開始播放');
-
-        // 將音訊數據轉換為 base64 URL
-        final audioBytes = response.bodyBytes;
-        final base64Audio = base64Encode(audioBytes);
-        final audioUrl = 'data:audio/mpeg;base64,$base64Audio';
-
-        // 使用 BytesSource 播放音訊
-        await _audioPlayer.play(BytesSource(audioBytes));
-
+    // 監聽音訊播放狀態
+    _audioPlayer.onPlayerStateChanged.listen((state) {
+      if (state == PlayerState.playing) {
         setState(() {
-          _isLoadingAudio = false;
           _isPlaying = true;
         });
-      } else {
-        throw Exception('TTS API 錯誤: ${response.statusCode}');
+      } else if (state == PlayerState.paused || state == PlayerState.stopped) {
+        setState(() {
+          _isPlaying = false;
+        });
       }
-    } catch (error) {
-      print('[TTS] 錯誤: $error');
-      setState(() {
-        _isLoadingAudio = false;
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('語音轉換失敗: $error'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
+    });
   }
 
+  // 新增:獲取分類列表
   Future<void> _fetchCategories() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -169,6 +99,7 @@ class _HomePageState extends State<HomePage> {
 
       List<Map<String, dynamic>> categories = [];
 
+      // 先獲取所有 group_data
       final groupResponse = await http.get(
         Uri.parse('http://localhost:3000/api/group'),
       );
@@ -184,6 +115,7 @@ class _HomePageState extends State<HomePage> {
 
       print('📡 獲取到 ${groupData['data'].length} 個分類');
 
+      // 使用 Set 來追蹤已添加的 group_id,確保不重複
       Set<int> addedGroupIds = {};
 
       for (var item in groupData['data']) {
@@ -201,18 +133,21 @@ class _HomePageState extends State<HomePage> {
         }
       }
 
+      // 按 group_id 排序
       categories.sort((a, b) => (a['group_id'] ?? 0).compareTo(b['group_id'] ?? 0));
 
       print('✅ 最終分類數量: ${categories.length}');
       print('✅ 分類 IDs: $addedGroupIds');
 
       setState(() {
+        // 在最前面添加"全部"選項
         _categories = [
           {'group_id': null, 'group_name': '全部'},
           ...categories,
         ];
       });
 
+      // 分類載入完成後再載入新聞
       _fetchNews();
     } catch (error) {
       print('❌ 獲取分類失敗: $error');
@@ -225,6 +160,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  // 新增：滾動監聽
   void _onScroll() {
     if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent * 0.9) {
       if (!_isLoadingMore && _allNewsData.isNotEmpty) {
@@ -233,6 +169,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  // 新增：載入更多新聞
   Future<void> _loadMoreNews() async {
     if (_isLoadingMore) return;
 
@@ -240,14 +177,17 @@ class _HomePageState extends State<HomePage> {
       _isLoadingMore = true;
     });
 
+    // 模擬載入延遲
     await Future.delayed(const Duration(milliseconds: 500));
 
     setState(() {
       if (_newsData.length >= 60) {
+        // 如果已有60個新聞，刪除前30個
         _newsData.removeRange(0, 30);
         _currentPage++;
       }
 
+      // 載入接下來的30個新聞
       int startIndex = (_currentPage + 1) * _newsPerPage;
       int endIndex = startIndex + _newsPerPage;
 
@@ -261,6 +201,7 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  // 修復後的 _fetchNews() 方法
   Future<void> _fetchNews() async {
     setState(() {
       _isLoading = true;
@@ -274,7 +215,8 @@ class _HomePageState extends State<HomePage> {
       http.Response response;
 
       if (_selectedGroupId != null) {
-        print('📡 查詢特定分類新聞 - groupId: $_selectedGroupId');
+        // 查詢特定分類 - ✅ 修復: 使用 /search 端點
+        print('🔡 查詢特定分類新聞 - groupId: $_selectedGroupId');
 
         response = await http.post(
           Uri.parse('http://localhost:3000/api/news/search?mode=simple&order=general&limit=300'),
@@ -285,9 +227,10 @@ class _HomePageState extends State<HomePage> {
           }),
         );
 
-        print('📡 特定分類回應: ${response.statusCode}');
+        print('🔡 特定分類回應: ${response.statusCode}');
       } else {
-        print('📡 查詢所有新聞');
+        // 查詢所有新聞 - ✅ 修復: 使用 /search 端點
+        print('🔡 查詢所有新聞');
 
         response = await http.post(
           Uri.parse('http://localhost:3000/api/news/search?mode=simple&order=general&limit=300'),
@@ -295,7 +238,7 @@ class _HomePageState extends State<HomePage> {
           body: json.encode({}),
         );
 
-        print('📡 所有新聞回應: ${response.statusCode}');
+        print('🔡 所有新聞回應: ${response.statusCode}');
       }
 
       if (response.statusCode == 200) {
@@ -326,6 +269,7 @@ class _HomePageState extends State<HomePage> {
             return;
           }
 
+          // 處理新聞數據
           List<Map<String, dynamic>> processedNews = newsList.map<Map<String, dynamic>>((news) {
             return {
               'id': news['newsId'],
@@ -342,6 +286,7 @@ class _HomePageState extends State<HomePage> {
             };
           }).toList();
 
+          // 根據選擇的排序方式排序
           _sortNews(processedNews);
 
           setState(() {
@@ -364,6 +309,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  // 新增：根據排序方式排序新聞
   void _sortNews(List<Map<String, dynamic>> newsList) {
     switch (_selectedSortType) {
       case '瀏覽數量':
@@ -380,6 +326,7 @@ class _HomePageState extends State<HomePage> {
         break;
       case '總熱度':
       default:
+      // 總熱度 = 瀏覽數 + 分享數*2 + 收藏數*3 + 留言數*2
         newsList.sort((a, b) {
           int heatA = (a['views'] as int) + (a['shares'] as int) * 2 +
               (a['bookmarks'] as int) * 3 + (a['comments'] as int) * 2;
@@ -391,6 +338,55 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  // 獲取頻道資料
+  Future<Map<int, String>> _fetchChannelData() async {
+    try {
+      final response = await http.get(
+        Uri.parse('http://localhost:3000/api/channel'),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          List<dynamic> channels = responseData['data'];
+          Map<int, String> channelMap = {};
+          for (var channel in channels) {
+            channelMap[channel['channel_id']] = channel['channel_name'] ?? '未知頻道';
+          }
+          return channelMap;
+        }
+      }
+    } catch (error) {
+      print('獲取頻道資料失敗: $error');
+    }
+    return {};
+  }
+
+  // 獲取圖片資料
+  Future<Map<int, String>> _fetchImageData() async {
+    try {
+      final response = await http.get(
+        Uri.parse('http://localhost:3000/api/image'),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          List<dynamic> images = responseData['data'];
+          Map<int, String> imageMap = {};
+          for (var image in images) {
+            imageMap[image['image_id']] = image['image_origin_url'] ?? '';
+          }
+          return imageMap;
+        }
+      }
+    } catch (error) {
+      print('獲取圖片資料失敗: $error');
+    }
+    return {};
+  }
+
+  // 格式化日期
   String _formatDate(String? dateString) {
     if (dateString == null) return '未知時間';
 
@@ -413,6 +409,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  // 獲取用戶資訊
   Future<Map<String, dynamic>> _getUserInfo() async {
     final prefs = await SharedPreferences.getInstance();
     return {
@@ -421,123 +418,154 @@ class _HomePageState extends State<HomePage> {
     };
   }
 
-  int _parseDurationToSeconds(String duration) {
-    if (duration == '一直') return 86400;
-
-    final match = RegExp(r'(\d+)(分鐘|小時)').firstMatch(duration);
-    if (match != null) {
-      final value = int.parse(match.group(1)!);
-      final unit = match.group(2);
-
-      if (unit == '分鐘') {
-        return value * 60;
-      } else if (unit == '小時') {
-        return value * 3600;
-      }
-    }
-    return 900;
-  }
-
+  // 新增：解析時間字串為秒數
+  // 新增:格式化剩餘時間顯示
   String _formatRemainingTime() {
-    if (_remainingSeconds <= 0) return '0分鐘';
-
-    final hours = _remainingSeconds ~/ 3600;
-    final minutes = (_remainingSeconds % 3600) ~/ 60;
-
-    if (hours > 0) {
-      return '$hours小時${minutes}分鐘';
-    } else {
-      return '$minutes分鐘';
-    }
+    // 顯示剩餘篇數
+    int remaining = paragraphCount - _currentParagraphIndex;
+    return '$remaining 篇';
   }
 
-  // 🎵 修改：開始快速播放（使用 TTS）
-  void _startQuickPlay() {
-    // 生成自訂文本列表
-    _generateCustomTexts();
-
-    if (_customTexts.isEmpty) {
+  // 快速播放功能
+  Future<void> _startQuickPlay() async {
+    if (paragraphText.isEmpty || paragraphCount == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('請先設定文本內容'),
-          backgroundColor: Colors.orange,
-        ),
+        const SnackBar(content: Text('沒有可播放的文本')),
       );
       return;
     }
 
-    _remainingSeconds = _parseDurationToSeconds(_selectedDuration);
-    _countdownTimer?.cancel();
-
     setState(() {
       _isPlayerVisible = true;
-      _isPlaying = true;
-      _currentTextIndex = 0;
+      _currentParagraphIndex = 0;
     });
 
-    // 🎵 播放第一篇文本
-    _playTextToSpeech(_customTexts[_currentTextIndex]);
-
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      setState(() {
-        if (_remainingSeconds > 0) {
-          _remainingSeconds--;
-        } else {
-          _closePlayer();
-        }
-      });
-    });
+    // 播放第一篇文章
+    await _playCurrentParagraph();
   }
 
-  // 🎵 修改：切換播放/暫停
-  void _togglePlayPause() {
-    setState(() {
-      _isPlaying = !_isPlaying;
-    });
+  // 播放當前文章
+  Future<void> _playCurrentParagraph() async {
+    if (_currentParagraphIndex >= paragraphText.length) {
+      // 所有文章播放完畢
+      _closePlayer();
+      return;
+    }
 
-    if (_isPlaying) {
-      _audioPlayer.resume();
-      _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    try {
+      String currentText = paragraphText[_currentParagraphIndex];
+
+      print('🎵 準備播放第 ${_currentParagraphIndex + 1} 篇文章: ${currentText.substring(0, currentText.length > 50 ? 50 : currentText.length)}...');
+
+      // 呼叫 TTS API
+      final response = await http.post(
+        Uri.parse('http://localhost:3000/api/tts'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'text': currentText,
+          'voiceId': '9lHjugDhwqoxA5MhX0az', // ANNA_SU - Taiwan, social media
+          'stability': 0.5,
+          'similarity_boost': 0.75,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        // 獲取音訊 bytes
+        final Uint8List bytes = response.bodyBytes;
+
+        print('✅ 收到音訊數據: ${bytes.length} bytes');
+
+        // 停止當前播放
+        await _audioPlayer.stop();
+
+        // 轉換為 base64 data URL
+        final String base64Audio = base64Encode(bytes);
+        final String dataUrl = 'data:audio/mpeg;base64,$base64Audio';
+
+        print('🔄 轉換為 data URL, 長度: ${dataUrl.length}');
+
+        // 設定播放速度
+        await _audioPlayer.setPlaybackRate(_playbackSpeed);
+
+        // 使用 UrlSource 播放 data URL
+        await _audioPlayer.play(UrlSource(dataUrl));
+
         setState(() {
-          if (_remainingSeconds > 0) {
-            _remainingSeconds--;
-          } else {
-            _closePlayer();
-          }
+          _isPlaying = true;
         });
-      });
-    } else {
-      _audioPlayer.pause();
-      _countdownTimer?.cancel();
+
+        print('🎵 正在播放第 ${_currentParagraphIndex + 1} 篇文章');
+      } else {
+        print('❌ TTS API 錯誤: ${response.statusCode}');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('語音合成失敗: ${response.statusCode}')),
+          );
+        }
+      }
+    } catch (e) {
+      print('❌ 播放錯誤: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('播放錯誤: $e')),
+        );
+      }
     }
   }
 
-  // 🎵 修改：上一篇新聞
-  void _previousNews() {
-    if (_currentTextIndex > 0) {
-      setState(() {
-        _currentTextIndex--;
-      });
-      _audioPlayer.stop();
-      _playTextToSpeech(_customTexts[_currentTextIndex]);
-    }
-  }
+  // 音訊播放完成回調
+  void _onAudioComplete() {
+    print('✅ 第 ${_currentParagraphIndex + 1} 篇播放完成');
 
-  // 🎵 修改：下一篇新聞
-  void _nextNews() {
-    if (_currentTextIndex < _totalTexts - 1) {
+    // 自動播放下一篇
+    if (_currentParagraphIndex < paragraphText.length - 1) {
       setState(() {
-        _currentTextIndex++;
+        _currentParagraphIndex++;
       });
-      _audioPlayer.stop();
-      _playTextToSpeech(_customTexts[_currentTextIndex]);
+      _playCurrentParagraph();
     } else {
-      // 已經是最後一篇
+      // 所有文章播放完畢
       _closePlayer();
     }
   }
 
-  void _adjustPlaybackSpeed() {
+  // 切換播放/暫停
+  Future<void> _togglePlayPause() async {
+    if (_isPlaying) {
+      await _audioPlayer.pause();
+      setState(() {
+        _isPlaying = false;
+      });
+    } else {
+      await _audioPlayer.resume();
+      setState(() {
+        _isPlaying = true;
+      });
+    }
+  }
+
+  // 上一篇文章
+  Future<void> _previousNews() async {
+    if (_currentParagraphIndex > 0) {
+      setState(() {
+        _currentParagraphIndex--;
+      });
+      await _playCurrentParagraph();
+    }
+  }
+
+  // 下一篇文章
+  Future<void> _nextNews() async {
+    if (_currentParagraphIndex < paragraphText.length - 1) {
+      setState(() {
+        _currentParagraphIndex++;
+      });
+      await _playCurrentParagraph();
+    }
+  }
+
+  // 調整播放倍速
+  Future<void> _adjustPlaybackSpeed() async {
     setState(() {
       if (_playbackSpeed == 0.5) {
         _playbackSpeed = 1.0;
@@ -547,18 +575,18 @@ class _HomePageState extends State<HomePage> {
         _playbackSpeed = 0.5;
       }
     });
-    _audioPlayer.setPlaybackRate(_playbackSpeed);
+
+    // 更新 AudioPlayer 的播放速度
+    await _audioPlayer.setPlaybackRate(_playbackSpeed);
   }
 
-  // 🎵 修改：關閉播放器
-  void _closePlayer() {
-    _countdownTimer?.cancel();
-    _audioPlayer.stop();
+  // 關閉播放器
+  Future<void> _closePlayer() async {
+    await _audioPlayer.stop();
     setState(() {
       _isPlayerVisible = false;
       _isPlaying = false;
-      _remainingSeconds = 0;
-      _currentTextIndex = 0;
+      _currentParagraphIndex = 0;
     });
   }
 
@@ -577,46 +605,10 @@ class _HomePageState extends State<HomePage> {
           children: [
             pages[_selectedIndex],
             if (_isPlayerVisible) _buildMusicPlayer(),
-            // 🎤 隱藏的文本輸入區塊（用於調試，實際不顯示）
-            _buildHiddenTextInput(),
           ],
         ),
       ),
       bottomNavigationBar: _buildBottomNavigationBar(),
-    );
-  }
-
-  // 🎤 新增：隱藏的文本輸入區塊
-  Widget _buildHiddenTextInput() {
-    return Positioned(
-      top: -1000, // 移到畫面外
-      left: 0,
-      child: Container(
-        width: 300,
-        padding: const EdgeInsets.all(16),
-        color: Colors.white,
-        child: Column(
-          children: [
-            TextField(
-              controller: _textInputController,
-              decoration: const InputDecoration(
-                labelText: '自訂文本',
-                hintText: '輸入要轉換的文本',
-              ),
-              maxLines: 3,
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _articleCountController,
-              decoration: const InputDecoration(
-                labelText: '文章篇數',
-                hintText: '輸入篇數',
-              ),
-              keyboardType: TextInputType.number,
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -626,12 +618,13 @@ class _HomePageState extends State<HomePage> {
         _buildTopToolBar(),
         _buildSearchBar(),
         _buildCategoryFilter(),
-        _buildQuickPlaySection(),
+        _buildQuickPlaySection(), // 修改後的快速播放區塊
         Expanded(child: _buildNewsList()),
       ],
     );
   }
 
+  // ========== 工具欄：支持登入系統 ==========
   Widget _buildTopToolBar() {
     return FutureBuilder<bool>(
       future: SharedPreferences.getInstance().then(
@@ -645,6 +638,7 @@ class _HomePageState extends State<HomePage> {
           child: Row(
             children: [
               if (!isLoggedIn)
+              // 未登入狀態 - 顯示登入和註冊按鈕
                 Row(
                   children: [
                     ElevatedButton(
@@ -655,6 +649,7 @@ class _HomePageState extends State<HomePage> {
                             builder: (context) => const LoginPage(),
                           ),
                         ).then((_) {
+                          // 登入後刷新頁面
                           setState(() {});
                         });
                       },
@@ -679,6 +674,7 @@ class _HomePageState extends State<HomePage> {
                             builder: (context) => const SignupPage(),
                           ),
                         ).then((_) {
+                          // 註冊後刷新頁面
                           setState(() {});
                         });
                       },
@@ -697,6 +693,7 @@ class _HomePageState extends State<HomePage> {
                   ],
                 )
               else
+              // 已登入狀態 - 顯示用戶頭像
                 FutureBuilder<Map<String, dynamic>>(
                   future: _getUserInfo(),
                   builder: (context, userSnapshot) {
@@ -715,6 +712,7 @@ class _HomePageState extends State<HomePage> {
                                 ),
                               ).then((_) => setState(() {}));
                             } else {
+                              // 導向會員中心頁面
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -770,6 +768,7 @@ class _HomePageState extends State<HomePage> {
 
               const Spacer(),
 
+              // 收藏按鈕
               GestureDetector(
                 onTap: () {
                   Navigator.push(
@@ -852,13 +851,15 @@ class _HomePageState extends State<HomePage> {
         children: [
           GestureDetector(
             onTap: () async {
+              // 點擊三條線圖標進入自訂分類頁面
               final prefs = await SharedPreferences.getInstance();
-              final userId = prefs.getInt('UserID');
+              final userId = prefs.getInt('UserID'); // 修復:使用正確的鍵名
               final isLoggedIn = prefs.getBool('IsLogin') ?? false;
 
               print('🔍 點擊自訂按鈕 - 登入狀態: $isLoggedIn, UserID: $userId');
 
               if (!isLoggedIn || userId == null) {
+                // 未登入,提示用戶登入
                 print('⚠️ 未登入或 UserID 為 null');
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -873,6 +874,7 @@ class _HomePageState extends State<HomePage> {
 
               print('✅ 導航到自訂分類頁面, UserID: $userId');
 
+              // 導航到自訂分類頁面
               final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -880,6 +882,7 @@ class _HomePageState extends State<HomePage> {
                 ),
               );
 
+              // 從自訂頁面返回後重新載入分類
               if (result == true || result == null) {
                 print('🔄 從自訂頁面返回,重新載入分類');
                 _fetchCategories();
@@ -904,7 +907,7 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(width: 12),
           Expanded(
             child: SizedBox(
-              height: 40,
+              height: 40, // 固定高度以避免裁切
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 itemCount: _categories.length,
@@ -921,9 +924,9 @@ class _HomePageState extends State<HomePage> {
                         print('📌 點擊分類: $categoryName (ID: $groupId)');
                         setState(() {
                           _selectedCategory = categoryName;
-                          _selectedGroupId = groupId;
+                          _selectedGroupId = groupId; // 設定選中的分類ID
                         });
-                        _fetchNews();
+                        _fetchNews(); // 重新載入該分類的新聞
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(
@@ -964,6 +967,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // 修改後的快速播放區塊
   Widget _buildQuickPlaySection() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -981,6 +985,7 @@ class _HomePageState extends State<HomePage> {
       ),
       child: Row(
         children: [
+          // 左半部:快速播放
           Expanded(
             child: Row(
               children: [
@@ -1006,6 +1011,7 @@ class _HomePageState extends State<HomePage> {
 
           const SizedBox(width: 16),
 
+          // 右半部:排序方式
           Row(
             children: [
               const Icon(Icons.sort, color: Colors.grey, size: 20),
@@ -1029,7 +1035,7 @@ class _HomePageState extends State<HomePage> {
                     setState(() {
                       _selectedSortType = value!;
                     });
-                    _fetchNews();
+                    _fetchNews(); // 重新整理頁面
                   },
                 ),
               ),
@@ -1098,6 +1104,7 @@ class _HomePageState extends State<HomePage> {
           controller: _scrollController,
           itemCount: _newsData.length + (_isLoadingMore ? 1 : 0),
           itemBuilder: (context, index) {
+            // 顯示載入更多指示器
             if (index == _newsData.length) {
               return Container(
                 padding: const EdgeInsets.all(16),
@@ -1216,9 +1223,9 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // 🎵 修改：播放器顯示剩餘篇數
+  // 修改後的播放器
   Widget _buildMusicPlayer() {
-    if (_customTexts.isEmpty) return Container();
+    if (_newsData.isEmpty) return Container();
 
     return Positioned(
       bottom: 0,
@@ -1239,6 +1246,7 @@ class _HomePageState extends State<HomePage> {
         ),
         child: Row(
           children: [
+            // 左側新聞信息
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1249,7 +1257,7 @@ class _HomePageState extends State<HomePage> {
                       const Icon(Icons.flash_on, color: Colors.orange, size: 20),
                       const SizedBox(width: 8),
                       Text(
-                        '快速播放：剩餘 ${_totalTexts - _currentTextIndex} 篇',
+                        '快速播放：剩餘${_formatRemainingTime()}',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
@@ -1258,34 +1266,15 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  if (_isLoadingAudio)
-                    const Row(
-                      children: [
-                        SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          '正在轉換語音...',
-                          style: TextStyle(fontSize: 12, color: Colors.grey),
-                        ),
-                      ],
-                    )
-                  else
-                    Text(
-                      '第 ${_currentTextIndex + 1} 篇',
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
                 ],
               ),
             ),
 
+            // 右側控制按鈕
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // 調整倍速按鈕
                 GestureDetector(
                   onTap: _adjustPlaybackSpeed,
                   child: Container(
@@ -1303,24 +1292,28 @@ class _HomePageState extends State<HomePage> {
 
                 const SizedBox(width: 8),
 
+                // 上一篇按鈕
                 IconButton(
-                  onPressed: _currentTextIndex > 0 ? _previousNews : null,
+                  onPressed: _currentParagraphIndex > 0 ? _previousNews : null,
                   icon: const Icon(Icons.skip_previous),
                   iconSize: 24,
                 ),
 
+                // 播放/暫停按鈕
                 IconButton(
                   onPressed: _togglePlayPause,
                   icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow),
                   iconSize: 28,
                 ),
 
+                // 下一篇按鈕
                 IconButton(
-                  onPressed: _currentTextIndex < _totalTexts - 1 ? _nextNews : null,
+                  onPressed: _currentParagraphIndex < paragraphText.length - 1 ? _nextNews : null,
                   icon: const Icon(Icons.skip_next),
                   iconSize: 24,
                 ),
 
+                // 關閉按鈕
                 IconButton(
                   onPressed: _closePlayer,
                   icon: const Icon(Icons.close),
@@ -1372,11 +1365,8 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
-    _countdownTimer?.cancel();
-    _scrollController.dispose();
     _audioPlayer.dispose();
-    _textInputController.dispose();
-    _articleCountController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 }
