@@ -79,7 +79,7 @@ async function searchGroupcustomize (req, res, next) {
                 return res.apiSuccess ( {success: false, result:result}, "Search Not Found");
             //if ( groupId ) return res.apiSuccess ( {success: true, result:result}, "Search Success")
             
-            return res.apiSuccess ( result, "Search Success");
+            return res.apiSuccess ( {success: true, result:result}, "Search Success");
             
         } catch (err) {
             err.desc = "middlewares-searchGroupcustomize(): database search error";
