@@ -5,23 +5,28 @@ const { callAndCatchApiSuccess } = require('../utils/fakeHelper');
 // search
 async function searchGroupcustomize (req, res, next) {
     /*
-    @ kind: name, bookmark
+    @ kind: name, bookmark, order
     @
     @ name    : groupcustomize_name
     @           參數 : name
     @ bookmark: groupcustomize_bookmark
     @           參數 : userId, groupId: []
+    @ order : 
+    @           參數 : userId, type : ["general", "bookmark"], dataType: ["news", "channel", "eventsorting", "multipleperspectives"]
     */
     let kind = req.params?.kind;
-    let { userId, name, groupId } = req.body ?? {};
+    let { userId, name, groupId, type, dataType } = req.query ?? {};
+
 
     // 檢查必要欄位 & 格式 - kind, userId, name
     try {
-        [ kind, userId, name ] = await checkRequireField ([
-            { field: 'kind'     , data: kind    , type: 'string' , other: ['non_null'], enum: ['name', 'bookmark', 'general'] },
-            { field: 'userId'   , data: userId  , type: 'number' , other: ['lth']   },
-            { field: 'name'     , data: name    , type: 'string' , other: ['lth']   },
-            { field: 'groupId'  , data: groupId , type: 'array'  , other: ['lth', 'number_into_array'] , array_filter: "number" },
+        [ kind, userId, name, groupId, type, dataType ] = await checkRequireField ([
+            { field: 'kind'     , data: kind    , type: 'string'    , other: ['non_null'], enum: ['name', 'bookmark', 'order'] },
+            { field: 'userId'   , data: userId  , type: 'number'    , other: ['lth']},
+            { field: 'name'     , data: name    , type: 'string'    , other: ['lth']},
+            { field: 'groupId'  , data: groupId , type: 'array'     , other: ['lth', 'number_into_array'] , array_filter: "number" },
+            { field: 'type'     , data: type    , type: 'string'      , other: ['lth']     , enum: ['general', 'bookmark']},
+            { field: 'dataType' , data: dataType, type: 'string'  , other: ['lth']     , enum: ['news', 'channel', 'eventsorting', 'multipleperspectives']}
         ]);
     } catch (err) {
         err.desc = "middlewares-insertGroupcustomize(): Missing or Invalid required fields";
@@ -76,6 +81,38 @@ async function searchGroupcustomize (req, res, next) {
             
             return res.apiSuccess ( {success: true, result:result}, "Search Success");
             
+        } catch (err) {
+            err.desc = "middlewares-searchGroupcustomize(): database search error";
+            return next(err);
+        }
+    }
+
+    if ( kind === "order" && type) {
+        let sql = '';
+        let params = [];
+        if (type=="general") {
+            sql = `
+                SELECT group_id, group_name
+                FROM groupcustomize_general
+                NATURAL JOIN group_data
+                WHERE user_id = ?
+                ORDER BY group_order
+            `;
+            params = [userId];
+        }
+        if (type=="bookmark") {
+            sql = `
+                SELECT groupcustomize_id, groupcustomize_name
+                FROM groupcustomize_bookmark
+                WHERE user_id = ? AND groupcustomize_type = ?
+                ORDER BY groupcustomize_order
+            `;
+            params = [userId, dataType];
+        }
+
+        try {
+            let [result] = await pool.query(sql, params);
+            return res.apiSuccess ( {success: true, result:result}, "Search Success");
         } catch (err) {
             err.desc = "middlewares-searchGroupcustomize(): database search error";
             return next(err);

@@ -9,12 +9,15 @@ const { searchNews } = require('./newsController');
 async function generalScript(req, res, next) {
     let { id } = req.params ?? {}
 
+    idList = id;
+
     let fakeReq = {
         body: {}
     }
     try {
         let result = await callAndCatchApiSuccess(searchNews, fakeReq);
         console.log("result", result);
+        return res.apiSuccess(result, "Search Success");
     } catch (err) {
         err.desc = "middlewares-scriptController(): error";
     }
