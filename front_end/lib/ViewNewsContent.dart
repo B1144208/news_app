@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:typed_data';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'ChannelDetailPage.dart';
 import 'LoginPage.dart';
@@ -29,7 +31,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
 
   // 模擬留言數據
   final List<Map<String, dynamic>> _comments = [
-    {'user': '用戶A', 'content': '這個新聞很有意思！', 'time': '2小時前', 'avatar': 'A'},
+    {'user': '用戶A', 'content': '這個新聞很有意思!', 'time': '2小時前', 'avatar': 'A'},
     {'user': '用戶B', 'content': '感謝分享這個重要資訊', 'time': '3小時前', 'avatar': 'B'},
     {'user': '用戶C', 'content': '希望能有更多這樣的報導', 'time': '5小時前', 'avatar': 'C'},
   ];
@@ -41,10 +43,45 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
   String _selectedReadMode = '';
   double _playbackSpeed = 1.0;
 
+  // ========== 新增：TTS AudioPlayer ==========
+  final AudioPlayer _audioPlayer = AudioPlayer();
+
+  // ========== 新增：後台文本串列輸入區塊 ==========
+  // 一般朗讀模式的文本 - 從資料庫中的 news_body 抓取 body_type 為 text 的 body_text
+  List<String> generalPlaymodeTexts = [];
+
+  // 新聞播報模式的文本 - 手動輸入的播報稿
+  String reporterPlaymode = '''
+各位觀眾大家好,歡迎收看今日新聞快報。
+
+接下來為您播報今天的頭條新聞。
+
+本新聞由我們的記者團隊精心採訪編輯,為您帶來最新、最準確的資訊。
+
+感謝您的收看,我們下次見。
+''';
+
   @override
   void initState() {
     super.initState();
     _fetchNewsDetail();
+
+    // ========== 新增：監聽音訊播放事件 ==========
+    _audioPlayer.onPlayerComplete.listen((event) {
+      _onAudioComplete();
+    });
+
+    _audioPlayer.onPlayerStateChanged.listen((state) {
+      if (state == PlayerState.playing) {
+        setState(() {
+          _isPlaying = true;
+        });
+      } else if (state == PlayerState.paused || state == PlayerState.stopped) {
+        setState(() {
+          _isPlaying = false;
+        });
+      }
+    });
   }
 
   // 使用 POST 請求獲取新聞詳細內容
@@ -95,6 +132,8 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
 
               if (newsData['newsBody'] != null) {
                 _newsBody = _parseNewsBody(newsData['newsBody']);
+                // ========== 新增：提取文本內容到 generalPlaymodeTexts ==========
+                _extractTextFromNewsBody();
               }
 
               _isLoading = false;
@@ -152,6 +191,22 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
     return parsedBody;
   }
 
+  // ========== 新增：從 news_body 中提取所有 body_type 為 'text' 的 body_text ==========
+  void _extractTextFromNewsBody() {
+    generalPlaymodeTexts.clear();
+
+    for (var body in _newsBody) {
+      if (body['body_type'] == 'text' && body['body_text'] != null) {
+        String text = body['body_text'].trim();
+        if (text.isNotEmpty) {
+          generalPlaymodeTexts.add(text);
+        }
+      }
+    }
+
+    print('📝 已提取 ${generalPlaymodeTexts.length} 段文本用於一般朗讀模式');
+  }
+
   // 格式化日期時間
   String _formatDateTime(String? dateString) {
     if (dateString == null) return '未知時間';
@@ -189,7 +244,6 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
             backgroundColor: Colors.orange,
           ),
         );
-        // 可選：導航到登入頁面
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const LoginPage()),
@@ -212,25 +266,148 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
     }
   }
 
-  // 開始朗讀
-  void _startReading(String mode) {
+  // ========== 修改：開始朗讀 - 根據不同模式播放不同內容 ==========
+  Future<void> _startReading(String mode) async {
     setState(() {
       _selectedReadMode = mode;
       _showReadModes = false;
       _isPlayerVisible = true;
-      _isPlaying = true;
     });
+
+    // 根據不同模式播放不同內容
+    if (mode == '一般朗讀') {
+      await _playGeneralMode();
+    } else if (mode == '新聞播報') {
+      await _playReporterMode();
+    } else if (mode == '對話模式') {
+      // 對話模式先不做
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('對話模式開發中')),
+        );
+      }
+      _closePlayer();
+    }
   }
 
-  // 切換播放/暫停
-  void _togglePlayPause() {
-    setState(() {
-      _isPlaying = !_isPlaying;
-    });
+  // ========== 新增：一般朗讀模式 - 播放從資料庫抓取的文本 ==========
+  Future<void> _playGeneralMode() async {
+    if (generalPlaymodeTexts.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('沒有可朗讀的內容')),
+        );
+      }
+      _closePlayer();
+      return;
+    }
+
+    // 將所有文本段落合併成一段完整的文本
+    String fullText = generalPlaymodeTexts.join('\n\n');
+    await _playTextWithTTS(fullText);
   }
 
-  // 調整播放倍速
-  void _adjustPlaybackSpeed() {
+  // ========== 新增：新聞播報模式 - 播放預設的播報稿 ==========
+  Future<void> _playReporterMode() async {
+    if (reporterPlaymode.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('播報稿為空')),
+        );
+      }
+      _closePlayer();
+      return;
+    }
+
+    await _playTextWithTTS(reporterPlaymode);
+  }
+
+  // ========== 新增：使用 TTS API 將文本轉換成語音並播放 ==========
+  Future<void> _playTextWithTTS(String text) async {
+    try {
+      print('🎵 準備播放文本: ${text.substring(0, text.length > 50 ? 50 : text.length)}...');
+
+      // 呼叫 TTS API
+      final response = await http.post(
+        Uri.parse('http://localhost:3000/api/tts'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'text': text,
+          'voiceId': '9lHjugDhwqoxA5MhX0az', // ANNA_SU - Taiwan, social media
+          'stability': 0.5,
+          'similarity_boost': 0.75,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        // 獲取音訊 bytes
+        final Uint8List bytes = response.bodyBytes;
+
+        print('✅ 收到音訊數據: ${bytes.length} bytes');
+
+        // 停止當前播放
+        await _audioPlayer.stop();
+
+        // 轉換為 base64 data URL
+        final String base64Audio = base64Encode(bytes);
+        final String dataUrl = 'data:audio/mpeg;base64,$base64Audio';
+
+        print('🔄 轉換為 data URL, 長度: ${dataUrl.length}');
+
+        // 設定播放速度
+        await _audioPlayer.setPlaybackRate(_playbackSpeed);
+
+        // 使用 UrlSource 播放 data URL
+        await _audioPlayer.play(UrlSource(dataUrl));
+
+        setState(() {
+          _isPlaying = true;
+        });
+
+        print('🎵 正在播放 $_selectedReadMode 模式');
+      } else {
+        print('❌ TTS API 錯誤: ${response.statusCode}');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('語音合成失敗: ${response.statusCode}')),
+          );
+        }
+        _closePlayer();
+      }
+    } catch (e) {
+      print('❌ 播放錯誤: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('播放錯誤: $e')),
+        );
+      }
+      _closePlayer();
+    }
+  }
+
+  // ========== 新增：音訊播放完成回調 ==========
+  void _onAudioComplete() {
+    print('✅ 播放完成');
+    _closePlayer();
+  }
+
+  // ========== 修改：切換播放/暫停 - 使用 audioplayers ==========
+  Future<void> _togglePlayPause() async {
+    if (_isPlaying) {
+      await _audioPlayer.pause();
+      setState(() {
+        _isPlaying = false;
+      });
+    } else {
+      await _audioPlayer.resume();
+      setState(() {
+        _isPlaying = true;
+      });
+    }
+  }
+
+  // ========== 修改：調整播放倍速 - 使用 audioplayers ==========
+  Future<void> _adjustPlaybackSpeed() async {
     setState(() {
       if (_playbackSpeed == 0.5) {
         _playbackSpeed = 1.0;
@@ -240,10 +417,14 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
         _playbackSpeed = 0.5;
       }
     });
+
+    // 更新 AudioPlayer 的播放速度
+    await _audioPlayer.setPlaybackRate(_playbackSpeed);
   }
 
-  // 關閉播放器
-  void _closePlayer() {
+  // ========== 修改：關閉播放器 - 使用 audioplayers ==========
+  Future<void> _closePlayer() async {
+    await _audioPlayer.stop();
     setState(() {
       _isPlayerVisible = false;
       _isPlaying = false;
@@ -1098,6 +1279,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
 
   @override
   void dispose() {
+    _audioPlayer.dispose();
     _commentController.dispose();
     _chatController.dispose();
     super.dispose();
