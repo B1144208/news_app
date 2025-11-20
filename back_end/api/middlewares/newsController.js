@@ -207,6 +207,7 @@ async function searchNews(req, res, next) {
         WHERE nb.news_id IN (?)
         ORDER BY nb.news_id, nb.body_order;
     `;
+    params = [ idList ];
     const bodyGrouped = {};
     try {
         let [result] = await pool.query(sql, params);

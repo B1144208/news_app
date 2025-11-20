@@ -8,7 +8,7 @@ QUESTION="${1:-}"
 
 # 用 jq 安全組 JSON payload
 payload=$(jq -n \
-  --arg model   "deepseek-r1:7b" \
+  --arg model   "deepseek-coder:1.3b" \
   --arg prompt  "$QUESTION" \
   --argjson stream false \
   '{model:$model, prompt:$prompt, stream:$stream}')

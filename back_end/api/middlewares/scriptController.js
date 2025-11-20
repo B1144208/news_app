@@ -5,30 +5,69 @@ const { execFile } = require('child_process');
 const path = require('path');
 const { searchNews } = require('./newsController');
 
+/*
+@ general, reporter, chat: 給予一個 List {"id", "title", "text"}
+@ general: 僅 news_body
+@ reporter: 記者播報
+@ chat: 聊天對白
+@
+*/
+
+
 // ---- general ----
 async function generalScript(req, res, next) {
-    let { id } = req.params ?? {}
+    let { id, limit, times } = req.params ?? {}
 
-    idList = id;
+    
+
+    try {
+        [ id, limit, times ] = await checkRequireField ([
+            { field: 'id'   , data: id    , type: 'number' , other: ['lth'] },
+            { field: 'limit', data: limit , type: 'number' , other: ['non_null'] , default: 300},
+            { field: 'times', data: times , type: 'number' , other: ['non_null'] , default: 1},
+        ]);
+    } catch (err) {
+        err.desc = "middlewares-updateGroupOrder(): Missing or Invalid required fields";
+        return next(err);
+    }
+
+    idList = [id];
 
     let fakeReq = {
+        query: { mode: "id" },
         body: {}
     }
     try {
         let result = await callAndCatchApiSuccess(searchNews, fakeReq);
-        console.log("result", result);
+        idList.push(...(result?.idList || []));
+        //return res.apiSuccess(result, "Search Success");
+    } catch (err) {
+        err.desc = "middlewares-scriptController(): error";
+        return next(err);
+    }
+    fakeReq = {
+        query: { mode: "complex" },
+        body: { id: idList}
+    }
+    try {
+        let result = await callAndCatchApiSuccess(searchNews, fakeReq);
+        result.complexList = result.complexList.map(item => ({
+          id: item.newsId,
+          title: item.newsTitle,
+          body: item.newsBody
+        }))
         return res.apiSuccess(result, "Search Success");
     } catch (err) {
         err.desc = "middlewares-scriptController(): error";
+        return next(err);
     }
-
 
     // 先 genreate 一組 idList (searchNews {})
     // 下一個 >> remove 第一個，聽第一個 
     // 剩最後1個時再自動用最後1個id繼續 generate
 
     //  [ {"text"}, {"text"}, {"text"} ]
-    return;
+    //return;
 }
 
 // ---- reporter ----
