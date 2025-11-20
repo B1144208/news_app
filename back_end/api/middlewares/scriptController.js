@@ -4,6 +4,10 @@ const { callAndCatchApiSuccess } = require('../utils/fakeHelper');
 const { execFile } = require('child_process');
 const path = require('path');
 const { searchNews } = require('./newsController');
+const axios = require('axios');
+
+const OLLAMA_URL = 'http://localhost:11434/api/generate';
+const OLLAMA_MODEL = 'deepseek-coder:1.3b';
 
 /*
 @ general, reporter, chat: 給予一個 List {"id", "title", "text"}
@@ -13,28 +17,27 @@ const { searchNews } = require('./newsController');
 @
 */
 
-
 // ---- general ----
 async function generalScript(req, res, next) {
-    let { id, limit, times } = req.params ?? {}
-
-    
+    let { id, times } = req.params ?? {}
 
     try {
-        [ id, limit, times ] = await checkRequireField ([
+        [ id, times ] = await checkRequireField ([
             { field: 'id'   , data: id    , type: 'number' , other: ['lth'] },
-            { field: 'limit', data: limit , type: 'number' , other: ['non_null'] , default: 300},
-            { field: 'times', data: times , type: 'number' , other: ['non_null'] , default: 1},
+            { field: 'times', data: times , type: 'number' , other: ['non_null'] , default: 1}
         ]);
     } catch (err) {
         err.desc = "middlewares-updateGroupOrder(): Missing or Invalid required fields";
         return next(err);
     }
 
+    // ****************************************************************************
+    limit = 2;
+
     idList = [id];
 
     let fakeReq = {
-        query: { mode: "id" },
+        query: { mode: "id" , limit: limit},
         body: {}
     }
     try {
@@ -42,7 +45,7 @@ async function generalScript(req, res, next) {
         idList.push(...(result?.idList || []));
         //return res.apiSuccess(result, "Search Success");
     } catch (err) {
-        err.desc = "middlewares-scriptController(): error";
+        err.desc = "middlewares-generalScript(): error";
         return next(err);
     }
     fakeReq = {
@@ -51,11 +54,18 @@ async function generalScript(req, res, next) {
     }
     try {
         let result = await callAndCatchApiSuccess(searchNews, fakeReq);
-        result.complexList = result.complexList.map(item => ({
-          id: item.newsId,
-          title: item.newsTitle,
-          body: item.newsBody
-        }))
+
+        result = result.complexList.map(item => {
+          const bodyText = (item.newsBody || [])
+            .filter(part => typeof part.text === 'string' && part.text.trim() !== '')
+            .map(part => part.text.trim())
+            .join('\n');
+          return {
+            id: item.newsId,
+            title: item.newsTitle,
+            text: bodyText
+          }
+        });
         return res.apiSuccess(result, "Search Success");
     } catch (err) {
         err.desc = "middlewares-scriptController(): error";
@@ -72,9 +82,57 @@ async function generalScript(req, res, next) {
 
 // ---- reporter ----
 async function reporterScript(req, res, next) {
-    let { id } = req.params ?? {}
+    let { id, times } = req.params ?? {}
     // 交給 generalScript 生成的一組id及text，用deepseek 產生 reporterScript
-    return;
+
+    // 1️⃣ 先呼叫 generalScript 拿原始 {id,title,text}
+    let fakeReq = {
+      params: {id: id}
+    }
+    let generalScriptResult;
+    try {
+      generalScriptResult = await callAndCatchApiSuccess(generalScript, fakeReq);
+      //return res.apiSuccess(generalScriptResult);
+    } catch (err) {
+      err.desc = "middlewares-reporterScript(): call generalScript error";
+        return next(err);
+    }
+    
+    try {
+    // 2️⃣ 取得裡面的陣列：可能是 result 或 result.list
+    const items = Array.isArray(generalScriptResult)
+      ? generalScriptResult
+      : generalScriptResult.list ?? [];
+
+    // 3️⃣ 對每一筆丟給 DeepSeek 產生播報稿
+    const reporterItems = await Promise.all(
+      items.map((item) =>
+        callDeepseekReporterScript({
+          id: item.id,
+          title: item.title,
+          text: item.text,
+        }),
+      ),
+    );
+
+    // 4️⃣ 組回輸出的格式
+    let output;
+    if (Array.isArray(generalScriptResult)) {
+      // 原本就是陣列 → 直接回陣列
+      output = reporterItems;
+    } else {
+      // 原本是物件（例如 { list, total, ... }）→ 保留其它欄位，只把 list 換掉
+      output = {
+        ...generalScriptResult,
+        list: reporterItems,
+      };
+    }
+
+    return res.apiSuccess(output);
+  } catch (err) {
+    err.desc = 'middlewares-reporterScript(): call deepseek error';
+    return next(err);
+  }
 }
 
 // ---- chat ----
@@ -109,6 +167,43 @@ async function callAskScript(req, res, next) {
     console.error(err);
     res.status(500).json({ error: "Failed to execute ask.sh" });
   }
+}
+
+
+async function callDeepseekReporterScript({ id, title, text }) {
+  // 組 prompt：請 DeepSeek 幫忙改寫成 80~100 字的播報稿
+  const prompt =
+    '你是一位台灣電視新聞台的記者，請根據以下新聞標題與全文內容，' +
+    '撰寫一段約 80 到 100 字的中文播報稿。\n\n' +
+    '要求：\n' +
+    '1. 保留主要事實與數據，刪去重複內容。\n' +
+    '2. 使用口語化、第三人稱播報語氣。\n' +
+    '3. 不要加入新的資訊，也不要加標題或說明文字，只輸出播報稿內容本身。\n\n' +
+    '【標題】\n' + title + '\n\n' +
+    '【內文】\n' + text + '\n\n' +
+    '【請開始撰寫播報稿】';
+
+  const payload = {
+    model: OLLAMA_MODEL,
+    prompt,
+    stream: false,
+  };
+
+  const resp = await axios.post(OLLAMA_URL, payload, {
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+  let script = resp.data?.response || '';
+
+  // 如果你的 DeepSeek 會輸出 <think>...</think>，這裡順便清掉
+  script = script.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+
+  // 回傳保持 {id, title, text} 結構，只把 text 換成播報稿
+  return {
+    id,
+    title,
+    text: script,
+  };
 }
 
 // ---- 匯出所有函式 ----
