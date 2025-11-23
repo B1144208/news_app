@@ -324,7 +324,7 @@ async function callDeepseekReporterScript({ id, title, text }) {
     prompt,
     stream: false,
     options: {
-      num_predict: 80
+      num_predict: 256
     },
   };
 
