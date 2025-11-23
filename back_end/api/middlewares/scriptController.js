@@ -233,7 +233,7 @@ async function callDeepseekReporterScript({ id, title, text }) {
     stream: false,
     // 可選：略微限制輸出長度，間接縮短時間
     options: {
-      num_predict: 256   // 視模型而定，大約 80~120 字足夠
+      num_predict: 80   // 視模型而定，大約 80~120 字足夠
     },
   };
 
