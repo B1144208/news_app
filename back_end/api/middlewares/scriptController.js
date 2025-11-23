@@ -246,7 +246,7 @@ async function callDeepseekReporterScript({ id, title, text }) {
 
   //const system = '你是一位台灣電視新聞台的記者，負責把新聞改寫成80–100字的中文播報稿。口語化第三人稱，只保留關鍵事實與數字，不新增資訊或評論，不要加標題或說明文字，也不要提到自己或AI身分，只輸出播報稿內容。';
   const prompt =
-    '將下列新聞改寫成約 50 到 60 字的中文電視新聞播報稿。' +
+    '將下列新聞改寫成約 60 到 80 字的中文電視新聞播報稿。' +
     '口語化、第三人稱，只保留關鍵事實與數字，不新增資訊或評論，' +
     '不要加標題或說明文字，也不要提到自己或 AI 身分。\n\n' +
     '【標題】\n' + title + '\n\n' +
@@ -259,7 +259,7 @@ async function callDeepseekReporterScript({ id, title, text }) {
     prompt,
     stream: false,
     options: {
-      num_predict: 50
+      num_predict: 80
     },
   };
 
