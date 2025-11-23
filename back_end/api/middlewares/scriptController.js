@@ -110,7 +110,7 @@ async function reporterScript(req, res, next) {
       const result = await callDeepseekReporterScript({
         id: item.id,
         title: item.title,
-        text: shortenArticle(item.text, 4),
+        text: item.text //shortenArticle(item.text, 4),
       });
       reporterItems.push(result);
     }
@@ -157,7 +157,7 @@ async function quickScript(req, res, next) {
     return;
 }
 
-function shortenArticle(text, maxSentences = 4) {
+/*function shortenArticle(text, maxSentences = 4) {
   if (!text) return '';
 
   // 粗暴做法：用全形句號切段
@@ -165,7 +165,7 @@ function shortenArticle(text, maxSentences = 4) {
   const head = parts.slice(0, maxSentences).join('。');
 
   return head + (head.endsWith('。') ? '' : '。');
-}
+}*/
 
 function cleanNewsScript(raw) {
   if (!raw) return '';
