@@ -7,7 +7,7 @@ const { searchNews } = require('./newsController');
 const axios = require('axios');
 
 const OLLAMA_URL = 'http://localhost:11434/api/generate';
-const OLLAMA_MODEL = 'qwen2.5:0.5b';
+const OLLAMA_MODEL = 'qwen2.5:1.5b';
 
 /*
 @ general, reporter, chat: 給予一個 List {"id", "title", "text"}
