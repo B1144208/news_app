@@ -231,9 +231,9 @@ async function callDeepseekReporterScript({ id, title, text }) {
   console.log("text: ", text);
 
   // 組 prompt：請 DeepSeek 幫忙改寫成 80~100 字的播報稿
-  const prompt =
+  /*const prompt =
     '你是一位台灣電視新聞台的記者，請根據以下新聞標題與全文內容，' +
-    '撰寫一段約 80 到 100 字的中文播報稿。\n\n' +
+    '撰寫一段約 50 到 60 字的中文播報稿。\n\n' +
     '要求：\n' +
     '1. 保留主要事實與數據，刪去重複內容。\n' +
     '2. 使用口語化、第三人稱播報語氣。\n' +
@@ -243,16 +243,25 @@ async function callDeepseekReporterScript({ id, title, text }) {
     '【標題】\n' + title + '\n\n' +
     '【內文】\n' + text + '\n\n' +
     '【請開始撰寫播報稿】';
+  */
 
+  const system = '你是一位台灣電視新聞台的記者，負責把新聞改寫成80–100字的中文播報稿。口語化第三人稱，只保留關鍵事實與數字，不新增資訊或評論，不要加標題或說明文字，也不要提到自己或AI身分，只輸出播報稿內容。';
+  const prompt =
+    '將下列新聞改寫成約 50 到 60 字的中文電視新聞播報稿。' +
+    '口語化、第三人稱，只保留關鍵事實與數字，不新增資訊或評論，' +
+    '不要加標題或說明文字，也不要提到自己或 AI 身分。\n\n' +
+    '【標題】\n' + title + '\n\n' +
+    '【內文】\n' + text + '\n\n' +
+    '請直接輸出播報稿內容。';
   
   const start = Date.now();
   const payload = {
     model: OLLAMA_MODEL,
+    system,
     prompt,
     stream: false,
-    // 可選：略微限制輸出長度，間接縮短時間
     options: {
-      num_predict: 80   // 視模型而定，大約 80~120 字足夠
+      num_predict: 50
     },
   };
 
