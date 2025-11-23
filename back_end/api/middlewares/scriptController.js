@@ -105,7 +105,16 @@ async function reporterScript(req, res, next) {
       : generalScriptResult.list ?? [];
 
     // 3️⃣ 對每一筆丟給 DeepSeek 產生播報稿
-    const reporterItems = await Promise.all(
+    const reporterItems = [];
+    for (const item of items) {
+      const result = await callDeepseekReporterScript({
+        id: item.id,
+        title: item.title,
+        text: shortenArticle(item.text, 4),
+      });
+      reporterItems.push(result);
+    }
+    /*const reporterItems = await Promise.all(
       items.map((item) =>
         callDeepseekReporterScript({
           id: item.id,
@@ -113,7 +122,7 @@ async function reporterScript(req, res, next) {
           text: item.text,
         }),
       ),
-    );
+    );*/
 
     // 4️⃣ 組回輸出的格式
     let output;
@@ -211,6 +220,16 @@ async function callAskScript(req, res, next) {
 
 
 async function callDeepseekReporterScript({ id, title, text }) {
+
+  // text 切小
+  if (!text) return '';
+
+  // 粗暴做法：用全形句號切段
+  const parts = text.split(/。/);
+  const head = parts.slice(0, maxSentences).join('。');
+  text = head + (head.endsWith('。') ? '' : '。');
+  console.log("text: ", text);
+
   // 組 prompt：請 DeepSeek 幫忙改寫成 80~100 字的播報稿
   const prompt =
     '你是一位台灣電視新聞台的記者，請根據以下新聞標題與全文內容，' +
