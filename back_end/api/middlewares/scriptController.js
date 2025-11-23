@@ -148,6 +148,46 @@ async function quickScript(req, res, next) {
     return;
 }
 
+
+
+function cleanNewsScript(raw) {
+  if (!raw) return '';
+
+  // 先切行＋去掉前後空白＋濾掉空白行
+  const lines = raw
+    .split(/\r?\n/)
+    .map(l => l.trim())
+    .filter(Boolean);
+
+  const filtered = lines.filter(line => {
+    // 把跟「我是AI、回答問題、安全聲明」有關的句子砍掉
+    return !(
+      /作為.?AI/i.test(line) ||
+      /作為一個?人工智慧/i.test(line) ||
+      /身為.?AI/i.test(line) ||
+      /我是一個?AI/i.test(line) ||
+      /無法提供(醫療|法律)建議/.test(line) ||
+      /不能替代專業(醫療|法律)/.test(line) ||
+      /如果您有任何問題/.test(line) ||
+      /如果你有任何問題/.test(line) ||
+      /建議您尋求專業/.test(line) ||
+      /僅供參考/.test(line) ||
+      /感謝你的提問/.test(line) ||
+      /感謝您的提問/.test(line) ||
+      /回答你的問題是/.test(line) ||
+      /回答您的問題是/.test(line) ||
+      /超出我的能力範圍/.test(line)
+    );
+  });
+
+  let cleaned = filtered.join('\n').trim();
+
+  // 再把「播報稿：」「新聞播報：」之類開頭字眼拿掉
+  cleaned = cleaned.replace(/^(播報稿|新聞播報|以下是播報內容)[：:\s]*/i, '');
+
+  return cleaned;
+}
+
 // ---- call ask.sh ----
 async function callAskScript(req, res, next) {
   try {
@@ -178,25 +218,52 @@ async function callDeepseekReporterScript({ id, title, text }) {
     '要求：\n' +
     '1. 保留主要事實與數據，刪去重複內容。\n' +
     '2. 使用口語化、第三人稱播報語氣。\n' +
-    '3. 不要加入新的資訊，也不要加標題或說明文字，只輸出播報稿內容本身。\n\n' +
+    '3. 不要加入新的資訊，也不要加標題或說明文字，只輸出播報稿內容本身。\n' +
+    '4. 不要說自己是 AI 或模型，不要回答提問，不要給任何建議或安全聲明（例如「如果您有任何問題」等）。\n' +
+    '5. 不要輸出「播報稿：」「新聞播報：」等提示語，只輸出內容。\n\n' +
     '【標題】\n' + title + '\n\n' +
     '【內文】\n' + text + '\n\n' +
     '【請開始撰寫播報稿】';
 
+  
+  const start = Date.now();
   const payload = {
     model: OLLAMA_MODEL,
     prompt,
     stream: false,
+    // 可選：略微限制輸出長度，間接縮短時間
+    options: {
+      num_predict: 256   // 視模型而定，大約 80~120 字足夠
+    },
   };
 
-  const resp = await axios.post(OLLAMA_URL, payload, {
-    headers: { 'Content-Type': 'application/json' },
-  });
+  let resp;
+  try {
+    resp = await axios.post(OLLAMA_URL, payload, {
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 5000, // ⏱ 最多給 5 秒，超過就丟錯
+    });
+  } catch (err) {
+    // 這裡是「思考超過 5 秒」或其他連線錯誤的處理
+    if (err.code === 'ECONNABORTED') {
+      // timeout
+      console.error(`DeepSeek timeout: reporterScript id=${id}`);
+    } else {
+      console.error(`DeepSeek error: reporterScript id=${id}`, err.message);
+    }
+    // 讓外層的 try/catch 處理這個錯誤
+    throw err;
+  }
 
   let script = resp.data?.response || '';
 
-  // 如果你的 DeepSeek 會輸出 <think>...</think>，這裡順便清掉
+  // 如果 DeepSeek 有 <think>...</think> 先清掉
   script = script.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+
+  // 再用我們的清理函式，把 AI 自我介紹、免責聲明拿掉
+  script = cleanNewsScript(script);
+
+  console.log('deepseek latency(ms):', Date.now() - start);
 
   // 回傳保持 {id, title, text} 結構，只把 text 換成播報稿
   return {
