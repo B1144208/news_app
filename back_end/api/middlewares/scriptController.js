@@ -241,7 +241,7 @@ async function callDeepseekReporterScript({ id, title, text }) {
   try {
     resp = await axios.post(OLLAMA_URL, payload, {
       headers: { 'Content-Type': 'application/json' },
-      timeout: 5000, // ⏱ 最多給 5 秒，超過就丟錯
+      //timeout: 5000, // ⏱ 最多給 5 秒，超過就丟錯
     });
   } catch (err) {
     // 這裡是「思考超過 5 秒」或其他連線錯誤的處理
