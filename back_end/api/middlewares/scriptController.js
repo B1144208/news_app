@@ -157,7 +157,15 @@ async function quickScript(req, res, next) {
     return;
 }
 
+function shortenArticle(text, maxSentences = 4) {
+  if (!text) return '';
 
+  // 粗暴做法：用全形句號切段
+  const parts = text.split(/。/);
+  const head = parts.slice(0, maxSentences).join('。');
+
+  return head + (head.endsWith('。') ? '' : '。');
+}
 
 function cleanNewsScript(raw) {
   if (!raw) return '';
@@ -220,15 +228,6 @@ async function callAskScript(req, res, next) {
 
 
 async function callDeepseekReporterScript({ id, title, text }) {
-
-  // text 切小
-  if (!text) return '';
-
-  // 粗暴做法：用全形句號切段
-  const parts = text.split(/。/);
-  const head = parts.slice(0, maxSentences).join('。');
-  text = head + (head.endsWith('。') ? '' : '。');
-  console.log("text: ", text);
 
   // 組 prompt：請 DeepSeek 幫忙改寫成 80~100 字的播報稿
   /*const prompt =
