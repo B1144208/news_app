@@ -105,7 +105,7 @@ async function reporterScript(req, res, next) {
       : generalScriptResult.list ?? [];
 
     // 3️⃣ 對每一筆丟給 DeepSeek 產生播報稿
-    const reporterItems = [];
+    /*const reporterItems = [];
     for (const item of items) {
       const result = await callDeepseekReporterScript({
         id: item.id,
@@ -113,8 +113,8 @@ async function reporterScript(req, res, next) {
         text: item.text //shortenArticle(item.text, 4),
       });
       reporterItems.push(result);
-    }
-    /*const reporterItems = await Promise.all(
+    }*/
+    const reporterItems = await Promise.all(
       items.map((item) =>
         callDeepseekReporterScript({
           id: item.id,
@@ -122,7 +122,7 @@ async function reporterScript(req, res, next) {
           text: item.text,
         }),
       ),
-    );*/
+    );
 
     // 4️⃣ 組回輸出的格式
     let output;
