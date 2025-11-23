@@ -119,7 +119,7 @@ async function reporterScript(req, res, next) {
         callDeepseekReporterScript({
           id: item.id,
           title: item.title,
-          text: item.text,
+          text: shortenArticle(item.text)
         }),
       ),
     );
@@ -157,15 +157,66 @@ async function quickScript(req, res, next) {
     return;
 }
 
-/*function shortenArticle(text, maxSentences = 4) {
+function shortenArticle(text, maxChars = 600) {
   if (!text) return '';
 
-  // 粗暴做法：用全形句號切段
-  const parts = text.split(/。/);
-  const head = parts.slice(0, maxSentences).join('。');
+  // 先把多餘空白去掉
+  const cleaned = text
+    .replace(/\s+/g, ' ')   // 把連續空白壓成一個
+    .replace(/\n+/g, '');   // 移除換行（句子切割會用標點）
 
-  return head + (head.endsWith('。') ? '' : '。');
-}*/
+  // 用中文句號/問號/驚嘆號（以及對應的英文）切句，保留標點
+  const rawSentences = cleaned.split(/(?<=[。！？!?])/);
+  const sentences = rawSentences
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  // 如果本來就很短，直接回傳
+  if (sentences.join('').length <= maxChars) {
+    return sentences.join('');
+  }
+
+  const selected = [];
+  let length = 0;
+
+  const tryAdd = (s) => {
+    if (!s) return;
+    if (length + s.length > maxChars) return;
+    selected.push(s);
+    length += s.length;
+  };
+
+  // 1️⃣ 一定先保留開頭 1～2 句（導言）
+  if (sentences[0]) tryAdd(sentences[0]);
+  if (sentences[1]) tryAdd(sentences[1]);
+
+  // 2️⃣ 優先加入「關鍵句」：有數字 / 時間 / 地點 的句子
+  const keywordRegex = /(今日|昨天|上午|下午|晚間|凌晨|稍早|今天|日前|8月|9月|10月|年|\d+人|\d+名|\d+歲|\d+件|\d+萬元|台北|新北|台中|高雄|台南|桃園|新竹|花蓮|警方|醫院|學校|市府)/;
+
+  sentences.forEach((s, idx) => {
+    if (length >= maxChars) return;
+    // 前兩句已經處理過，這裡跳過
+    if (idx <= 1) return;
+    if (keywordRegex.test(s)) {
+      tryAdd(s);
+    }
+  });
+
+  // 3️⃣ 如果還有空間，再依原順序補上剩餘句子，湊到 maxChars
+  sentences.forEach((s) => {
+    if (length >= maxChars) return;
+    if (selected.includes(s)) return;
+    tryAdd(s);
+  });
+
+  // 最後保證結尾有句號感覺完整
+  let result = selected.join('');
+  if (!/[。！？!?]$/.test(result) && sentences[0]) {
+    result += '。';
+  }
+
+  return result;
+}
 
 function cleanNewsScript(raw) {
   if (!raw) return '';
@@ -255,8 +306,8 @@ async function callDeepseekReporterScript({ id, title, text }) {
     '6. 輸出內容中嚴禁出現「【」或「】」這兩個符號。\n' +
     '若違反以上任一條規則，視為錯誤回答。';
   const prompt = 
-    '【標題】\n' + title + '\n\n' +
-    '【內文】\n' + text + '\n\n' +
+    title + '\n\n' +
+    text + '\n\n' +
     '請依規則產生播報稿。';
   /*onst prompt =
     '將下列新聞改寫成約 60 到 80 字的中文電視新聞播報稿。' +
