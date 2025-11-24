@@ -81,6 +81,69 @@ async function generalScript(req, res, next) {
 }
 
 // ---- reporter ----
+async function reporterScriptFast(req, res, next) {
+    let { id, times } = req.params ?? {}
+    // 交給 generalScript 生成的一組id及text，用deepseek 產生 reporterScript
+
+    // 1️⃣ 先呼叫 generalScript 拿原始 {id,title,text}
+    let fakeReq = {
+      params: {id: id}
+    }
+    let generalScriptResult;
+    try {
+      generalScriptResult = await callAndCatchApiSuccess(generalScript, fakeReq);
+      //return res.apiSuccess(generalScriptResult);
+    } catch (err) {
+      err.desc = "middlewares-reporterScript(): call generalScript error";
+        return next(err);
+    }
+    
+    try {
+    // 2️⃣ 取得裡面的陣列：可能是 result 或 result.list
+    const items = Array.isArray(generalScriptResult)
+      ? generalScriptResult
+      : generalScriptResult.list ?? [];
+
+    // 3️⃣ 對每一筆丟給 DeepSeek 產生播報稿
+    /*const reporterItems = [];
+    for (const item of items) {
+      const result = await callDeepseekReporterScript({
+        id: item.id,
+        title: item.title,
+        text: item.text //shortenArticle(item.text, 4),
+      });
+      reporterItems.push(result);
+    }*/
+    const reporterItems = await Promise.all(
+      items.map((item) =>
+        callDeepseekReporterScript({
+          id: item.id,
+          title: item.title,
+          text: shortenArticle(item.text)
+        }),
+      ),
+    );
+
+    // 4️⃣ 組回輸出的格式
+    let output;
+    if (Array.isArray(generalScriptResult)) {
+      // 原本就是陣列 → 直接回陣列
+      output = reporterItems;
+    } else {
+      // 原本是物件（例如 { list, total, ... }）→ 保留其它欄位，只把 list 換掉
+      output = {
+        ...generalScriptResult,
+        list: reporterItems,
+      };
+    }
+
+    return res.apiSuccess(output);
+  } catch (err) {
+    err.desc = 'middlewares-reporterScript(): call deepseek error';
+    return next(err);
+  }
+}
+
 async function reporterScript(req, res, next) {
     let { id, times } = req.params ?? {}
     // 交給 generalScript 生成的一組id及text，用deepseek 產生 reporterScript
@@ -159,6 +222,8 @@ async function quickScript(req, res, next) {
 
 function shortenArticle(text, maxChars = 600) {
   if (!text) return '';
+
+  raw = raw.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 
   // 先把多餘空白去掉
   const cleaned = text
@@ -283,7 +348,7 @@ async function callDeepseekReporterScript({ id, title, text }) {
   // 組 prompt：請 DeepSeek 幫忙改寫成 80~100 字的播報稿
   /*const prompt =
     '你是一位台灣電視新聞台的記者，請根據以下新聞標題與全文內容，' +
-    '撰寫一段約 50 到 60 字的中文播報稿。\n\n' +
+    '撰寫一段約 80 到 100 字的中文播報稿。\n\n' +
     '要求：\n' +
     '1. 保留主要事實與數據，刪去重複內容。\n' +
     '2. 使用口語化、第三人稱播報語氣。\n' +
@@ -296,20 +361,19 @@ async function callDeepseekReporterScript({ id, title, text }) {
   */
 
   const system = 
-    '你是一位台灣電視新聞台的專業播報記者，只負責把輸入的新聞改寫成播報稿。\n' +
+    '你是一位電視新聞台的專業播報記者，只負責把輸入的新聞改寫成播報稿。\n' +
     '規則：\n' +
     '1. 每次輸出一段 80~100 個字的中文播報稿。\n' +
     '2. 用口語化、第三人稱的電視新聞播報語氣。\n' +
     '3. 只保留關鍵事實與數字，不新增任何資訊或評論。\n' +
     '4. 不得出現「我是AI」「身為AI」「如果您有任何問題」等類似字句。\n' +
     '5. 不得加上標題、說明文字或「播報稿：」「新聞內容：」等提示語。\n' +
-    '6. 輸出內容中嚴禁出現「【」或「】」這兩個符號。\n' +
     '若違反以上任一條規則，視為錯誤回答。';
   const prompt = 
-    title + '\n\n' +
+    title + '\n' +
     text + '\n\n' +
     '請依規則產生播報稿。';
-  /*onst prompt =
+  /*const prompt =
     '將下列新聞改寫成約 60 到 80 字的中文電視新聞播報稿。' +
     '口語化、第三人稱，只保留關鍵事實與數字，不新增資訊或評論，' +
     '不要加標題或說明文字，也不要提到自己或 AI 身分。\n\n' +
@@ -348,10 +412,6 @@ async function callDeepseekReporterScript({ id, title, text }) {
 
   let script = resp.data?.response || '';
 
-  // 如果 DeepSeek 有 <think>...</think> 先清掉
-  script = script.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-
-  // 再用我們的清理函式，把 AI 自我介紹、免責聲明拿掉
   script = cleanNewsScript(script);
 
   console.log('deepseek latency(ms):', Date.now() - start);
@@ -367,6 +427,7 @@ async function callDeepseekReporterScript({ id, title, text }) {
 // ---- 匯出所有函式 ----
 module.exports = {
   generalScript,
+  reporterScriptFast,
   reporterScript,
   chatScript,
   quickScript,
