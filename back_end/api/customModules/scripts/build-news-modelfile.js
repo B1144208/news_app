@@ -17,10 +17,10 @@ const groupJson    = JSON.stringify(groupObj, null, 2);
 const locationJson = JSON.stringify(locationObj, null, 2);
 
 // 組 Modelfile 內容
-const modelfileContent = `FROM qwen2.5:7b
+const modelfileContent = `FROM qwen2.5:1.5b
 
-PARAMETER temperature 0.3
-PARAMETER top_p 0.9
+PARAMETER temperature 0.1
+PARAMETER top_p 0.2
 
 SYSTEM """
 你是一個專門處理「新聞分類」的模型，負責幫我標註 group / location / keyword 三個欄位。
