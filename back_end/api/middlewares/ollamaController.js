@@ -2,7 +2,7 @@ const pool = require('../connect_db');
 const { checkRequireField } = require('../utils/checkHelper');
 const { callAndCatchApiSuccess } = require('../utils/fakeHelper');
 
-/*async function newsClassifier (req, res, next) {
+async function newsClassifier (req, res, next) {
   try {
     // 1. 從 body 取新聞內容
     const { newsText } = req.body || {};
@@ -61,9 +61,9 @@ ${newsText}`
     // 丟給 Express 的錯誤處理 middleware
     return next(err);
   }
-}*/
+}
 
-async function newsClassifier(req, res, next) {
+/*async function newsClassifier(req, res, next) {
   try {
     // 1. 從 body 拿新聞文字（標題＋內文）
     const { newsText } = req.body;
@@ -136,7 +136,7 @@ async function newsClassifier(req, res, next) {
       error: 'newsClassifier server error'
     });
   }
-}
+}*/
 module.exports = {
     newsClassifier
 }
