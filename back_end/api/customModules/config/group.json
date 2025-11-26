@@ -1,0 +1,401 @@
+{
+  "group_data": [
+    {
+      "data_id": 1,
+      "name": "政治"
+    },
+    {
+      "data_id": 2,
+      "name": "國際"
+    },
+    {
+      "data_id": 3,
+      "name": "財經"
+    },
+    {
+      "data_id": 4,
+      "name": "科技"
+    },
+    {
+      "data_id": 5,
+      "name": "健康"
+    },
+    {
+      "data_id": 6,
+      "name": "娛樂"
+    },
+    {
+      "data_id": 7,
+      "name": "運動"
+    },
+    {
+      "data_id": 8,
+      "name": "生活"
+    },
+    {
+      "data_id": 9,
+      "name": "社會"
+    },
+    {
+      "data_id": 10,
+      "name": "汽車"
+    },
+    {
+      "data_id": 11,
+      "name": "房產"
+    },
+    {
+      "data_id": 12,
+      "name": "天氣"
+    },
+    {
+      "data_id": 13,
+      "name": "數位專題"
+    },
+    {
+      "data_id": 14,
+      "name": "優惠"
+    },
+    {
+      "data_id": 15,
+      "name": "其他"
+    }
+  ],
+  "group_detail": [
+    {
+      "detail_id": 1,
+      "data_id": 1,
+      "name": "政府政策"
+    },
+    {
+      "detail_id": 2,
+      "data_id": 1,
+      "name": "選舉"
+    },
+    {
+      "detail_id": 3,
+      "data_id": 1,
+      "name": "國會/立法院"
+    },
+    {
+      "detail_id": 4,
+      "data_id": 1,
+      "name": "政黨動態"
+    },
+    {
+      "detail_id": 5,
+      "data_id": 1,
+      "name": "外交/國防"
+    },
+    {
+      "detail_id": 6,
+      "data_id": 2,
+      "name": "亞洲新聞"
+    },
+    {
+      "detail_id": 7,
+      "data_id": 2,
+      "name": "歐美新聞"
+    },
+    {
+      "detail_id": 8,
+      "data_id": 2,
+      "name": "兩岸關係"
+    },
+    {
+      "detail_id": 9,
+      "data_id": 2,
+      "name": "戰爭/衝突"
+    },
+    {
+      "detail_id": 10,
+      "data_id": 2,
+      "name": "國際政治/經濟"
+    },
+    {
+      "detail_id": 11,
+      "data_id": 3,
+      "name": "股市"
+    },
+    {
+      "detail_id": 12,
+      "data_id": 3,
+      "name": "匯率"
+    },
+    {
+      "detail_id": 13,
+      "data_id": 3,
+      "name": "金融保險"
+    },
+    {
+      "detail_id": 14,
+      "data_id": 3,
+      "name": "房地產"
+    },
+    {
+      "detail_id": 15,
+      "data_id": 3,
+      "name": "就業與勞工"
+    },
+    {
+      "detail_id": 16,
+      "data_id": 3,
+      "name": "創業與產業趨勢"
+    },
+    {
+      "detail_id": 17,
+      "data_id": 4,
+      "name": "AI/人工智慧"
+    },
+    {
+      "detail_id": 18,
+      "data_id": 4,
+      "name": "手機/電腦"
+    },
+    {
+      "detail_id": 19,
+      "data_id": 4,
+      "name": "網路科技"
+    },
+    {
+      "detail_id": 20,
+      "data_id": 4,
+      "name": "半導體/電子"
+    },
+    {
+      "detail_id": 21,
+      "data_id": 4,
+      "name": "社群平台動態"
+    },
+    {
+      "detail_id": 22,
+      "data_id": 5,
+      "name": "疾病/疫情"
+    },
+    {
+      "detail_id": 23,
+      "data_id": 5,
+      "name": "醫療新聞"
+    },
+    {
+      "detail_id": 24,
+      "data_id": 5,
+      "name": "心理健康"
+    },
+    {
+      "detail_id": 25,
+      "data_id": 5,
+      "name": "養生保健"
+    },
+    {
+      "detail_id": 26,
+      "data_id": 5,
+      "name": "醫療政策"
+    },
+    {
+      "detail_id": 27,
+      "data_id": 6,
+      "name": "影視藝人"
+    },
+    {
+      "detail_id": 28,
+      "data_id": 6,
+      "name": "綜藝節目"
+    },
+    {
+      "detail_id": 29,
+      "data_id": 6,
+      "name": "韓流/日系藝人"
+    },
+    {
+      "detail_id": 30,
+      "data_id": 6,
+      "name": "音樂"
+    },
+    {
+      "detail_id": 31,
+      "data_id": 6,
+      "name": "八卦/緋聞"
+    },
+    {
+      "detail_id": 32,
+      "data_id": 7,
+      "name": "棒球"
+    },
+    {
+      "detail_id": 33,
+      "data_id": 7,
+      "name": "籃球"
+    },
+    {
+      "detail_id": 34,
+      "data_id": 7,
+      "name": "足球"
+    },
+    {
+      "detail_id": 35,
+      "data_id": 7,
+      "name": "奧運/國際賽事"
+    },
+    {
+      "detail_id": 36,
+      "data_id": 7,
+      "name": "電競"
+    },
+    {
+      "detail_id": 37,
+      "data_id": 8,
+      "name": "旅遊"
+    },
+    {
+      "detail_id": 38,
+      "data_id": 8,
+      "name": "美食"
+    },
+    {
+      "detail_id": 39,
+      "data_id": 8,
+      "name": "家居/裝潢"
+    },
+    {
+      "detail_id": 40,
+      "data_id": 8,
+      "name": "時尚"
+    },
+    {
+      "detail_id": 41,
+      "data_id": 8,
+      "name": "寵物/動物"
+    },
+    {
+      "detail_id": 42,
+      "data_id": 8,
+      "name": "育兒"
+    },
+    {
+      "detail_id": 43,
+      "data_id": 8,
+      "name": "命理/星座"
+    },
+    {
+      "detail_id": 44,
+      "data_id": 9,
+      "name": "犯罪/法院"
+    },
+    {
+      "detail_id": 45,
+      "data_id": 9,
+      "name": "意外/災難"
+    },
+    {
+      "detail_id": 46,
+      "data_id": 9,
+      "name": "募捐/社福"
+    },
+    {
+      "detail_id": 47,
+      "data_id": 9,
+      "name": "地方新聞"
+    },
+    {
+      "detail_id": 48,
+      "data_id": 9,
+      "name": "校園事件"
+    },
+    {
+      "detail_id": 49,
+      "data_id": 10,
+      "name": "新車發表"
+    },
+    {
+      "detail_id": 50,
+      "data_id": 10,
+      "name": "試駕報導"
+    },
+    {
+      "detail_id": 51,
+      "data_id": 10,
+      "name": "車展"
+    },
+    {
+      "detail_id": 52,
+      "data_id": 10,
+      "name": "電動車"
+    },
+    {
+      "detail_id": 53,
+      "data_id": 10,
+      "name": "汽車政策"
+    },
+    {
+      "detail_id": 54,
+      "data_id": 11,
+      "name": "房市分析"
+    },
+    {
+      "detail_id": 55,
+      "data_id": 11,
+      "name": "建案資訊"
+    },
+    {
+      "detail_id": 56,
+      "data_id": 11,
+      "name": "不動產稅制"
+    },
+    {
+      "detail_id": 57,
+      "data_id": 11,
+      "name": "區域開發"
+    },
+    {
+      "detail_id": 58,
+      "data_id": 12,
+      "name": "氣象預報"
+    },
+    {
+      "detail_id": 59,
+      "data_id": 12,
+      "name": "災害警報"
+    },
+    {
+      "detail_id": 60,
+      "data_id": 12,
+      "name": "氣候變遷"
+    },
+    {
+      "detail_id": 61,
+      "data_id": 13,
+      "name": "長篇專題"
+    },
+    {
+      "detail_id": 62,
+      "data_id": 13,
+      "name": "數據新聞"
+    },
+    {
+      "detail_id": 63,
+      "data_id": 13,
+      "name": "多媒體互動專題"
+    },
+    {
+      "detail_id": 64,
+      "data_id": 14,
+      "name": "優惠情報"
+    },
+    {
+      "detail_id": 65,
+      "data_id": 14,
+      "name": "好好買"
+    },
+    {
+      "detail_id": 66,
+      "data_id": 14,
+      "name": "年度大促"
+    },
+    {
+      "detail_id": 67,
+      "data_id": 15,
+      "name": "快新聞"
+    }
+  ]
+}

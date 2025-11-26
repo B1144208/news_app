@@ -43,9 +43,9 @@ const incrementRouter = require('./increment')
 const valueRouter = require('./value')
 const testRouter = require('./test')
 
-// ==========新增TTS路由==========
+const ollamaRouter = require('./ollama')
 const ttsRouter = require('./tts')
-// ==============================
+
 
 // 使用模組
 router.use('/user', userRouter)
@@ -70,8 +70,9 @@ router.use('/increment',incrementRouter)
 router.use('/value', valueRouter)
 router.use('/test', testRouter)
 
-// ==========使用TTS路由==========
+
+router.use('/ollama', ollamaRouter)
 router.use('/tts', ttsRouter)
-// ==============================
+
 
 module.exports = router;

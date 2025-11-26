@@ -15,8 +15,10 @@
 
 const path = require('path');
 const axios = require('axios');
-const pool = require('./connect_db'); // ⬅️ 請依你的檔案位置調整
-const { generalScript } = require('./middlewares/scriptController'); // 已存在的函式
+const pool = require('./connect_db');
+const { callAndCatchApiSuccess } = require('./utils/fakeHelper')
+const { generalScript } = require('./middlewares/scriptController');
+const { cleanNewsScript } = require('./utils/scriptHelper');
 
 // === Ollama / 模型設定 ===
 const OLLAMA_URL = 'http://localhost:11434/api/generate';
@@ -24,7 +26,7 @@ const REPORTER_MODEL = 'deepseek-r1:1.5b';
 
 // === Worker 參數 ===
 const BATCH_SIZE = 10;     // 每次處理 10 筆
-const SLEEP_MS_WHEN_EMPTY = 5000;
+const SLEEP_MS_WHEN_EMPTY = 5000; // *****************************************
 
 // scriptQueue：放在 RAM 的待處理 news_id
 let scriptQueue = [];
@@ -36,41 +38,6 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/* -----------------------------------------------------------
- * cleanNewsScript：把 AI 免責聲明 / 自我介紹清掉（沿用你之前的邏輯）
- * ---------------------------------------------------------*/
-function cleanNewsScript(raw) {
-  if (!raw) return '';
-
-  const lines = raw
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter(Boolean);
-
-  const filtered = lines.filter((line) => {
-    return !(
-      /作為.?AI/i.test(line) ||
-      /作為一個?人工智慧/i.test(line) ||
-      /身為.?AI/i.test(line) ||
-      /我是一個?AI/i.test(line) ||
-      /無法提供(醫療|法律)建議/.test(line) ||
-      /不能替代專業(醫療|法律)/.test(line) ||
-      /如果您有任何問題/.test(line) ||
-      /如果你有任何問題/.test(line) ||
-      /建議您尋求專業/.test(line) ||
-      /僅供參考/.test(line) ||
-      /感謝你的提問/.test(line) ||
-      /感謝您的提問/.test(line) ||
-      /回答你的問題是/.test(line) ||
-      /回答您的問題是/.test(line) ||
-      /超出我的能力範圍/.test(line)
-    );
-  });
-
-  let cleaned = filtered.join('\n').trim();
-  cleaned = cleaned.replace(/^(播報稿|新聞播報|以下是播報內容)[：:\s]*/i, '');
-  return cleaned;
-}
 
 /* -----------------------------------------------------------
  * getScriptId：從 script_task JOIN news_data 取得待處理的 id
