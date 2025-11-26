@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'config.dart';
 import 'ViewNewsContent.dart';
 import 'ChannelDetailPage.dart';
@@ -16,19 +17,50 @@ class BookmarkPage extends StatefulWidget {
 class _BookmarkPageState extends State<BookmarkPage> {
   String _selectedCategory = '全部'; // 預設選中"全部"
   int? _selectedCategoryId; // 選中的分類ID (null代表"全部")
-  bool _showNews = true; // true: 顯示新聞, false: 顯示頻道
+  bool _showNews = true; // true: 顯示新聞, false: 顯示頻道, null: 顯示事件
+  String _selectedType = 'news'; // 'news', 'channel', 'eventsorting'
   bool _isLoading = true;
-  int? _currentUserId = 1; // TODO: 從登入狀態獲取用戶ID
+  int? _currentUserId;
 
   List<Map<String, dynamic>> _categories = [];
   List<Map<String, dynamic>> _bookmarkedNews = [];
   List<Map<String, dynamic>> _bookmarkedChannels = [];
+  List<Map<String, dynamic>> _bookmarkedEvents = [];
 
   @override
   void initState() {
     super.initState();
-    _fetchCategories();
-    _fetchBookmarkedData();
+    print('🔍 BookmarkPage initState');
+    _loadUserIdAndFetchData();
+  }
+
+  // 從 SharedPreferences 載入用戶ID並獲取數據
+  Future<void> _loadUserIdAndFetchData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getInt('UserID');
+
+      print('📌 載入用戶ID: $userId');
+
+      setState(() {
+        _currentUserId = userId;
+      });
+
+      if (_currentUserId != null) {
+        await _fetchCategories();
+        await _fetchBookmarkedData();
+      } else {
+        print('⚠️ 用戶未登入');
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('❌ 載入用戶ID失敗: $e');
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   // 獲取用戶的分類列表
@@ -36,38 +68,23 @@ class _BookmarkPageState extends State<BookmarkPage> {
     if (_currentUserId == null) return;
 
     try {
-      final response = await http.post(
-        Uri.parse('${Config.apiBaseUrl}/groupcustomize/bookmark'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'userId': _currentUserId,
-        }),
+      final response = await http.get(
+        Uri.parse('${Config.apiBaseUrl}/groupcustomize/order?userId=$_currentUserId&type=bookmark&dataType=$_selectedType'),
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
 
-        if (data['success'] == true && data['result'] != null) {
-          List<dynamic> resultList = data['result'];
+        if (data['success'] == true && data['data'] != null) {
+          List<dynamic> resultList = data['data'];
 
-          // 篩選出當前類型的分類
-          String currentType = _showNews ? 'news' : 'channel';
           List<Map<String, dynamic>> categories = [];
-
           for (var item in resultList) {
-            if (item['groupcustomize_type'] == currentType) {
-              categories.add({
-                'groupcustomize_id': item['groupcustomize_id'],
-                'groupcustomize_name': item['groupcustomize_name'],
-                'groupcustomize_order': item['groupcustomize_order'],
-              });
-            }
+            categories.add({
+              'groupcustomize_id': item['groupcustomize_id'],
+              'groupcustomize_name': item['groupcustomize_name'],
+            });
           }
-
-          // 按照順序排序
-          categories.sort((a, b) =>
-              (a['groupcustomize_order'] ?? 0).compareTo(b['groupcustomize_order'] ?? 0)
-          );
 
           setState(() {
             _categories = categories;
@@ -96,6 +113,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
       await Future.wait([
         _fetchBookmarkedNews(),
         _fetchBookmarkedChannels(),
+        _fetchBookmarkedEvents(),
       ]);
     } catch (e) {
       print('Error fetching bookmarked data: $e');
@@ -108,27 +126,69 @@ class _BookmarkPageState extends State<BookmarkPage> {
 
   // 獲取收藏的新聞
   Future<void> _fetchBookmarkedNews() async {
+    print('\n🔍 ========== 開始獲取收藏新聞 ==========');
+    print('📌 當前用戶ID: $_currentUserId');
+
+    if (_currentUserId == null) {
+      print('❌ 用戶ID為null,跳過獲取');
+      return;
+    }
+
     try {
-      final url = '$baseUrl/api/user_action/bookmark/news?userId=$_currentUserId';
+      final url = '${Config.apiBaseUrl}/user/bookmark/news?userId=$_currentUserId';
+      print('📌 請求URL: $url');
+
       final response = await http.get(Uri.parse(url));
+      print('📌 響應狀態碼: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['success']) {
+        print('📌 解析結果:');
+        print('   - success: ${data['success']}');
+        print('   - message: ${data['message']}');
+        print('   - data數量: ${data['data']?.length ?? 0}');
+
+        if (data['success'] && data['data'] != null) {
+          final newsList = List<Map<String, dynamic>>.from(data['data']);
+
+          // 詳細檢查每筆數據
+          for (int i = 0; i < newsList.length && i < 3; i++) {
+            print('\n📌 數據 #${i + 1}:');
+            final item = newsList[i];
+            print('   - bookmark_id: ${item['bookmark_id']}');
+            print('   - id: ${item['id']}');
+            print('   - title: ${item['title']}');
+            print('   - channel: ${item['channel']}');
+            print('   - cover_img: ${item['cover_img']}');
+            print('   - publish_date: ${item['publish_date']}');
+            print('   - url: ${item['url']}');
+            print('   完整數據: $item');
+          }
+
           setState(() {
-            _bookmarkedNews = List<Map<String, dynamic>>.from(data['data']);
+            _bookmarkedNews = newsList;
+          });
+          print('\n✅ 收藏新聞更新成功,數量: ${_bookmarkedNews.length}');
+        } else {
+          print('⚠️ success為false或data為null');
+          setState(() {
+            _bookmarkedNews = [];
           });
         }
+      } else {
+        print('❌ HTTP錯誤: ${response.statusCode}');
+        print('   響應內容: ${response.body}');
       }
     } catch (e) {
-      print('Error fetching bookmarked news: $e');
+      print('❌ 異常: $e');
     }
+    print('========== 獲取收藏新聞結束 ==========\n');
   }
 
   // 獲取收藏的頻道
   Future<void> _fetchBookmarkedChannels() async {
     try {
-      final url = '$baseUrl/api/user_action/bookmark/channel?userId=$_currentUserId';
+      final url = '${Config.apiBaseUrl}/user/bookmark/channel?userId=$_currentUserId';
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
@@ -144,14 +204,42 @@ class _BookmarkPageState extends State<BookmarkPage> {
     }
   }
 
+  // 獲取收藏的事件
+  Future<void> _fetchBookmarkedEvents() async {
+    try {
+      final url = '${Config.apiBaseUrl}/user/bookmark/eventsorting?userId=$_currentUserId';
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success']) {
+          setState(() {
+            _bookmarkedEvents = List<Map<String, dynamic>>.from(data['data'] ?? []);
+          });
+        }
+      }
+    } catch (e) {
+      print('Error fetching bookmarked events: $e');
+      // 如果API還未實作，設為空陣列
+      setState(() {
+        _bookmarkedEvents = [];
+      });
+    }
+  }
+
   // 移除收藏
   Future<void> _removeBookmark(int itemId, String type) async {
     if (_currentUserId == null) return;
 
     try {
-      final url = type == 'news'
-          ? '$baseUrl/api/user_action/delete/bookmark/news/$itemId'
-          : '$baseUrl/api/user_action/delete/bookmark/channel/$itemId';
+      String url;
+      if (type == 'news') {
+        url = '${Config.apiBaseUrl}/user/bookmark/$itemId';
+      } else if (type == 'channel') {
+        url = '${Config.apiBaseUrl}/user/bookmark/$itemId';
+      } else {
+        url = '${Config.apiBaseUrl}/user/bookmark/$itemId';
+      }
 
       final response = await http.delete(Uri.parse(url));
 
@@ -159,8 +247,10 @@ class _BookmarkPageState extends State<BookmarkPage> {
         setState(() {
           if (type == 'news') {
             _bookmarkedNews.removeWhere((news) => news['id'] == itemId);
-          } else {
+          } else if (type == 'channel') {
             _bookmarkedChannels.removeWhere((channel) => channel['channel_id'] == itemId);
+          } else {
+            _bookmarkedEvents.removeWhere((event) => event['id'] == itemId);
           }
         });
 
@@ -243,7 +333,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
       MaterialPageRoute(
         builder: (context) => GroupCustomizeBookmark(
           userId: _currentUserId!,
-          bookmarkType: _showNews ? 'news' : 'channel',
+          bookmarkType: _selectedType,
         ),
       ),
     );
@@ -323,7 +413,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
                 borderRadius: BorderRadius.circular(8),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withOpacity(0.3),
+                    color: Colors.grey,
                     spreadRadius: 1,
                     blurRadius: 2,
                   ),
@@ -381,7 +471,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.withOpacity(0.3),
+                color: Colors.grey,
                 spreadRadius: 1,
                 blurRadius: 2,
               ),
@@ -399,7 +489,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
     );
   }
 
-  // 新聞/頻道切換開關
+  // 新聞/頻道/事件切換開關
   Widget _buildToggleSwitch() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -409,7 +499,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
         borderRadius: BorderRadius.circular(25),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
+            color: Colors.grey,
             spreadRadius: 1,
             blurRadius: 3,
           ),
@@ -422,6 +512,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
               onTap: () {
                 setState(() {
                   _showNews = true;
+                  _selectedType = 'news';
                   _selectedCategory = '全部';
                   _selectedCategoryId = null;
                 });
@@ -430,15 +521,15 @@ class _BookmarkPageState extends State<BookmarkPage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
-                  color: _showNews ? Colors.blue : Colors.transparent,
+                  color: _selectedType == 'news' ? Colors.blue : Colors.transparent,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Center(
                   child: Text(
                     '新聞',
                     style: TextStyle(
-                      color: _showNews ? Colors.white : Colors.grey[600],
-                      fontWeight: _showNews ? FontWeight.bold : FontWeight.normal,
+                      color: _selectedType == 'news' ? Colors.white : Colors.grey[600],
+                      fontWeight: _selectedType == 'news' ? FontWeight.bold : FontWeight.normal,
                     ),
                   ),
                 ),
@@ -450,6 +541,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
               onTap: () {
                 setState(() {
                   _showNews = false;
+                  _selectedType = 'channel';
                   _selectedCategory = '全部';
                   _selectedCategoryId = null;
                 });
@@ -458,15 +550,44 @@ class _BookmarkPageState extends State<BookmarkPage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
-                  color: !_showNews ? Colors.blue : Colors.transparent,
+                  color: _selectedType == 'channel' ? Colors.blue : Colors.transparent,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Center(
                   child: Text(
                     '頻道',
                     style: TextStyle(
-                      color: !_showNews ? Colors.white : Colors.grey[600],
-                      fontWeight: !_showNews ? FontWeight.bold : FontWeight.normal,
+                      color: _selectedType == 'channel' ? Colors.white : Colors.grey[600],
+                      fontWeight: _selectedType == 'channel' ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _showNews = false;
+                  _selectedType = 'eventsorting';
+                  _selectedCategory = '全部';
+                  _selectedCategoryId = null;
+                });
+                _fetchCategories();
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: _selectedType == 'eventsorting' ? Colors.blue : Colors.transparent,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Center(
+                  child: Text(
+                    '事件',
+                    style: TextStyle(
+                      color: _selectedType == 'eventsorting' ? Colors.white : Colors.grey[600],
+                      fontWeight: _selectedType == 'eventsorting' ? FontWeight.bold : FontWeight.normal,
                     ),
                   ),
                 ),
@@ -487,11 +608,27 @@ class _BookmarkPageState extends State<BookmarkPage> {
 
   // 內容列表
   Widget _buildContentList() {
+    print('🎨 構建內容列表');
+    print('   _currentUserId: $_currentUserId');
+    print('   _selectedType: $_selectedType');
+    print('   _bookmarkedNews長度: ${_bookmarkedNews.length}');
+    print('   _bookmarkedChannels長度: ${_bookmarkedChannels.length}');
+    print('   _bookmarkedEvents長度: ${_bookmarkedEvents.length}');
+
     if (_currentUserId == null) {
       return _buildNotLoggedInWidget();
     }
 
-    final currentList = _showNews ? _bookmarkedNews : _bookmarkedChannels;
+    List<Map<String, dynamic>> currentList;
+    if (_selectedType == 'news') {
+      currentList = _bookmarkedNews;
+    } else if (_selectedType == 'channel') {
+      currentList = _bookmarkedChannels;
+    } else {
+      currentList = _bookmarkedEvents;
+    }
+
+    print('   當前顯示列表長度: ${currentList.length}');
 
     if (currentList.isEmpty) {
       return _buildEmptyWidget();
@@ -502,9 +639,13 @@ class _BookmarkPageState extends State<BookmarkPage> {
       itemCount: currentList.length,
       itemBuilder: (context, index) {
         final item = currentList[index];
-        return _showNews
-            ? _buildNewsItem(item)
-            : _buildChannelItem(item);
+        if (_selectedType == 'news') {
+          return _buildNewsItem(item);
+        } else if (_selectedType == 'channel') {
+          return _buildChannelItem(item);
+        } else {
+          return _buildEventItem(item);
+        }
       },
     );
   }
@@ -535,18 +676,32 @@ class _BookmarkPageState extends State<BookmarkPage> {
 
   // 空狀態
   Widget _buildEmptyWidget() {
+    IconData icon;
+    String message;
+
+    if (_selectedType == 'news') {
+      icon = Icons.article_outlined;
+      message = '尚未收藏任何新聞';
+    } else if (_selectedType == 'channel') {
+      icon = Icons.tv_outlined;
+      message = '尚未收藏任何頻道';
+    } else {
+      icon = Icons.event_outlined;
+      message = '尚未收藏任何事件';
+    }
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            _showNews ? Icons.article_outlined : Icons.tv_outlined,
+            icon,
             size: 64,
             color: Colors.grey[400],
           ),
           const SizedBox(height: 16),
           Text(
-            _showNews ? '尚未收藏任何新聞' : '尚未收藏任何頻道',
+            message,
             style: TextStyle(
               fontSize: 16,
               color: Colors.grey[600],
@@ -567,7 +722,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
+            color: Colors.grey,
             spreadRadius: 1,
             blurRadius: 3,
           ),
@@ -697,7 +852,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
+            color: Colors.grey,
             spreadRadius: 1,
             blurRadius: 3,
           ),
@@ -782,6 +937,128 @@ class _BookmarkPageState extends State<BookmarkPage> {
                             _showCategorySelectionDialog(channel['channel_id'], 'channel');
                           } else if (value == 'remove') {
                             _removeBookmark(channel['channel_id'], 'channel');
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 'category',
+                            child: Row(
+                              children: [
+                                Icon(Icons.folder_outlined, size: 20),
+                                SizedBox(width: 8),
+                                Text('選擇分類'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'remove',
+                            child: Row(
+                              children: [
+                                Icon(Icons.bookmark_remove, size: 20, color: Colors.red),
+                                SizedBox(width: 8),
+                                Text('取消收藏', style: TextStyle(color: Colors.red)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 事件項目
+  Widget _buildEventItem(Map<String, dynamic> event) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey,
+            spreadRadius: 1,
+            blurRadius: 3,
+          ),
+        ],
+      ),
+      child: InkWell(
+        onTap: () {
+          // TODO: 導航到事件詳細頁面
+          // Navigator.push(context, MaterialPageRoute(builder: (context) => EventDetailPage(...)));
+        },
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: Colors.green[100],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.event,
+                color: Colors.green,
+                size: 30,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    event['title'] ?? event['event_name'] ?? '未知事件',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Colors.black,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  if (event['description'] != null)
+                    Text(
+                      event['description'],
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 14,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Text(
+                        event['date'] ?? '未知時間',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 12,
+                        ),
+                      ),
+                      const Spacer(),
+                      // 三個點選單
+                      PopupMenuButton<String>(
+                        icon: const Icon(
+                          Icons.more_vert,
+                          size: 20,
+                          color: Colors.grey,
+                        ),
+                        onSelected: (value) {
+                          if (value == 'category') {
+                            _showCategorySelectionDialog(event['id'], 'eventsorting');
+                          } else if (value == 'remove') {
+                            _removeBookmark(event['id'], 'eventsorting');
                           }
                         },
                         itemBuilder: (context) => [
