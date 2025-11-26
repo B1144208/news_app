@@ -17,7 +17,7 @@ const groupJson    = JSON.stringify(groupObj, null, 2);
 const locationJson = JSON.stringify(locationObj, null, 2);
 
 // 組 Modelfile 內容
-const modelfileContent = `FROM qwen2.5:7b
+const modelfileContent = `FROM qwen2.5:1.5b
 
 PARAMETER temperature 0.1
 PARAMETER top_p 0.2
