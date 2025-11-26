@@ -101,7 +101,7 @@ class _HomePageState extends State<HomePage> {
 
       // 先獲取所有 group_data
       final groupResponse = await http.get(
-        Uri.parse('http://localhost:3000/api/group'),
+        Uri.parse('${Config.apiBaseUrl}/group'),
       );
 
       if (groupResponse.statusCode != 200) {
@@ -219,7 +219,7 @@ class _HomePageState extends State<HomePage> {
         print('🔡 查詢特定分類新聞 - groupId: $_selectedGroupId');
 
         response = await http.post(
-          Uri.parse('http://localhost:3000/api/news/search?mode=simple&order=general&limit=300'),
+          Uri.parse('${Config.apiBaseUrl}/news/search?mode=simple&order=general&limit=300'),
           headers: {'Content-Type': 'application/json'},
           body: json.encode({
             'groupId': _selectedGroupId,
@@ -233,7 +233,7 @@ class _HomePageState extends State<HomePage> {
         print('🔡 查詢所有新聞');
 
         response = await http.post(
-          Uri.parse('http://localhost:3000/api/news/search?mode=simple&order=general&limit=300'),
+          Uri.parse('${Config.apiBaseUrl}/news/search?mode=simple&order=general&limit=300'),
           headers: {'Content-Type': 'application/json'},
           body: json.encode({}),
         );
@@ -342,7 +342,7 @@ class _HomePageState extends State<HomePage> {
   Future<Map<int, String>> _fetchChannelData() async {
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/api/channel'),
+        Uri.parse('${Config.apiBaseUrl}/channel'),
       );
 
       if (response.statusCode == 200) {
@@ -366,7 +366,7 @@ class _HomePageState extends State<HomePage> {
   Future<Map<int, String>> _fetchImageData() async {
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/api/image'),
+        Uri.parse('${Config.apiBaseUrl}/image'),
       );
 
       if (response.statusCode == 200) {
@@ -459,7 +459,7 @@ class _HomePageState extends State<HomePage> {
 
       // 呼叫 TTS API
       final response = await http.post(
-        Uri.parse('http://localhost:3000/api/tts'),
+        Uri.parse('${Config.apiBaseUrl}/tts'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'text': currentText,
@@ -616,7 +616,6 @@ class _HomePageState extends State<HomePage> {
     return Column(
       children: [
         _buildTopToolBar(),
-        _buildSearchBar(),
         _buildCategoryFilter(),
         _buildQuickPlaySection(), // 修改後的快速播放區塊
         Expanded(child: _buildNewsList()),
@@ -633,8 +632,8 @@ class _HomePageState extends State<HomePage> {
       builder: (context, snapshot) {
         final isLoggedIn = snapshot.data ?? false;
 
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
           child: Row(
             children: [
               if (!isLoggedIn)
@@ -666,6 +665,7 @@ class _HomePageState extends State<HomePage> {
                       child: const Text('登入', style: TextStyle(fontSize: 12)),
                     ),
                     const SizedBox(width: 8),
+                    /*
                     ElevatedButton(
                       onPressed: () {
                         Navigator.push(
@@ -689,7 +689,7 @@ class _HomePageState extends State<HomePage> {
                         minimumSize: const Size(60, 32),
                       ),
                       child: const Text('註冊', style: TextStyle(fontSize: 12)),
-                    ),
+                    ),*/
                   ],
                 )
               else
@@ -766,7 +766,47 @@ class _HomePageState extends State<HomePage> {
                   },
                 ),
 
-              const Spacer(),
+              const SizedBox(width: 12),
+
+              // 搜尋欄 - 放在中間並擴展
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const SearchPage()),
+                    );
+                  },
+                  child: Container(
+                    height: 40,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey,
+                          spreadRadius: 0,
+                          blurRadius: 2,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.search, color: Colors.grey, size: 20),
+                        SizedBox(width: 10),
+                        Text(
+                          '搜尋',
+                          style: TextStyle(color: Colors.grey, fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(width: 12),
 
               // 收藏按鈕
               GestureDetector(
@@ -787,7 +827,7 @@ class _HomePageState extends State<HomePage> {
                     boxShadow: [
                       BoxShadow(
                         color: Colors.grey,
-                        spreadRadius: 1,
+                        spreadRadius: 0,
                         blurRadius: 2,
                         offset: const Offset(0, 1),
                       ),
@@ -807,46 +847,9 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildSearchBar() {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const SearchPage()),
-        );
-      },
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(25),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey,
-              spreadRadius: 1,
-              blurRadius: 3,
-              offset: const Offset(0, 1),
-            ),
-          ],
-        ),
-        child: const Row(
-          children: [
-            Icon(Icons.search, color: Colors.grey),
-            SizedBox(width: 10),
-            Text(
-              '搜尋',
-              style: TextStyle(color: Colors.grey),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildCategoryFilter() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       child: Row(
         children: [
           GestureDetector(
@@ -896,8 +899,9 @@ class _HomePageState extends State<HomePage> {
                 boxShadow: [
                   BoxShadow(
                     color: Colors.grey,
-                    spreadRadius: 1,
+                    spreadRadius: 0,
                     blurRadius: 2,
+                    offset: const Offset(0, 1),
                   ),
                 ],
               ),
@@ -939,8 +943,9 @@ class _HomePageState extends State<HomePage> {
                           boxShadow: [
                             BoxShadow(
                               color: Colors.grey,
-                              spreadRadius: 1,
+                              spreadRadius: 0,
                               blurRadius: 2,
+                              offset: const Offset(0, 1),
                             ),
                           ],
                         ),
@@ -970,7 +975,7 @@ class _HomePageState extends State<HomePage> {
   // 修改後的快速播放區塊
   Widget _buildQuickPlaySection() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -978,8 +983,9 @@ class _HomePageState extends State<HomePage> {
         boxShadow: [
           BoxShadow(
             color: Colors.grey,
-            spreadRadius: 1,
+            spreadRadius: 0,
             blurRadius: 3,
+            offset: const Offset(0, 1),
           ),
         ],
       ),
@@ -1097,11 +1103,12 @@ class _HomePageState extends State<HomePage> {
     }
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
+      margin: const EdgeInsets.symmetric(horizontal: 12),
       child: RefreshIndicator(
         onRefresh: _fetchNews,
         child: ListView.builder(
           controller: _scrollController,
+          padding: const EdgeInsets.symmetric(vertical: 8),
           itemCount: _newsData.length + (_isLoadingMore ? 1 : 0),
           itemBuilder: (context, index) {
             // 顯示載入更多指示器
@@ -1124,8 +1131,9 @@ class _HomePageState extends State<HomePage> {
                 boxShadow: [
                   BoxShadow(
                     color: Colors.grey,
-                    spreadRadius: 1,
+                    spreadRadius: 0,
                     blurRadius: 3,
+                    offset: const Offset(0, 1),
                   ),
                 ],
               ),
