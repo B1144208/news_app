@@ -198,8 +198,8 @@ keyword 用來抽取這則新聞中最重要的關鍵詞。
 """
 `;
 
-// 輸出到 ollama/news/Modelfile
-const outPath = path.join(__dirname, '..', 'ollama', 'news', 'Modelfile');
+// 輸出到 model/news/Modelfile
+const outPath = path.join(__dirname, '..', 'model', 'newsModelfile');
 fs.mkdirSync(path.dirname(outPath), { recursive: true });
 fs.writeFileSync(outPath, modelfileContent, 'utf8');
 
