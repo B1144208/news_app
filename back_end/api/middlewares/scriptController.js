@@ -95,8 +95,14 @@ async function generalScript(req, res, next) {
 
     ////////////////////////////////////////////////////////////////////////////////////
     text = "這是測試檔";
-    let embedding = getEmbedding(text);
-    console.log(embedding);
+    let embedding;
+    try {
+      embedding = await getEmbedding(text);
+      console.log(embedding);
+    } catch (err) {
+      return next(err);
+    }
+
     return res.apiSuccess(embedding);
 
 
