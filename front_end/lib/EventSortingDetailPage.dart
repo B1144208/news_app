@@ -9,8 +9,7 @@ import 'MultiplePerspectivesDetailPage.dart';
 import 'config.dart'; // 確保這裡有定義 baseUrl
 import 'ViewnewsContent.dart';
 
-// 請確保您的 config.dart 中定義了 baseUrl
-// final String baseUrl = 'YOUR_BASE_URL';
+
 
 class EventSortingDetailPage extends StatefulWidget {
   final int id;
@@ -504,7 +503,7 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12.0),
-                      child: _buildMainImage(mainImageUrl, context),
+                      //child: _buildMainImage(mainImageUrl, context),
                     ),
                   ),
                   _buildSummaryCard(event['eventsorting_summary'] ?? '無摘要內容。'),

@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'config.dart';
+import 'config.dart'; // 確保此處導入，且 config.dart 中有頂層變數 baseUrl
 import 'ViewNewsContent.dart';
 import 'ChannelDetailPage.dart';
-import 'GroupCustomizeBookmark.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'GroupCustomizeBookmark.dart'; // 確保這個導入存在，用於管理分類頁面
 
+// -------------------------------------------------------------
+// BookmarkPage - 收藏頁面主體
+// -------------------------------------------------------------
 class BookmarkPage extends StatefulWidget {
   const BookmarkPage({super.key});
 
@@ -14,11 +18,12 @@ class BookmarkPage extends StatefulWidget {
 }
 
 class _BookmarkPageState extends State<BookmarkPage> {
-  String _selectedCategory = '全部'; // 預設選中"全部"
-  int? _selectedCategoryId; // 選中的分類ID (null代表"全部")
-  bool _showNews = true; // true: 顯示新聞, false: 顯示頻道
+
+  String _selectedCategory = '全部';
+  int? _selectedCategoryId;
+  bool _showNews = true;
   bool _isLoading = true;
-  int? _currentUserId = 1; // TODO: 從登入狀態獲取用戶ID
+  int? _currentUserId; // 從 SharedPreferences 載入
 
   List<Map<String, dynamic>> _categories = [];
   List<Map<String, dynamic>> _bookmarkedNews = [];
@@ -27,51 +32,113 @@ class _BookmarkPageState extends State<BookmarkPage> {
   @override
   void initState() {
     super.initState();
-    _fetchCategories();
-    _fetchBookmarkedData();
+    _initData();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
+  // 確保 UserID 載入後才執行 API 請求
+  Future<void> _initData() async {
+    await _loadUserId();
+
+    if (!mounted) return;
+
+    if (_currentUserId != null) {
+      await _fetchCategories();
+      if (mounted) {
+        setState(() {
+          _isLoading = true;
+        });
+      }
+      await _fetchBookmarkedData();
+    } else {
+      print('DEBUG: UserID is NULL. Skipping API calls.');
+    }
+
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    // 假設您在應用程式其他地方使用 'UserID' 作為 key 儲存 ID
+    final userId = prefs.getInt('UserID');
+
+    if (mounted) {
+      setState(() {
+        _currentUserId = userId;
+        print('DEBUG: BookmarkPage - Loaded UserID: $_currentUserId');
+      });
+    }
   }
 
   // 獲取用戶的分類列表
   Future<void> _fetchCategories() async {
     if (_currentUserId == null) return;
 
+    String currentType = _showNews ? 'news' : 'channel';
+
     try {
-      final response = await http.post(
-        Uri.parse('${Config.apiBaseUrl}/groupcustomize/bookmark'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'userId': _currentUserId,
-        }),
+      // 使用用戶提供的成功 URL 結構
+      final uri = Uri.parse('$baseUrl/groupcustomize/order').replace(
+        queryParameters: {
+          'userId': _currentUserId.toString(),
+          'type': 'bookmark',
+          'dataType': currentType,
+        },
       );
+
+      final response = await http.get(uri);
+      print('DEBUG: Categories API URL: $uri');
+      print('DEBUG: Categories API Status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
 
-        if (data['success'] == true && data['result'] != null) {
-          List<dynamic> resultList = data['result'];
+        // 🎯 修正點: 使用 'data' 鍵來解析分類列表
+        if (data['success'] == true && data['data'] != null) {
+          List<dynamic> resultList = data['data'];
 
-          // 篩選出當前類型的分類
-          String currentType = _showNews ? 'news' : 'channel';
           List<Map<String, dynamic>> categories = [];
 
+          // 1. 添加 '全部'
+          categories.add({
+            'groupcustomize_id': null,
+            'groupcustomize_name': '全部',
+            'groupcustomize_order': -1,
+          });
+
+          // 2. 添加實際分類
           for (var item in resultList) {
-            if (item['groupcustomize_type'] == currentType) {
-              categories.add({
-                'groupcustomize_id': item['groupcustomize_id'],
-                'groupcustomize_name': item['groupcustomize_name'],
-                'groupcustomize_order': item['groupcustomize_order'],
-              });
-            }
+            categories.add({
+              'groupcustomize_id': item['groupcustomize_id'],
+              'groupcustomize_name': item['groupcustomize_name'],
+              'groupcustomize_order': item['groupcustomize_order'] ?? 0,
+            });
           }
 
-          // 按照順序排序
+          // 排序
           categories.sort((a, b) =>
               (a['groupcustomize_order'] ?? 0).compareTo(b['groupcustomize_order'] ?? 0)
           );
 
-          setState(() {
-            _categories = categories;
-          });
+          if (mounted) {
+            setState(() {
+              _categories = categories;
+              print('DEBUG: Categories Loaded Count: ${_categories.length}');
+
+              if (_selectedCategoryId != null && !_categories.any((cat) => cat['groupcustomize_id'] == _selectedCategoryId)) {
+                _selectedCategory = '全部';
+                _selectedCategoryId = null;
+              }
+            });
+          }
         }
       }
     } catch (e) {
@@ -81,17 +148,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
 
   // 獲取收藏的新聞和頻道
   Future<void> _fetchBookmarkedData() async {
-    if (_currentUserId == null) {
-      setState(() {
-        _isLoading = false;
-      });
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
+    if (_currentUserId == null) return;
     try {
       await Future.wait([
         _fetchBookmarkedNews(),
@@ -99,24 +156,26 @@ class _BookmarkPageState extends State<BookmarkPage> {
       ]);
     } catch (e) {
       print('Error fetching bookmarked data: $e');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
     }
   }
 
-  // 獲取收藏的新聞
+  // 獲取收藏的新聞 (GET)
   Future<void> _fetchBookmarkedNews() async {
+    if (_currentUserId == null) return;
     try {
-      final url = '$baseUrl/api/user_action/bookmark/news?userId=$_currentUserId';
+      final url = '$baseUrl/user/bookmark/news?userId=$_currentUserId';
       final response = await http.get(Uri.parse(url));
+      print('DEBUG: News Bookmark URL: $url');
+      print('DEBUG: News Bookmark Status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['success']) {
+        if (data['success'] && mounted) {
+          // 修正點: 同時檢查 'data' 和 'result' 鍵，以提高容錯性
+          final fetchedList = List<Map<String, dynamic>>.from(data['data'] ?? data['result'] ?? []);
+          print('DEBUG: News Bookmarks Fetched Count: ${fetchedList.length}');
           setState(() {
-            _bookmarkedNews = List<Map<String, dynamic>>.from(data['data']);
+            _bookmarkedNews = fetchedList;
           });
         }
       }
@@ -125,17 +184,23 @@ class _BookmarkPageState extends State<BookmarkPage> {
     }
   }
 
-  // 獲取收藏的頻道
+  // 獲取收藏的頻道 (GET)
   Future<void> _fetchBookmarkedChannels() async {
+    if (_currentUserId == null) return;
     try {
-      final url = '$baseUrl/api/user_action/bookmark/channel?userId=$_currentUserId';
+      final url = '$baseUrl/user/bookmark/channel?userId=$_currentUserId';
       final response = await http.get(Uri.parse(url));
+      print('DEBUG: Channel Bookmark URL: $url');
+      print('DEBUG: Channel Bookmark Status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['success']) {
+        if (data['success'] && mounted) {
+          // 修正點: 同時檢查 'data' 和 'result' 鍵，以提高容錯性
+          final fetchedList = List<Map<String, dynamic>>.from(data['data'] ?? data['result'] ?? []);
+          print('DEBUG: Channel Bookmarks Fetched Count: ${fetchedList.length}');
           setState(() {
-            _bookmarkedChannels = List<Map<String, dynamic>>.from(data['data']);
+            _bookmarkedChannels = fetchedList;
           });
         }
       }
@@ -144,25 +209,27 @@ class _BookmarkPageState extends State<BookmarkPage> {
     }
   }
 
-  // 移除收藏
+  // 移除收藏 (DELETE)
   Future<void> _removeBookmark(int itemId, String type) async {
     if (_currentUserId == null) return;
 
     try {
-      final url = type == 'news'
-          ? '$baseUrl/api/user_action/delete/bookmark/news/$itemId'
-          : '$baseUrl/api/user_action/delete/bookmark/channel/$itemId';
+      // 修正路徑: /user/delete/bookmark/:targetId
+      final url = '$baseUrl/user/delete/bookmark/$itemId';
 
       final response = await http.delete(Uri.parse(url));
+      print('DEBUG: Remove Bookmark URL: $url');
 
       if (response.statusCode == 200) {
-        setState(() {
-          if (type == 'news') {
-            _bookmarkedNews.removeWhere((news) => news['id'] == itemId);
-          } else {
-            _bookmarkedChannels.removeWhere((channel) => channel['channel_id'] == itemId);
-          }
-        });
+        if (mounted) {
+          setState(() {
+            if (type == 'news') {
+              _bookmarkedNews.removeWhere((news) => news['id'] == itemId);
+            } else {
+              _bookmarkedChannels.removeWhere((channel) => channel['channel_id'] == itemId);
+            }
+          });
+        }
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -170,6 +237,8 @@ class _BookmarkPageState extends State<BookmarkPage> {
             duration: Duration(seconds: 2),
           ),
         );
+      } else {
+        print('DEBUG: Remove Bookmark Failed Status: ${response.statusCode}');
       }
     } catch (e) {
       print('Error removing bookmark: $e');
@@ -182,74 +251,139 @@ class _BookmarkPageState extends State<BookmarkPage> {
     }
   }
 
-  // 顯示選擇分類對話框
-  void _showCategorySelectionDialog(int itemId, String type) {
-    if (_categories.isEmpty) {
+  // 實際將收藏項目分配到指定分類
+  Future<void> _assignToCategory(int itemId, String type, int categoryId) async {
+    final url = Uri.parse('$baseUrl/groupcustomize/bookmark');
+
+    try {
+      final response = await http.put(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'userId': _currentUserId,
+          'groupId': categoryId,
+          'dataType': type,
+          'itemId': itemId,
+        }),
+      );
+
+      if (response.statusCode == 200 && json.decode(response.body)['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('已成功移動到分類'), backgroundColor: Colors.green),
+        );
+        // 成功後建議重新載入數據
+        _fetchBookmarkedData();
+      } else {
+        throw Exception(json.decode(response.body)['message'] ?? '移動失敗');
+      }
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('請先建立分類'),
-          backgroundColor: Colors.orange,
-        ),
+        SnackBar(content: Text('移動失敗: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  // 🎯 修正點: 顯示分類選擇對話框的方法
+  Future<void> _showCategorySelectionDialog(int itemId, String type) async {
+    final availableCategories = _categories.where((c) => c['groupcustomize_id'] != null).toList();
+
+    if (availableCategories.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('請先新增分類'), backgroundColor: Colors.orange),
       );
       return;
     }
 
-    showDialog(
+    int? selectedId;
+
+    await showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('選擇分類'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: _categories.length,
-            itemBuilder: (context, index) {
-              final category = _categories[index];
-              return ListTile(
-                title: Text(category['groupcustomize_name'].toString()),
-                onTap: () {
-                  Navigator.pop(context);
-                  _assignToCategory(itemId, type, category['groupcustomize_id']);
-                },
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('將${type == 'news' ? '新聞' : '頻道'}移動到...'),
+          content: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setState) {
+              return SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: availableCategories.map((category) {
+                    final id = category['groupcustomize_id'] as int;
+                    final name = category['groupcustomize_name'] as String;
+                    return RadioListTile<int>(
+                      title: Text(name),
+                      value: id,
+                      groupValue: selectedId,
+                      onChanged: (int? value) {
+                        setState(() {
+                          selectedId = value;
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
               );
             },
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 將收藏項目分配到指定分類
-  Future<void> _assignToCategory(int itemId, String type, int categoryId) async {
-    // 暫時顯示成功訊息
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('已移動到分類'),
-        backgroundColor: Colors.green,
-      ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('取消'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: const Text('確定'),
+              onPressed: () {
+                if (selectedId != null) {
+                  _assignToCategory(itemId, type, selectedId!);
+                  Navigator.of(context).pop();
+                } else {
+                  Navigator.of(context).pop();
+                }
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 
   // 打開分類管理頁面
   Future<void> _openCategoryManagement() async {
-    await Navigator.push(
+    if (_currentUserId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('請先登入才能管理分類'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    final initialCategories = _categories
+        .where((c) => c['groupcustomize_id'] != null)
+        .map((e) => {
+      'groupcustomize_id': e['groupcustomize_id'] as int?,
+      'name': e['groupcustomize_name'] as String?,
+      'order': e['groupcustomize_order'] as int?,
+    }).toList();
+
+    final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => GroupCustomizeBookmark(
           userId: _currentUserId!,
           bookmarkType: _showNews ? 'news' : 'channel',
+          initialCategories: initialCategories,
         ),
       ),
     );
-    // 返回後重新載入分類
-    _fetchCategories();
+
+    if (result == true) {
+      _fetchCategories();
+    }
   }
+
+  // ----------------------------------------------------------------------
+  // BUILD METHODS
+  // ----------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -259,7 +393,8 @@ class _BookmarkPageState extends State<BookmarkPage> {
         child: Column(
           children: [
             _buildAppBar(),
-            _buildCategoryFilter(),
+            // 只有當載入完成且分類列表數量大於 1 時才顯示分類篩選器 (1個是'全部')
+            if (!_isLoading && _categories.length > 1) _buildCategoryFilter(),
             _buildToggleSwitch(),
             Expanded(
               child: _isLoading
@@ -272,7 +407,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
     );
   }
 
-  // 自定義AppBar
+  // 🎯 修正點: _buildAppBar 方法
   Widget _buildAppBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -307,13 +442,13 @@ class _BookmarkPageState extends State<BookmarkPage> {
     );
   }
 
-  // 類別篩選器
+  // 🎯 修正點: _buildCategoryFilter 方法
   Widget _buildCategoryFilter() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          // 三條線圖標按鈕 - 打開分類管理頁面
+          // 管理按鈕
           GestureDetector(
             onTap: _openCategoryManagement,
             child: Container(
@@ -333,21 +468,18 @@ class _BookmarkPageState extends State<BookmarkPage> {
             ),
           ),
           const SizedBox(width: 12),
+          // 分類標籤列表
           Expanded(
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  // "全部" 分類 - 永遠顯示
-                  _buildCategoryChip('全部', null),
-                  // 用戶自定義分類 - 只在有分類時顯示
-                  if (_categories.isNotEmpty)
-                    ..._categories.map((category) {
-                      return _buildCategoryChip(
-                        category['groupcustomize_name'].toString(),
-                        category['groupcustomize_id'],
-                      );
-                    }).toList(),
+                  ..._categories.map((category) {
+                    return _buildCategoryChip(
+                      category['groupcustomize_name'].toString(),
+                      category['groupcustomize_id'] as int?,
+                    );
+                  }).toList(),
                 ],
               ),
             ),
@@ -366,10 +498,12 @@ class _BookmarkPageState extends State<BookmarkPage> {
       margin: const EdgeInsets.only(right: 8),
       child: GestureDetector(
         onTap: () {
-          setState(() {
-            _selectedCategory = label;
-            _selectedCategoryId = categoryId;
-          });
+          if (mounted) {
+            setState(() {
+              _selectedCategory = label;
+              _selectedCategoryId = categoryId;
+            });
+          }
         },
         child: Container(
           padding: const EdgeInsets.symmetric(
@@ -399,7 +533,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
     );
   }
 
-  // 新聞/頻道切換開關
+  // 🎯 修正點: _buildToggleSwitch 方法
   Widget _buildToggleSwitch() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -420,11 +554,13 @@ class _BookmarkPageState extends State<BookmarkPage> {
           Expanded(
             child: GestureDetector(
               onTap: () {
-                setState(() {
-                  _showNews = true;
-                  _selectedCategory = '全部';
-                  _selectedCategoryId = null;
-                });
+                if (mounted) {
+                  setState(() {
+                    _showNews = true;
+                    _selectedCategory = '全部';
+                    _selectedCategoryId = null;
+                  });
+                }
                 _fetchCategories();
               },
               child: Container(
@@ -448,11 +584,13 @@ class _BookmarkPageState extends State<BookmarkPage> {
           Expanded(
             child: GestureDetector(
               onTap: () {
-                setState(() {
-                  _showNews = false;
-                  _selectedCategory = '全部';
-                  _selectedCategoryId = null;
-                });
+                if (mounted) {
+                  setState(() {
+                    _showNews = false;
+                    _selectedCategory = '全部';
+                    _selectedCategoryId = null;
+                  });
+                }
                 _fetchCategories();
               },
               child: Container(
@@ -478,30 +616,49 @@ class _BookmarkPageState extends State<BookmarkPage> {
     );
   }
 
-  // 載入中指示器
+  // 🎯 修正點: _buildLoadingWidget 方法
   Widget _buildLoadingWidget() {
     return const Center(
       child: CircularProgressIndicator(),
     );
   }
 
-  // 內容列表
+  // 🎯 修正點: _buildContentList 方法
+  // 🎯 修正點: 實作分類過濾邏輯
   Widget _buildContentList() {
     if (_currentUserId == null) {
       return _buildNotLoggedInWidget();
     }
 
-    final currentList = _showNews ? _bookmarkedNews : _bookmarkedChannels;
+    final allItems = _showNews ? _bookmarkedNews : _bookmarkedChannels;
 
-    if (currentList.isEmpty) {
+    // 實作分類篩選邏輯
+    final filteredList = allItems.where((item) {
+      // 1. 如果選擇了 "全部" (ID為 null)，則顯示所有項目
+      if (_selectedCategoryId == null) {
+        return true;
+      }
+
+      // 2. 篩選出 category ID 匹配的項目
+      // 假設書籤項目中包含 'groupcustomize_id' 字段
+      final itemCategoryId = item['groupcustomize_id'];
+
+      // 項目必須有 ID 且其 ID 必須等於選中的 ID
+      // item['groupcustomize_id'] 應該是您在後端查詢收藏時，JOIN 該項目所屬分類的 ID
+      return itemCategoryId != null && itemCategoryId == _selectedCategoryId;
+
+    }).toList();
+
+
+    if (filteredList.isEmpty) {
       return _buildEmptyWidget();
     }
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: currentList.length,
+      itemCount: filteredList.length,
       itemBuilder: (context, index) {
-        final item = currentList[index];
+        final item = filteredList[index];
         return _showNews
             ? _buildNewsItem(item)
             : _buildChannelItem(item);
@@ -557,24 +714,25 @@ class _BookmarkPageState extends State<BookmarkPage> {
     );
   }
 
-  // 新聞項目
+  // News 項目樣式
   Widget _buildNewsItem(Map<String, dynamic> news) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
+            color: Colors.grey.withOpacity(0.2),
             spreadRadius: 1,
-            blurRadius: 3,
+            blurRadius: 5,
           ),
         ],
       ),
       child: InkWell(
         onTap: () {
+          // 導航到新聞內容頁面
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -585,60 +743,56 @@ class _BookmarkPageState extends State<BookmarkPage> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 封面圖片
             Container(
-              width: 80,
-              height: 60,
+              width: 90,
+              height: 70,
               decoration: BoxDecoration(
-                color: Colors.grey[300],
+                color: Colors.grey[200],
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: news['cover_img'] != null
+              child: news['cover_img'] != null && news['cover_img'].isNotEmpty
                   ? ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: Image.network(
                   news['cover_img'],
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) {
-                    return const Icon(Icons.image, color: Colors.grey);
+                    return const Center(child: Icon(Icons.image_not_supported, color: Colors.grey, size: 30));
                   },
                 ),
               )
-                  : const Icon(Icons.image, color: Colors.grey),
+                  : const Center(child: Icon(Icons.article, color: Colors.grey, size: 30)),
             ),
             const SizedBox(width: 12),
+            // 標題與資訊
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    news['channel'] ?? '未知頻道',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 12,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
+                  // 標題
                   Text(
                     news['title'] ?? '無標題',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: Colors.black,
+                      fontSize: 15,
+                      color: Colors.black87,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 8),
+                  // 頻道、日期與選單
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        news['publish_date'] ?? '未知時間',
+                        '${news['channel'] ?? '未知頻道'} • ${news['publish_date'] ?? '未知時間'}',
                         style: TextStyle(
                           color: Colors.grey[600],
                           fontSize: 12,
                         ),
                       ),
-                      const Spacer(),
                       // 三個點選單
                       PopupMenuButton<String>(
                         icon: const Icon(
@@ -648,6 +802,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
                         ),
                         onSelected: (value) {
                           if (value == 'category') {
+                            // 假設 news['id'] 是新聞的唯一ID
                             _showCategorySelectionDialog(news['id'], 'news');
                           } else if (value == 'remove') {
                             _removeBookmark(news['id'], 'news');

@@ -551,27 +551,106 @@ class _AIPageState extends State<AIPage> {
 
               const SizedBox(width: 8),
 
-              // Switch for Event Sorting / Multiple Perspectives (原 AIPage 邏輯)
-              Switch(
-                value: !_isEventSortingMode,
-                onChanged: (bool value) {
-                  setState(() {
-                    _isEventSortingMode = !value;
-                    // # 🌟 搜尋功能修正 🌟
-                    // 切換模式後，如果正在搜尋，重新觸發篩選，確保切換後的列表是正確篩選的
-                    _filterData(_currentSearchKeyword);
-                  });
-                },
-                activeColor: Colors.blue,
-                inactiveTrackColor: Colors.grey.shade300,
-                inactiveThumbColor: Colors.white,
-              ),
+              // 替換原有的 Switch 元件
+              _buildModeToggle(),
+
             ],
           ),
         );
       },
     );
   }
+
+  // ========== 模式切換元件 (Switch 替換為 Icon/Text 切換) ==========
+  Widget _buildModeToggle() {
+    // 兩個模式的圖示和名稱
+    const String eventModeName = "事件整理";
+    const IconData eventModeIcon = Icons.auto_stories; // 事件整理 (書本/故事)
+    const String mpModeName = "多方看法";
+    const IconData mpModeIcon = Icons.compare_arrows; // 多方看法 (對比/箭頭)
+
+    // 當前模式的顏色
+    final Color activeColor = Colors.blue.shade700;
+    final Color inactiveColor = Colors.grey.shade500;
+    final Color activeBgColor = Colors.blue.shade50;
+    final Color inactiveBgColor = Colors.grey.shade100;
+
+    // 定義切換卡片的樣式
+    Widget buildToggleItem(
+        String name, IconData icon, bool isActive, VoidCallback onTap) {
+      return GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            color: isActive ? activeBgColor : inactiveBgColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isActive ? activeColor : inactiveColor.withOpacity(0.5),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: isActive ? activeColor : inactiveColor,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                name,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: isActive ? activeColor : inactiveColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Row(
+      // 使用 Row 來並排放置兩個切換選項
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // 1. 事件整理 (Event Sorting)
+        buildToggleItem(
+          eventModeName,
+          eventModeIcon,
+          _isEventSortingMode,
+              () {
+            if (!_isEventSortingMode) {
+              setState(() {
+                _isEventSortingMode = true;
+                // 切換模式後，如果正在搜尋，重新觸發篩選
+                _filterData(_currentSearchKeyword);
+              });
+            }
+          },
+        ),
+        const SizedBox(width: 4), // 增加間隔
+        // 2. 多方看法 (Multiple Perspectives)
+        buildToggleItem(
+          mpModeName,
+          mpModeIcon,
+          !_isEventSortingMode, // 當前不是事件整理模式，就是多方看法模式
+              () {
+            if (_isEventSortingMode) {
+              setState(() {
+                _isEventSortingMode = false;
+                // 切換模式後，如果正在搜尋，重新觸發篩選
+                _filterData(_currentSearchKeyword);
+              });
+            }
+          },
+        ),
+      ],
+    );
+  }
+
 
   // ========== 搜尋列 (從 AIPage 原本邏輯改為 HomePage 樣式) ==========
   Widget _buildSearchBar() {
