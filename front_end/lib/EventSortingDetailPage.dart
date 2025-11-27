@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:share_plus/share_plus.dart'; // ✅ 新增：分享插件
 
 // 假設這些檔案和配置存在於您的專案中
 import 'CommentsPage.dart';
@@ -9,7 +10,8 @@ import 'MultiplePerspectivesDetailPage.dart';
 import 'config.dart'; // 確保這裡有定義 baseUrl
 import 'ViewnewsContent.dart';
 
-
+// 請確保您的 config.dart 中定義了 baseUrl
+// final String baseUrl = 'YOUR_BASE_URL';
 
 class EventSortingDetailPage extends StatefulWidget {
   final int id;
@@ -34,8 +36,8 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
   bool isFavorite = false;
 
   // 計算平均分數 (四捨五入到小數點後一位)
-  double get _averageScore => _totalRater > 0 ? (_totalScore / _totalRater) : 0.0;
-
+  double get _averageScore =>
+      _totalRater > 0 ? (_totalScore / _totalRater) : 0.0;
 
   // 假設 _userActionBaseUrl, _eventSortingUrl, _imageUrl, _newsUrl 來自 config.dart
   // 為方便演示，這裡使用字串插值
@@ -58,7 +60,10 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
       final eventId = event['id'] as int?;
       final eventTitle = event['title'] as String?;
 
-      if (eventId != null && eventId > 0 && eventTitle != null && eventTitle.isNotEmpty) {
+      if (eventId != null &&
+          eventId > 0 &&
+          eventTitle != null &&
+          eventTitle.isNotEmpty) {
         return event;
       }
     }
@@ -93,7 +98,9 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
   }
 
   Future<Map<String, dynamic>?> _fetchSingleEventDetails(int eventId) async {
-    final eventUri = Uri.parse(_eventSortingUrl).replace(queryParameters: {'id': eventId.toString()});
+    final eventUri = Uri.parse(
+      _eventSortingUrl,
+    ).replace(queryParameters: {'id': eventId.toString()});
     try {
       final eventResponse = await http.get(eventUri);
 
@@ -112,19 +119,23 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
   }
 
   Future<void> _fetchHorizontalEventsDetails(List<int> eventIds) async {
-    List<Future<Map<String, dynamic>?>> futures = eventIds.map((id) async {
-      final details = await _fetchSingleEventDetails(id);
-      if (details != null) {
-        return {
-          'id': id,
-          'title': details['eventsorting_title'] ?? '未知事件',
-          'image': details['eventsorting_image'] as int? ?? -1,
-        };
-      }
-      return null;
-    }).toList();
+    List<Future<Map<String, dynamic>?>> futures =
+        eventIds.map((id) async {
+          final details = await _fetchSingleEventDetails(id);
+          if (details != null) {
+            return {
+              'id': id,
+              'title': details['eventsorting_title'] ?? '未知事件',
+              'image': details['eventsorting_image'] as int? ?? -1,
+            };
+          }
+          return null;
+        }).toList();
 
-    final results = (await Future.wait(futures)).where((item) => item != null).cast<Map<String, dynamic>>().toList();
+    final results =
+        (await Future.wait(
+          futures,
+        )).where((item) => item != null).cast<Map<String, dynamic>>().toList();
 
     if (mounted) {
       setState(() {
@@ -145,77 +156,96 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
     final newsUri = Uri.parse('$_newsUrl/search');
 
     // 3. 逐一發送 POST 請求
-    final newsPromises = newsIds.map((id) {
-      // 構造 POST 請求的 Body：只傳遞單個 newsId，並要求 'simple' 模式
-      final body = json.encode({
-        'id': [id],
-        'mode': 'simple' // 💥 修正為 'simple'
-      });
+    final newsPromises =
+        newsIds.map((id) {
+          // 構造 POST 請求的 Body：只傳遞單個 newsId，並要求 'simple' 模式
+          final body = json.encode({
+            'id': [id],
+            'mode': 'simple', // 💥 修正為 'simple'
+          });
 
-      return http.post(
-        newsUri,
-        headers: {'Content-Type': 'application/json'},
-        body: body,
-      ).then((response) {
-        if (response.statusCode == 200) {
-          try {
-            final data = json.decode(utf8.decode(response.bodyBytes));
+          return http
+              .post(
+                newsUri,
+                headers: {'Content-Type': 'application/json'},
+                body: body,
+              )
+              .then((response) {
+                if (response.statusCode == 200) {
+                  try {
+                    final data = json.decode(utf8.decode(response.bodyBytes));
 
-            // 💥 注意: 現在讀取的是 'simpleList'
-            final List<dynamic>? simpleList = data['data']?['simpleList'];
+                    // 💥 注意: 現在讀取的是 'simpleList'
+                    final List<dynamic>? simpleList =
+                        data['data']?['simpleList'];
 
-            if (simpleList?.isNotEmpty == true) {
-              final newsItem = simpleList![0] as Map<String, dynamic>;
+                    if (simpleList?.isNotEmpty == true) {
+                      final newsItem = simpleList![0] as Map<String, dynamic>;
 
-              // 從 simpleList 的結果中提取所需欄位
-              return {
-                'id': newsItem['newsId'] as int? ?? id,
-                'title': newsItem['newsTitle'] ?? '無標題',
-                'time': newsItem['publishDate'] ?? '未知時間',
-                'source': newsItem['channelName'] ?? '未知來源',
+                      // 從 simpleList 的結果中提取所需欄位
+                      return {
+                        'id': newsItem['newsId'] as int? ?? id,
+                        'title': newsItem['newsTitle'] ?? '無標題',
+                        'time': newsItem['publishDate'] ?? '未知時間',
+                        'source': newsItem['channelName'] ?? '未知來源',
 
-                // 輔助欄位：使用 coverImageUrl 替代 image_id
-                'image': -1, // 廢棄：不再使用 image_id
-                'cover_image_url': newsItem['coverImageUrl'] ?? '',
+                        // 輔助欄位：使用 coverImageUrl 替代 image_id
+                        'image': -1, // 廢棄：不再使用 image_id
+                        'cover_image_url': newsItem['coverImageUrl'] ?? '',
 
-                // 舊的欄位，保留兼容性
-                'channel_id': -1,
-                'channel': newsItem['channelName'] ?? '未知來源',
-                'news_date': newsItem['publishDate'] ?? '未知時間',
-                'comments': 0,
-                'cover_image': -1,
+                        // 舊的欄位，保留兼容性
+                        'channel_id': -1,
+                        'channel': newsItem['channelName'] ?? '未知來源',
+                        'news_date': newsItem['publishDate'] ?? '未知時間',
+                        'comments': 0,
+                        'cover_image': -1,
 
-                // 儲存 newsItem 供 ViewNewsContent 使用
-                'newsData': newsItem,
-              };
-            } else {
-              print('Warning: Search API returned empty for single ID: $id (simpleList is empty)');
-            }
-          } catch (e) {
-            print('Error: Failed to decode JSON or map for News ID $id. $e');
-          }
-        } else {
-          print('API Error (Status ${response.statusCode}) for News ID $id. Response: ${response.body}');
-        }
-        return null;
-      }).catchError((e) {
-        print('Fatal Error: Failed to fetch news ID $id via API due to exception: $e');
-        return null;
-      });
-    }).toList();
+                        // 儲存 newsItem 供 ViewNewsContent 使用
+                        'newsData': newsItem,
+                      };
+                    } else {
+                      print(
+                        'Warning: Search API returned empty for single ID: $id (simpleList is empty)',
+                      );
+                    }
+                  } catch (e) {
+                    print(
+                      'Error: Failed to decode JSON or map for News ID $id. $e',
+                    );
+                  }
+                } else {
+                  print(
+                    'API Error (Status ${response.statusCode}) for News ID $id. Response: ${response.body}',
+                  );
+                }
+                return null;
+              })
+              .catchError((e) {
+                print(
+                  'Fatal Error: Failed to fetch news ID $id via API due to exception: $e',
+                );
+                return null;
+              });
+        }).toList();
 
     // 4. 等待所有請求完成，並過濾掉失敗的 (null) 項目
-    timeline = (await Future.wait(newsPromises)).where((item) => item != null).toList();
+    timeline =
+        (await Future.wait(
+          newsPromises,
+        )).where((item) => item != null).toList();
 
     // 5. 排序
-    timeline.sort((a, b) => (b['time'] as String).compareTo(a['time'] as String));
+    timeline.sort(
+      (a, b) => (b['time'] as String).compareTo(a['time'] as String),
+    );
 
     return {'eventsorting_timeline': timeline};
   }
 
-
   Future<Map<String, dynamic>> _fetchEventDetailsAndImages() async {
-    final eventUri = Uri.parse(_eventSortingUrl).replace(queryParameters: {'id': widget.id.toString()});
+    final eventUri = Uri.parse(
+      _eventSortingUrl,
+    ).replace(queryParameters: {'id': widget.id.toString()});
     final imagesUri = Uri.parse(_imageUrl);
 
     try {
@@ -223,7 +253,9 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
       final imagesResponse = await http.get(imagesUri);
 
       if (eventResponse.statusCode != 200) {
-        throw Exception('Failed to load event details: ${eventResponse.statusCode}');
+        throw Exception(
+          'Failed to load event details: ${eventResponse.statusCode}',
+        );
       }
 
       if (imagesResponse.statusCode == 200) {
@@ -257,13 +289,27 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
       final dynamic rawNewsIds = event['vertical_news'];
       List<int> newsIds = [];
       if (rawNewsIds is List) {
-        newsIds = rawNewsIds.map((e) => e is int ? e : (e is String ? int.tryParse(e) : null)).where((e) => e != null).cast<int>().toList();
+        newsIds =
+            rawNewsIds
+                .map(
+                  (e) => e is int ? e : (e is String ? int.tryParse(e) : null),
+                )
+                .where((e) => e != null)
+                .cast<int>()
+                .toList();
       }
 
       final dynamic rawHorizontalIds = event['horizontal_events'];
       List<int> horizontalIds = [];
       if (rawHorizontalIds is List) {
-        horizontalIds = rawHorizontalIds.map((e) => e is int ? e : (e is String ? int.tryParse(e) : null)).where((e) => e != null).cast<int>().toList();
+        horizontalIds =
+            rawHorizontalIds
+                .map(
+                  (e) => e is int ? e : (e is String ? int.tryParse(e) : null),
+                )
+                .where((e) => e != null)
+                .cast<int>()
+                .toList();
       }
 
       if (horizontalIds.isNotEmpty) {
@@ -282,7 +328,6 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
         ...event,
         ...timelineResult, // 包含 'eventsorting_timeline'
       };
-
     } catch (e) {
       throw Exception('Failed to connect to API or process data: $e');
     }
@@ -290,26 +335,59 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
 
   void _navigateToCommentsPage() {
     if (_currentUserId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('請先登入以使用評分/留言功能')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('請先登入以使用評分/留言功能')));
       return;
     }
 
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => CommentsPage(
-          dataId: widget.id,
-          currentUserId: _currentUserId!,
-          dataType: 'eventsorting',
-          insertUserAction: _insertUserAction,
-          totalScore: _totalScore,
-          totalRater: _totalRater,
-          onParentDataUpdated: _refreshEventDetails,
-        ),
+        builder:
+            (context) => CommentsPage(
+              dataId: widget.id,
+              currentUserId: _currentUserId!,
+              dataType: 'eventsorting',
+              insertUserAction: _insertUserAction,
+              totalScore: _totalScore,
+              totalRater: _totalRater,
+              onParentDataUpdated: _refreshEventDetails,
+            ),
       ),
     );
+  }
+
+  // ✅ 新增：分享功能 - 使用share_plus
+  Future<void> _handleShareTap() async {
+    try {
+      // 構建分享文本
+      final shareText =
+          '事件整理分析 - ID: ${widget.id}\n\n'
+          '平均評分: ${_averageScore.toStringAsFixed(1)}/10 (${_totalRater}人評分)\n'
+          '留言數量: $_commentCount\n\n'
+          '分享自新聞聚合平台';
+
+      // 深鏈接
+      final shareUrl = 'eventsorting://details/${widget.id}';
+
+      final fullShareText = '$shareText\n$shareUrl';
+
+      await Share.share(fullShareText, subject: '事件整理分析');
+
+      print('✅ 分享成功: ID ${widget.id}');
+    } catch (e) {
+      print('❌ 分享失敗: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('分享失敗: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
   }
 
   void _navigateToEventSortingDetailPage(int newId) {
@@ -337,7 +415,7 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
     }
     try {
       final image = _allImages.firstWhere(
-            (img) => img['image_id'] == imageId,
+        (img) => img['image_id'] == imageId,
         orElse: () => null,
       );
       return image?['image_origin_url'] ?? '';
@@ -348,19 +426,15 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
   }
 
   Future<void> _insertUserAction(
-      String actionType,
-      String dataType,
-      {
-        String? text,
-        int? score,
-        String? anonymous,
-      }
-      ) async {
+    String actionType,
+    String dataType, {
+    String? text,
+    int? score,
+    String? anonymous,
+  }) async {
     final url = '$_userActionBaseUrl/user/$actionType/$dataType';
 
-    final body = <String, dynamic>{
-      'dataId': widget.id,
-    };
+    final body = <String, dynamic>{'dataId': widget.id};
     if (_currentUserId != null) {
       body['userId'] = _currentUserId;
     }
@@ -371,7 +445,8 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
     } else {
       if (text != null && text.isNotEmpty) body['text'] = text;
       if (score != null) body['score'] = score;
-      if (anonymous != null && anonymous.isNotEmpty) body['anonymous'] = anonymous;
+      if (anonymous != null && anonymous.isNotEmpty)
+        body['anonymous'] = anonymous;
 
       if (_currentUserId == null) {
         print('Error: Action $actionType requires a logged-in user.');
@@ -407,23 +482,25 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
         if (['score', 'comment'].contains(actionType)) {
           _refreshEventDetails();
         }
-
       } else {
         if (actionType != 'view' && actionType != 'bookmark') {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('操作失敗: ${response.statusCode} - ${json.decode(response.body)['message'] ?? '伺服器錯誤'}')),
+            SnackBar(
+              content: Text(
+                '操作失敗: ${response.statusCode} - ${json.decode(response.body)['message'] ?? '伺服器錯誤'}',
+              ),
+            ),
           );
         }
       }
     } catch (e) {
       if (actionType != 'view' && actionType != 'bookmark') {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('連線錯誤: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('連線錯誤: $e')));
       }
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -458,7 +535,11 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
               if (value) {
                 Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(builder: (context) => MultiplePerspectivesDetailPage(id: widget.id)),
+                  MaterialPageRoute(
+                    builder:
+                        (context) =>
+                            MultiplePerspectivesDetailPage(id: widget.id),
+                  ),
                 );
               }
             },
@@ -481,7 +562,11 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
                 child: Text(
                   '資料載入失敗: \n\n${snapshot.error}',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.red, fontSize: 16, height: 1.5),
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontSize: 16,
+                    height: 1.5,
+                  ),
                 ),
               ),
             );
@@ -500,10 +585,13 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
                 children: [
                   _buildDisclaimer(),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12.0),
-                      //child: _buildMainImage(mainImageUrl, context),
+                      child: _buildMainImage(mainImageUrl, context),
                     ),
                   ),
                   _buildSummaryCard(event['eventsorting_summary'] ?? '無摘要內容。'),
@@ -538,10 +626,7 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
             padding: EdgeInsets.symmetric(horizontal: 16.0),
             child: Text(
               '相關事件：',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
           ),
           // 呼叫原有的卡片 Widget
@@ -594,11 +679,7 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
               ),
             ),
             const SizedBox(width: 10),
-            const Icon(
-              Icons.arrow_forward_ios,
-              color: Colors.white,
-              size: 20,
-            ),
+            const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 20),
           ],
         ),
       ),
@@ -654,9 +735,15 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
           children: [
             Row(
               children: [
-                const Text('重點摘要', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const Text(
+                  '重點摘要',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
                 const Spacer(),
-                const Text('16篇 • 摘要使用AI技術協助', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                const Text(
+                  '16篇 • 摘要使用AI技術協助',
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                ),
                 const SizedBox(width: 4),
                 const Icon(Icons.info_outline, size: 14, color: Colors.grey),
               ],
@@ -677,7 +764,10 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('新聞脈絡整理', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          const Text(
+            '新聞脈絡整理',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 16),
           if (items.isEmpty)
             const Padding(
@@ -690,8 +780,8 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
             final isLast = entry.key == items.length - 1;
 
             return _buildTimelineItem(
-                item, // 💥 只傳遞 newsItem Map
-                isLast
+              item, // 💥 只傳遞 newsItem Map
+              isLast,
             );
           }).toList(),
         ],
@@ -707,7 +797,8 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
     final String source = newsItem['source'] ?? '';
 
     // 💥 從 newsItem 中直接獲取 URL
-    final String timelineImageUrl = newsItem['cover_image_url'] as String? ?? '';
+    final String timelineImageUrl =
+        newsItem['cover_image_url'] as String? ?? '';
 
     return IntrinsicHeight(
       child: Row(
@@ -740,20 +831,29 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
 
           Expanded(
             child: InkWell(
-              onTap: newsId != -1
-                  ? () => _navigateToNewsContentPage(newsItem)
-                  : null,
+              onTap:
+                  newsId != -1
+                      ? () => _navigateToNewsContentPage(newsItem)
+                      : null,
               borderRadius: BorderRadius.circular(12),
               child: Card(
                 margin: const EdgeInsets.only(bottom: 20),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 elevation: 1,
                 child: Padding(
                   padding: const EdgeInsets.all(12.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(time, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                      Text(
+                        time,
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 12,
+                        ),
+                      ),
                       const SizedBox(height: 4),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -762,16 +862,30 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                Text(
+                                  title,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
+                                ),
                                 const SizedBox(height: 4),
-                                Text(source, style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                                Text(
+                                  source,
+                                  style: const TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 11,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
                           const SizedBox(width: 8),
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8.0),
-                            child: _buildImage(timelineImageUrl), // 💥 使用 timelineImageUrl
+                            child: _buildImage(
+                              timelineImageUrl,
+                            ), // 💥 使用 timelineImageUrl
                           ),
                         ],
                       ),
@@ -806,11 +920,17 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Row(
         children: [
-          const Text("使用AI技術協助", style: TextStyle(color: Colors.grey, fontSize: 12)),
+          const Text(
+            "使用AI技術協助",
+            style: TextStyle(color: Colors.grey, fontSize: 12),
+          ),
           const SizedBox(width: 4),
           const Icon(Icons.info_outline, size: 14, color: Colors.grey),
           const Spacer(),
-          const Text("資訊若有失真狀況，一概不負法律責任", style: TextStyle(color: Colors.red, fontSize: 10)),
+          const Text(
+            "資訊若有失真狀況，一概不負法律責任",
+            style: TextStyle(color: Colors.red, fontSize: 10),
+          ),
         ],
       ),
     );
@@ -818,11 +938,7 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
 
   Widget _buildPlaceholderImage(double width, double height) {
     if (width == 60 && height == 60) {
-      return Container(
-        width: width,
-        height: height,
-        color: Colors.black,
-      );
+      return Container(width: width, height: height, color: Colors.black);
     }
     if (width == 150 && height == 50) {
       return Container(
@@ -853,11 +969,7 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.chat_bubble_outline,
-              size: 20,
-              color: Colors.grey[600],
-            ),
+            Icon(Icons.chat_bubble_outline, size: 20, color: Colors.grey[600]),
             const SizedBox(width: 8),
             Text(
               '${_commentCount}則',
@@ -873,13 +985,13 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
     return InkWell(
       onTap: () {
         if (_currentUserId != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('點擊了聊天機器人，待實作導航')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('點擊了聊天機器人，待實作導航')));
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('請先登入以使用聊天機器人')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('請先登入以使用聊天機器人')));
         }
       },
       child: Container(
@@ -904,11 +1016,7 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(12),
-        child: Icon(
-          icon,
-          color: iconColor,
-          size: 24,
-        ),
+        child: Icon(icon, color: iconColor, size: 24),
       ),
     );
   }
@@ -960,10 +1068,8 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
                 label: '分享',
                 iconColor: Colors.grey.shade600!,
                 onTap: () {
-                  _insertUserAction('share', 'eventsorting');
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('分享功能已啟用')),
-                  );
+                  _insertUserAction('share', 'eventsorting'); // ✅ 保留：記錄用戶行為
+                  _handleShareTap(); // ✅ 新增：調用實際分享功能
                 },
               ),
             ],
