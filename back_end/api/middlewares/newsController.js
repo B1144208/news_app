@@ -415,6 +415,7 @@ async function insertNews(req, res, next) {
         }
 
         // 獲取 news_embedding
+        // ----------------------------------------------------------------------------------------
         let totalText = title + detail.map(p => p).join('\n');
         let embedding = getEmbedding(totalText);
         
@@ -431,11 +432,10 @@ async function insertNews(req, res, next) {
                 relation_id,
                 cover_image,
                 news_title,
-                news_date,
-                news_embedding
-            ) VALUES (?, ?, ?, ?, ?, ?, ?);
+                news_date
+            ) VALUES (?, ?, ?, ?, ?, ?);
         `;
-        params = [ url, channel_id, relation_id, cover_img_id, title, publish_date, embedding ];
+        params = [ url, channel_id, relation_id, cover_img_id, title, publish_date ];
 
         try {
             const [newsDataResult] = await pool.query(sql, params);
