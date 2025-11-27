@@ -19,23 +19,60 @@ const OLLAMA_MODEL = 'qwen2.5:1.5b';
 @
 */
 
-// ---- general ----
-async function generalScript(req, res, next) {
-    let { id, idList, times, limit } = req.query ?? {}
+async function getText (req, res, next) {
+    let { idList } = req.query ?? {}
 
     try {
-      [ id, idList, times ] = await checkRequireField ([
-        { field: 'id'     , data: id      , type: 'number'  , other: ['lth'] },
-        { field: 'idList' , data: idList  , type: 'array'   , other: ['lth'], array_filter: 'number' },
-        { field: 'times'  , data: times   , type: 'number'  , other: ['non_null'] , default: 1}
+      [ id, idList, times, limit ] = await checkRequireField ([
+        { field: 'idList' , data: idList  , type: 'array'   , other: ['non-null'], array_filter: 'number' }
       ]);
     } catch (err) {
       err.desc = "middlewares-updateGroupOrder(): Missing or Invalid required fields";
       return next(err);
     }
 
-    // ****************************************************************************
-    limit = 2;
+    fakeReq = {
+      query: { mode: "complex" },
+      body: { id: idList}
+    }
+    try {
+      let result = await callAndCatchApiSuccess(searchNews, fakeReq);
+
+      result = result.complexList.map(item => {
+        const bodyText = (item.newsBody || [])
+          .filter(part => typeof part.text === 'string' && part.text.trim() !== '')
+          .map(part => part.text.trim())
+          .join('\n');
+
+        return {
+          id: item.newsId,
+          title: item.newsTitle,
+          text: bodyText
+        }
+      });
+      return res.apiSuccess(result, "Search Success");
+    } catch (err) {
+      err.desc = "middlewares-scriptController(): error";
+      return next(err);
+    }
+}
+
+
+// ---- general ----
+async function generalScript(req, res, next) {
+    let { id, idList, times, limit } = req.query ?? {}
+
+    try {
+      [ id, idList, times, limit ] = await checkRequireField ([
+        { field: 'id'     , data: id      , type: 'number'  , other: ['lth'] },
+        { field: 'idList' , data: idList  , type: 'array'   , other: ['lth'], array_filter: 'number' },
+        { field: 'times'  , data: times   , type: 'number'  , other: ['non_null'] , default: 1},
+        { field: 'limit'  , data: limit   , type: 'number'  , other: ['non_null'] , default: 300}
+      ]);
+    } catch (err) {
+      err.desc = "middlewares-updateGroupOrder(): Missing or Invalid required fields";
+      return next(err);
+    }
 
     // 沒有 idList，呼叫 searchNews 得到 idList
     if ( !idList ) {
@@ -382,6 +419,7 @@ async function callAskScript(req, res, next) {
 
 // ---- 匯出所有函式 ----
 module.exports = {
+  getText,
   generalScript,
   reporterScriptFast,
   reporterScript,

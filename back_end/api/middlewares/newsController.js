@@ -6,6 +6,7 @@ const { insertImage, deleteImage } = require('./imageController');
 const { insertGroup } = require('./groupController');
 const { searchLocation } = require('./locationController');
 const { insertRelation, deleteRelation } = require('./relationController');
+const { getNewsEmbedding, getEmbedding } = require('../utils/embeddingHelper');
 
 // search
 async function searchNews(req, res, next) {
@@ -413,6 +414,10 @@ async function insertNews(req, res, next) {
             return next(err);
         }
 
+        // 獲取 news_embedding
+        let totalText = title + detail.map(p => p).join('\n');
+        let embedding = getEmbedding(text);
+
         // 插入資料庫
         let sql = '', params = []
 
@@ -425,10 +430,11 @@ async function insertNews(req, res, next) {
                 relation_id,
                 cover_image,
                 news_title,
-                news_date
-            ) VALUES (?, ?, ?, ?, ?, ?);
+                news_date,
+                news_embedding
+            ) VALUES (?, ?, ?, ?, ?, ?, ?);
         `;
-        params = [ url, channel_id, relation_id, cover_img_id, title, publish_date ];
+        params = [ url, channel_id, relation_id, cover_img_id, title, publish_date, embedding ];
 
         try {
             const [newsDataResult] = await pool.query(sql, params);

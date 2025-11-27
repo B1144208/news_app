@@ -63,80 +63,133 @@ ${newsText}`
   }
 }
 
-/*async function newsClassifier(req, res, next) {
+// 共用：呼叫 Ollama 的小幫手
+async function callOllamaNewsModel (modelName, newsText, promptPrefix) {
+  const ollamaRes = await fetch('http://localhost:11434/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: modelName,
+      format: 'json',   // 強制只產生 JSON
+      stream: false,
+      messages: [
+        {
+          role: 'user',
+          content: `${promptPrefix}
+【新聞內容】
+${newsText}`
+        }
+      ]
+    })
+  });
+
+  if (!ollamaRes.ok) {
+    throw new Error(`Ollama returned status ${ollamaRes.status}`);
+  }
+
+  const ollamaData = await ollamaRes.json();
+  let result = ollamaData?.message?.content;
+
+  // content 可能是字串形式的 JSON，再 parse 一次
+  if (typeof result === 'string') {
+    try {
+      result = JSON.parse(result);
+    } catch (e) {
+      // parse 失敗就維持原樣，讓上層決定要不要處理
+    }
+  }
+
+  return result;
+}
+
+// 1) group 分類：呼叫 news-group
+async function newsGroupClassifier (req, res, next) {
   try {
-    // 1. 從 body 拿新聞文字（標題＋內文）
-    const { newsText } = req.body;
+    const { newsText } = req.body || {};
 
     if (!newsText || typeof newsText !== 'string') {
       return res.status(400).json({
         ok: false,
-        error: '請在 body.newsText 傳入「新聞標題＋內文」的字串'
+        error: 'newsText is required and must be a string'
       });
     }
 
-    // 2. 呼叫 Ollama 的 chat API，指定 format: 'json'
-    const ollamaRes = await fetch('http://localhost:11434/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'news-classifier',
-        format: 'json',   // ★ 要求模型只產生 JSON
-        messages: [
-          {
-            role: 'user',
-            content:
-              '以下是一則新聞（標題與內文），' +
-              '請完全依照 SYSTEM 規則進行分類，只輸出一個 JSON 物件：\n\n' +
-              newsText      // ★ 這裡只放純新聞內容，不要再包含任何指令
-          }
-        ]
-      })
-    });
+    const result = await callOllamaNewsModel(
+      'news-group',
+      newsText,
+      '請依照 SYSTEM 規則，對以下新聞判斷「group 主題分類」，只輸出 JSON 物件：'
+    );
 
-    if (!ollamaRes.ok) {
-      const text = await ollamaRes.text().catch(() => '');
-      return res.status(500).json({
-        ok: false,
-        error: '呼叫 Ollama 失敗',
-        detail: text
-      });
-    }
-
-    // 3. 解析 Ollama 回傳
-    const ollamaJson = await ollamaRes.json();
-
-    // Ollama chat 回傳格式大概長這樣：
-    // { message: { role: 'assistant', content: '{ "group": ... }' }, ... }
-    const rawContent = ollamaJson?.message?.content ?? '';
-
-    let parsed;
-    try {
-      parsed = typeof rawContent === 'string'
-        ? JSON.parse(rawContent)  // 內容是 JSON 字串 → parse 一次
-        : rawContent;             // 如果未來 format 直接給物件也不會爆
-    } catch (e) {
-      // 如果模型沒照規矩給合法 JSON，就回 raw 給你 debug
-      return res.status(500).json({
-        ok: false,
-        error: '模型回傳的內容不是合法 JSON',
-        raw: rawContent
-      });
-    }
-
-    // 4. 回傳給前端（只包一層 ok / data）
     return res.json({
       ok: true,
-      data: parsed   // 這裡就是 { group: [...], location: [...], keyword: [...] }
+      data: result
     });
   } catch (err) {
-    console.error('newsClassifier error:', err);
-    return res.status(500).json({
-      ok: false,
-      error: 'newsClassifier server error'
-    });
+    console.error('newsGroupClassifier error:', err);
+    return next(err);
   }
-}*/
-module.exports = {
-    newsClassifier
 }
+
+// 2) location 分類：呼叫 news-location
+async function newsLocationClassifier (req, res, next) {
+  try {
+    const { newsText } = req.body || {};
+
+    if (!newsText || typeof newsText !== 'string') {
+      return res.status(400).json({
+        ok: false,
+        error: 'newsText is required and must be a string'
+      });
+    }
+
+    const result = await callOllamaNewsModel(
+      'news-location',
+      newsText,
+      '請依照 SYSTEM 規則，對以下新聞判斷「location 地理位置」，只輸出 JSON 物件：'
+    );
+
+    return res.json({
+      ok: true,
+      data: result
+    });
+  } catch (err) {
+    console.error('newsLocationClassifier error:', err);
+    return next(err);
+  }
+}
+
+// 3) keyword 抽取：呼叫 news-keyword
+async function newsKeywordClassifier (req, res, next) {
+  try {
+    const { newsText } = req.body || {};
+
+    if (!newsText || typeof newsText !== 'string') {
+      return res.status(400).json({
+        ok: false,
+        error: 'newsText is required and must be a string'
+      });
+    }
+
+    const result = await callOllamaNewsModel(
+      'news-keyword',
+      newsText,
+      '請依照 SYSTEM 規則，從以下新聞抽取關鍵字，只輸出 JSON 物件：'
+    );
+
+    return res.json({
+      ok: true,
+      data: result
+    });
+  } catch (err) {
+    console.error('newsKeywordClassifier error:', err);
+    return next(err);
+  }
+}
+
+// 如果你是用 module.exports
+module.exports = {
+  newsClassifier,
+  newsGroupClassifier,
+  newsLocationClassifier,
+  newsKeywordClassifier
+};
