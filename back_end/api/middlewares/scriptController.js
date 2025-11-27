@@ -6,6 +6,7 @@ const { execFile } = require('child_process');
 const path = require('path');
 const { searchNews } = require('./newsController');
 const axios = require('axios');
+const { getEmbedding } = require('../utils/embeddingHelper');
 
 
 const OLLAMA_URL = 'http://localhost:11434/api/generate';
@@ -91,6 +92,14 @@ async function generalScript(req, res, next) {
         return next(err);
       }
     }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    text = "這是測試檔";
+    let embedding = getEmbedding(text);
+    return res.apiSuccess(embedding);
+
+
+
 
     fakeReq = {
       query: { mode: "complex" },
