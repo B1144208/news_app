@@ -96,6 +96,7 @@ async function generalScript(req, res, next) {
     ////////////////////////////////////////////////////////////////////////////////////
     text = "這是測試檔";
     let embedding = getEmbedding(text);
+    console.log(embedding);
     return res.apiSuccess(embedding);
 
 
