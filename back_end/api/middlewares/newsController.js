@@ -6,7 +6,7 @@ const { insertImage, deleteImage } = require('./imageController');
 const { insertGroup } = require('./groupController');
 const { searchLocation } = require('./locationController');
 const { insertRelation, deleteRelation } = require('./relationController');
-const { getNewsEmbedding, getEmbedding } = require('../utils/embeddingHelper');
+const { getEmbedding } = require('../utils/embeddingHelper');
 
 // search
 async function searchNews(req, res, next) {

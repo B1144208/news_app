@@ -83,6 +83,8 @@ def run():
 
         case '4':
             print("todo: channel 4")
+        case '5':
+            print("todo: channel 5")
         case _:
             print("unexpected choice")
 
