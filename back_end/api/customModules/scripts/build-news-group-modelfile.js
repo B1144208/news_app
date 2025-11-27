@@ -95,7 +95,7 @@ ${groupJson}
 """
 `;
 
-// 輸出到 ollama/news/Modelfile
+// 輸出到 model/newsGroupModelfile
 const outPath = path.join(__dirname, '..', 'model', 'newsGroupModelfile');
 fs.mkdirSync(path.dirname(outPath), { recursive: true });
 fs.writeFileSync(outPath, modelfileContent, 'utf8');
