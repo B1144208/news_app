@@ -1,4 +1,4 @@
-const fetch = require('node-fetch');
+//const fetch = require('node-fetch');
 
 const OLLAMA_URL = 'http://localhost:11434';
 
