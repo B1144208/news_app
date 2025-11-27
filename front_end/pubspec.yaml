@@ -36,6 +36,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   fl_chart: ^1.1.1
   audioplayers: ^5.2.1
+  share_plus: ^7.2.0  # ✅ 新增：分享功能
 
 dev_dependencies:
   flutter_test:
