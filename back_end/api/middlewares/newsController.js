@@ -416,7 +416,8 @@ async function insertNews(req, res, next) {
 
         // 獲取 news_embedding
         let totalText = title + detail.map(p => p).join('\n');
-        let embedding = getEmbedding(text);
+        let embedding = getEmbedding(totalText);
+        
 
         // 插入資料庫
         let sql = '', params = []
