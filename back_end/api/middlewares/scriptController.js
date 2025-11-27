@@ -1,10 +1,12 @@
 const pool = require('../connect_db');
 const { checkRequireField } = require('../utils/checkHelper');
 const { callAndCatchApiSuccess } = require('../utils/fakeHelper');
+const { shortenArticle, cleanNewsScript } = require('../utils/scriptHelper');
 const { execFile } = require('child_process');
 const path = require('path');
 const { searchNews } = require('./newsController');
 const axios = require('axios');
+
 
 const OLLAMA_URL = 'http://localhost:11434/api/generate';
 const OLLAMA_MODEL = 'qwen2.5:1.5b';
@@ -19,66 +21,66 @@ const OLLAMA_MODEL = 'qwen2.5:1.5b';
 
 // ---- general ----
 async function generalScript(req, res, next) {
-    let { id, times } = req.params ?? {}
+    let { id, idList, times, limit } = req.query ?? {}
 
     try {
-        [ id, times ] = await checkRequireField ([
-            { field: 'id'   , data: id    , type: 'number' , other: ['lth'] },
-            { field: 'times', data: times , type: 'number' , other: ['non_null'] , default: 1}
-        ]);
+      [ id, idList, times ] = await checkRequireField ([
+        { field: 'id'     , data: id      , type: 'number'  , other: ['lth'] },
+        { field: 'idList' , data: idList  , type: 'array'   , other: ['lth'], array_filter: 'number' },
+        { field: 'times'  , data: times   , type: 'number'  , other: ['non_null'] , default: 1}
+      ]);
     } catch (err) {
-        err.desc = "middlewares-updateGroupOrder(): Missing or Invalid required fields";
-        return next(err);
+      err.desc = "middlewares-updateGroupOrder(): Missing or Invalid required fields";
+      return next(err);
     }
 
     // ****************************************************************************
     limit = 2;
 
-    idList = [id];
-
-    let fakeReq = {
+    // 沒有 idList，呼叫 searchNews 得到 idList
+    if ( !idList ) {
+      if (id ) idList = [id];
+      else idList = [];
+      let fakeReq = {
         query: { mode: "id" , limit: limit},
         body: {}
-    }
-    try {
+      }
+      try {
         let result = await callAndCatchApiSuccess(searchNews, fakeReq);
         idList.push(...(result?.idList || []));
         //return res.apiSuccess(result, "Search Success");
-    } catch (err) {
+      } catch (err) {
         err.desc = "middlewares-generalScript(): error";
         return next(err);
+      }
     }
+
     fakeReq = {
-        query: { mode: "complex" },
-        body: { id: idList}
+      query: { mode: "complex" },
+      body: { id: idList}
     }
     try {
-        let result = await callAndCatchApiSuccess(searchNews, fakeReq);
+      let result = await callAndCatchApiSuccess(searchNews, fakeReq);
 
-        result = result.complexList.map(item => {
-          const bodyText = (item.newsBody || [])
-            .filter(part => typeof part.text === 'string' && part.text.trim() !== '')
-            .map(part => part.text.trim())
-            .join('\n');
-          return {
-            id: item.newsId,
-            title: item.newsTitle,
-            text: bodyText
-          }
-        });
-        return res.apiSuccess(result, "Search Success");
+      result = result.complexList.map(item => {
+        const bodyText = (item.newsBody || [])
+          .filter(part => typeof part.text === 'string' && part.text.trim() !== '')
+          .map(part => part.text.trim())
+          .join('\n');
+
+        return {
+          id: item.newsId,
+          title: item.newsTitle,
+          text: bodyText
+        }
+      });
+      return res.apiSuccess(result, "Search Success");
     } catch (err) {
-        err.desc = "middlewares-scriptController(): error";
-        return next(err);
+      err.desc = "middlewares-scriptController(): error";
+      return next(err);
     }
-
-    // 先 genreate 一組 idList (searchNews {})
-    // 下一個 >> remove 第一個，聽第一個 
-    // 剩最後1個時再自動用最後1個id繼續 generate
-
-    //  [ {"text"}, {"text"}, {"text"} ]
-    //return;
 }
+
 
 // ---- reporter ----
 async function reporterScriptFast(req, res, next) {
@@ -105,15 +107,6 @@ async function reporterScriptFast(req, res, next) {
       : generalScriptResult.list ?? [];
 
     // 3️⃣ 對每一筆丟給 DeepSeek 產生播報稿
-    /*const reporterItems = [];
-    for (const item of items) {
-      const result = await callDeepseekReporterScript({
-        id: item.id,
-        title: item.title,
-        text: item.text //shortenArticle(item.text, 4),
-      });
-      reporterItems.push(result);
-    }*/
     const reporterItems = await Promise.all(
       items.map((item) =>
         callDeepseekReporterScript({
@@ -168,15 +161,6 @@ async function reporterScript(req, res, next) {
       : generalScriptResult.list ?? [];
 
     // 3️⃣ 對每一筆丟給 DeepSeek 產生播報稿
-    /*const reporterItems = [];
-    for (const item of items) {
-      const result = await callDeepseekReporterScript({
-        id: item.id,
-        title: item.title,
-        text: item.text //shortenArticle(item.text, 4),
-      });
-      reporterItems.push(result);
-    }*/
     const reporterItems = await Promise.all(
       items.map((item) =>
         callDeepseekReporterScript({
@@ -207,6 +191,32 @@ async function reporterScript(req, res, next) {
   }
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // ---- chat ----
 async function chatScript(req, res, next) {
     let { id } = req.params ?? {}
@@ -220,127 +230,7 @@ async function quickScript(req, res, next) {
     return;
 }
 
-function shortenArticle(text, maxChars = 600) {
-  if (!text) return '';
 
-  raw = raw.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-
-  // 先把多餘空白去掉
-  const cleaned = text
-    .replace(/\s+/g, ' ')   // 把連續空白壓成一個
-    .replace(/\n+/g, '');   // 移除換行（句子切割會用標點）
-
-  // 用中文句號/問號/驚嘆號（以及對應的英文）切句，保留標點
-  const rawSentences = cleaned.split(/(?<=[。！？!?])/);
-  const sentences = rawSentences
-    .map(s => s.trim())
-    .filter(Boolean);
-
-  // 如果本來就很短，直接回傳
-  if (sentences.join('').length <= maxChars) {
-    return sentences.join('');
-  }
-
-  const selected = [];
-  let length = 0;
-
-  const tryAdd = (s) => {
-    if (!s) return;
-    if (length + s.length > maxChars) return;
-    selected.push(s);
-    length += s.length;
-  };
-
-  // 1️⃣ 一定先保留開頭 1～2 句（導言）
-  if (sentences[0]) tryAdd(sentences[0]);
-  if (sentences[1]) tryAdd(sentences[1]);
-
-  // 2️⃣ 優先加入「關鍵句」：有數字 / 時間 / 地點 的句子
-  const keywordRegex = /(今日|昨天|上午|下午|晚間|凌晨|稍早|今天|日前|8月|9月|10月|年|\d+人|\d+名|\d+歲|\d+件|\d+萬元|台北|新北|台中|高雄|台南|桃園|新竹|花蓮|警方|醫院|學校|市府)/;
-
-  sentences.forEach((s, idx) => {
-    if (length >= maxChars) return;
-    // 前兩句已經處理過，這裡跳過
-    if (idx <= 1) return;
-    if (keywordRegex.test(s)) {
-      tryAdd(s);
-    }
-  });
-
-  // 3️⃣ 如果還有空間，再依原順序補上剩餘句子，湊到 maxChars
-  sentences.forEach((s) => {
-    if (length >= maxChars) return;
-    if (selected.includes(s)) return;
-    tryAdd(s);
-  });
-
-  // 最後保證結尾有句號感覺完整
-  let result = selected.join('');
-  if (!/[。！？!?]$/.test(result) && sentences[0]) {
-    result += '。';
-  }
-
-  return result;
-}
-
-function cleanNewsScript(raw) {
-  if (!raw) return '';
-
-  // 先切行＋去掉前後空白＋濾掉空白行
-  const lines = raw
-    .split(/\r?\n/)
-    .map(l => l.trim())
-    .filter(Boolean);
-
-  const filtered = lines.filter(line => {
-    // 把跟「我是AI、回答問題、安全聲明」有關的句子砍掉
-    return !(
-      /作為.?AI/i.test(line) ||
-      /作為一個?人工智慧/i.test(line) ||
-      /身為.?AI/i.test(line) ||
-      /我是一個?AI/i.test(line) ||
-      /無法提供(醫療|法律)建議/.test(line) ||
-      /不能替代專業(醫療|法律)/.test(line) ||
-      /如果您有任何問題/.test(line) ||
-      /如果你有任何問題/.test(line) ||
-      /建議您尋求專業/.test(line) ||
-      /僅供參考/.test(line) ||
-      /感謝你的提問/.test(line) ||
-      /感謝您的提問/.test(line) ||
-      /回答你的問題是/.test(line) ||
-      /回答您的問題是/.test(line) ||
-      /超出我的能力範圍/.test(line)
-    );
-  });
-
-  let cleaned = filtered.join('\n').trim();
-
-  // 再把「播報稿：」「新聞播報：」之類開頭字眼拿掉
-  cleaned = cleaned.replace(/^(播報稿|新聞播報|以下是播報內容)[：:\s]*/i, '');
-
-  return cleaned;
-}
-
-// ---- call ask.sh ----
-async function callAskScript(req, res, next) {
-  try {
-    const { question } = req.body;
-    const scriptPath = path.join(__dirname, "../ask.sh"); // 指向 ask.sh 檔案
-
-    execFile("bash", [scriptPath, question], (error, stdout, stderr) => {
-      if (error) {
-        console.error("執行 ask.sh 出錯：", stderr);
-        return res.status(500).json({ error: "Failed to execute ask.sh" });
-      }
-
-      const response = stdout.trim();
-      res.json({ response });
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to execute ask.sh" });
-  }
-}
 
 
 async function callDeepseekReporterScript({ id, title, text }) {
@@ -422,6 +312,72 @@ async function callDeepseekReporterScript({ id, title, text }) {
     title,
     text: script,
   };
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ---- call ask.sh ----
+async function callAskScript(req, res, next) {
+  try {
+    const { question } = req.body;
+    const scriptPath = path.join(__dirname, "../ask.sh"); // 指向 ask.sh 檔案
+
+    execFile("bash", [scriptPath, question], (error, stdout, stderr) => {
+      if (error) {
+        console.error("執行 ask.sh 出錯：", stderr);
+        return res.status(500).json({ error: "Failed to execute ask.sh" });
+      }
+
+      const response = stdout.trim();
+      res.json({ response });
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to execute ask.sh" });
+  }
 }
 
 // ---- 匯出所有函式 ----
