@@ -424,6 +424,7 @@ async function insertNews(req, res, next) {
             err.desc = "middlewares-insertNews(): ollama use error ( embedding )";
             return next(err);
         }
+        const embeddingJson = JSON.stringify(embedding);
 
         // 插入資料庫
         let sql = '', params = []
@@ -441,7 +442,7 @@ async function insertNews(req, res, next) {
                 news_embedding
             ) VALUES (?, ?, ?, ?, ?, ?, ?);
         `;
-        params = [ url, channel_id, relation_id, cover_img_id, title, publish_date, embedding ];
+        params = [ url, channel_id, relation_id, cover_img_id, title, publish_date, embeddingJson ];
 
         try {
             const [newsDataResult] = await pool.query(sql, params);
