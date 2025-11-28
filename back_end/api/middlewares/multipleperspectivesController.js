@@ -88,9 +88,8 @@ async function insertMultipleperspectives (req, res, next) {
 
     let sql = `
     INSERT INTO multipleperspectives_data (
-        multipleperspectives_id,
-        multipleperspectives_title
-    ) VALUE (?, ?)
+        multipleperspectives_id
+    ) VALUE (?)
     `;
     let params = [ id, title ];
 
