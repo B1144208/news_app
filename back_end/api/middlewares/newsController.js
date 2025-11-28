@@ -313,7 +313,7 @@ async function searchNews(req, res, next) {
 // insert
 async function insertNews(req, res, next) {
     let { url, channel, cover_img, title, publish_date, detail, group, location, keyword, comment } = req.body ?? {};
-
+    let news_id = image_id = relation_id = null;
     try {
         // 優先檢查 url 是否已經存在
         try {
@@ -354,11 +354,17 @@ async function insertNews(req, res, next) {
         }
 
         // 失敗時，刪除 news
-        async function callDeleteNews ( news_id, image_id, relation_id ) {
-            let fakeReq = {};
-            fakeReq.params = { id: news_id };
-            fakeReq.body   = { image_id: image_id, relation_id: relation_id };
+        async function callDeleteNews ( news_id = null, image_id = null, relation_id = null ) {
+            if (news_id==null && image_id==null && relation_id == null) return;
+            let fakeReq = {
+                params: { id: news_id },
+                body: {
+                    mage_id: image_id,
+                    relation_id: relation_id
+                }
+            }
             await callAndCatchApiSuccess( deleteNews, fakeReq );
+            return;
         }
 
         // 獲取 channel_id
@@ -419,12 +425,13 @@ async function insertNews(req, res, next) {
         let totalText = title + detail.map(p => p).join('\n');
         let embedding;
         try {
-            embedding = await getEmbedding(totalText);
+            //embedding = await getEmbedding(totalText);
+            embedding = null;
         } catch (err) {
             err.desc = "middlewares-insertNews(): ollama use error ( embedding )";
             return next(err);
         }
-        const embeddingJson = JSON.stringify(embedding);
+        //const embeddingJson = JSON.stringify(embedding);
 
         // 【💡 增加 relation_id 判斷邏輯 💡】
                 // ----------------------------------------------------------------------------------------
@@ -486,7 +493,7 @@ async function insertNews(req, res, next) {
 
         // 1. 插入 news_data ( FK: channel_id, cover_image )
         let news_id = null;
-        sql = `
+        /*sql = `
             INSERT INTO news_data (
                 origin_url,
                 channel_id,
@@ -497,7 +504,18 @@ async function insertNews(req, res, next) {
                 news_embedding
             ) VALUES (?, ?, ?, ?, ?, ?, ?);
         `;
-        params = [ url, channel_id, relation_id, cover_img_id, title, publish_date, embeddingJson ];
+        params = [ url, channel_id, relation_id, cover_img_id, title, publish_date, embeddingJson ];*/
+        sql = `
+            INSERT INTO news_data (
+                origin_url,
+                channel_id,
+                relation_id,
+                cover_image,
+                news_title,
+                news_date
+            ) VALUES (?, ?, ?, ?, ?, ?);
+        `;
+        params = [ url, channel_id, relation_id, cover_img_id, title, publish_date ];
 
         try {
             const [newsDataResult] = await pool.query(sql, params);
