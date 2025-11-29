@@ -6,7 +6,6 @@ const { newsClassifier, newsGroupClassifier, newsLocationClassifier, newsKeyword
 // getData
 router.get('/group', getGroup);
 router.get('/location', getLocation);
-router.get('/location', getLocation);
 
 // news-classifier
 router.post('/all', newsClassifier);

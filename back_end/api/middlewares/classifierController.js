@@ -102,6 +102,9 @@ ${newsText}`
   return result;
 }
 
+
+
+
 // 1) group 分類：呼叫 news-group
 async function newsGroupClassifier (req, res, next) {
   try {
