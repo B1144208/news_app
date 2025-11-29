@@ -172,7 +172,7 @@ async function insertUserAction (req, res, next) {
         return next(err);
     }
 
-    // 僅 view & share & search 能夠沒有 userId
+    // 僅 view & share 可使用 userId || userIp , search 不能有 userId
     let invalidField = false;
     invalidField = ( (!userId)? !actionType==='view' && !actionType==='share' && !actionType==='search': false ) ||
                    ( (actionType === 'search')? userId : false ) ||

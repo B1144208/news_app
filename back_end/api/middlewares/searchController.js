@@ -70,6 +70,8 @@ async function generalSearch (req, res, next) {
         return next(err);
     }
 
+    console.log(newsList)
+
     return res.apiSuccess({
         newsList: newsList,
         channelList: channelList,
