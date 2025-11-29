@@ -311,6 +311,7 @@ async function searchNews(req, res, next) {
 }
 
 // insert
+// insert
 async function insertNews(req, res, next) {
     let { url, channel, cover_img, title, publish_date, detail, group, location, keyword, comment } = req.body ?? {};
     let news_id = image_id = relation_id = null;
@@ -374,7 +375,7 @@ async function insertNews(req, res, next) {
                 body: { name: channel }
             };
             const insertChannelResult = await callAndCatchApiSuccess( insertChannel, fakeReq );
-            channel_id = insertChannelResult.insertId; 
+            channel_id = insertChannelResult.insertId;
         } catch (err) {
             err.desc = 'middlewares-insertNews(): database insert error ( channel )';
             next(err)
@@ -421,7 +422,7 @@ async function insertNews(req, res, next) {
         }
 
         // 獲取 news_embedding
-        // ----------------------------------------------------------------------------------------
+
         let totalText = title + detail.map(p => p).join('\n');
         let embedding;
         try {
@@ -432,7 +433,7 @@ async function insertNews(req, res, next) {
         }
 
         // 【💡 增加 relation_id 判斷邏輯 💡】
-        // ----------------------------------------------------------------------------------------
+
 
         // 1. 查詢所有 Relation 連結的 Eventsorting Embedding
         let allRelationEmbeddings = [];
@@ -444,15 +445,17 @@ async function insertNews(req, res, next) {
                 FROM relation_data rd
                 JOIN eventsorting_data esd ON rd.eventsorting_id = esd.eventsorting_id
                 WHERE esd.eventsorting_embedding IS NOT NULL
-                AND esd.eventsorting_embedding <> ''; -- 排除空字串的 embedding
+                AND esd.eventsorting_embedding <> ''; // 排除空字串的 embedding
             `;
             const [rows] = await pool.query(sql);
+
+
 
             // 將 JSON 字串解析為 number[] 向量
             allRelationEmbeddings = rows.map(row => {
                 let eventEmbedding;
                 try {
-
+                    // JSON.parse 是關鍵步驟，如果資料庫儲存格式錯誤，這裡會失敗
                     eventEmbedding = JSON.parse(row.eventsorting_embedding);
                 } catch (e) {
                     console.error(`Error parsing embedding for relation_id ${row.relation_id}:`, e);
@@ -465,22 +468,23 @@ async function insertNews(req, res, next) {
                 };
             }).filter(item => item.eventsorting_embedding !== null); // 過濾掉解析失敗的
 
+
         } catch (err) {
             console.error('middlewares-insertNews(): database search error ( allRelationEmbeddings )', err);
             // 這裡不中斷流程，如果查詢失敗，則沿用原來的 relation_id
         }
 
         // 2. 進行相似度判斷，並覆蓋 relation_id
-        // 使用門檻值 0.9
-        const matchedRelationId = findRelationId(embedding, allRelationEmbeddings, 0.9);
+        // 使用門檻值 0.85 (在 embeddingHelper.js 中已設定預設值)
+        const matchedRelationId = findRelationId(embedding, allRelationEmbeddings);
 
         if (matchedRelationId !== null) {
             // 如果找到匹配，則覆蓋先前從 keyword 產生的 relation_id
             relation_id = matchedRelationId;
-            console.log(`[Relation Match] 覆蓋 relation_id 為: ${matchedRelationId}`);
+            console.log(`[Relation Match] 覆蓋 relation_id 為: ${matchedRelationId} (相似度 > 0.85)`);
 
         } else {
-            console.log(`[Relation Match] 未找到相似度 > 0.9 的 relation_id，沿用先前生成的 ${relation_id}`);
+            console.log(`[Relation Match] 未找到相似度 > 0.85 的 relation_id，沿用先前生成的 ${relation_id}`);
         }
 
 
@@ -489,7 +493,7 @@ async function insertNews(req, res, next) {
         // 插入資料庫
         let sql = '', params = []
 
-        // 1. 插入 news_data ( FK: channel_id, cover_image )
+        // 1. 插入 news_data
         let news_id = null;
         sql = `
             INSERT INTO news_data (
@@ -512,6 +516,39 @@ async function insertNews(req, res, next) {
             err.desc = 'middlewares-insertNews(): database insert error ( data )';
             return next(err)
         }
+
+
+        try {
+
+            sql = `
+                SELECT eventsorting_id
+                FROM relation_data
+                WHERE relation_id = ?
+            `;
+            const [relationRows] = await pool.query(sql, [relation_id]);
+            const eventsorting_id = relationRows[0]?.eventsorting_id;
+
+            if (eventsorting_id) {
+
+                sql = `
+                    UPDATE eventsorting_data
+                    SET eventsorting_embedding = ?
+                    WHERE eventsorting_id = ?
+                    AND (eventsorting_embedding IS NULL OR eventsorting_embedding = '');
+                `;
+                // 使用 embeddingJson，這是 JSON.stringify(embedding) 的結果
+                params = [embeddingJson, eventsorting_id];
+                const [updateResult] = await pool.query(sql, params);
+
+                if (updateResult.affectedRows > 0) {
+                     console.log(`[Eventsorting Update] 成功設置 eventsorting_id ${eventsorting_id} 的初始 Embedding。`);
+                }
+            }
+        } catch (err) {
+            console.error('middlewares-insertNews(): database update error ( Eventsorting Embedding )', err);
+            // 更新失敗不影響新聞插入，僅輸出警告
+        }
+
 
         // 2. 插入 news_body
         let order = 10;
