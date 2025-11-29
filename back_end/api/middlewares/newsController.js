@@ -432,59 +432,59 @@ async function insertNews(req, res, next) {
         }
 
         // 【💡 增加 relation_id 判斷邏輯 💡】
-                // ----------------------------------------------------------------------------------------
+        // ----------------------------------------------------------------------------------------
 
-                // 1. 查詢所有 Relation 連結的 Eventsorting Embedding
-                let allRelationEmbeddings = [];
+        // 1. 查詢所有 Relation 連結的 Eventsorting Embedding
+        let allRelationEmbeddings = [];
+        try {
+            const sql = `
+                SELECT
+                    rd.relation_id,
+                    esd.eventsorting_embedding
+                FROM relation_data rd
+                JOIN eventsorting_data esd ON rd.eventsorting_id = esd.eventsorting_id
+                WHERE esd.eventsorting_embedding IS NOT NULL
+                AND esd.eventsorting_embedding <> ''; -- 排除空字串的 embedding
+            `;
+            const [rows] = await pool.query(sql);
+
+            // 將 JSON 字串解析為 number[] 向量
+            allRelationEmbeddings = rows.map(row => {
+                let eventEmbedding;
                 try {
-                    const sql = `
-                        SELECT
-                            rd.relation_id,
-                            esd.eventsorting_embedding
-                        FROM relation_data rd
-                        JOIN eventsorting_data esd ON rd.eventsorting_id = esd.eventsorting_id
-                        WHERE esd.eventsorting_embedding IS NOT NULL
-                        AND esd.eventsorting_embedding <> ''; -- 排除空字串的 embedding
-                    `;
-                    const [rows] = await pool.query(sql);
 
-                    // 將 JSON 字串解析為 number[] 向量
-                    allRelationEmbeddings = rows.map(row => {
-                        let eventEmbedding;
-                        try {
-
-                            eventEmbedding = JSON.parse(row.eventsorting_embedding);
-                        } catch (e) {
-                            console.error(`Error parsing embedding for relation_id ${row.relation_id}:`, e);
-                            eventEmbedding = null;
-                        }
-
-                        return {
-                            relation_id: row.relation_id,
-                            eventsorting_embedding: eventEmbedding
-                        };
-                    }).filter(item => item.eventsorting_embedding !== null); // 過濾掉解析失敗的
-
-                } catch (err) {
-                    console.error('middlewares-insertNews(): database search error ( allRelationEmbeddings )', err);
-                    // 這裡不中斷流程，如果查詢失敗，則沿用原來的 relation_id
+                    eventEmbedding = JSON.parse(row.eventsorting_embedding);
+                } catch (e) {
+                    console.error(`Error parsing embedding for relation_id ${row.relation_id}:`, e);
+                    eventEmbedding = null;
                 }
 
-                // 2. 進行相似度判斷，並覆蓋 relation_id
-                // 使用門檻值 0.9
-                const matchedRelationId = findRelationId(embedding, allRelationEmbeddings, 0.9);
+                return {
+                    relation_id: row.relation_id,
+                    eventsorting_embedding: eventEmbedding
+                };
+            }).filter(item => item.eventsorting_embedding !== null); // 過濾掉解析失敗的
 
-                if (matchedRelationId !== null) {
-                    // 如果找到匹配，則覆蓋先前從 keyword 產生的 relation_id
-                    relation_id = matchedRelationId;
-                    console.log(`[Relation Match] 覆蓋 relation_id 為: ${matchedRelationId}`);
+        } catch (err) {
+            console.error('middlewares-insertNews(): database search error ( allRelationEmbeddings )', err);
+            // 這裡不中斷流程，如果查詢失敗，則沿用原來的 relation_id
+        }
 
-                } else {
-                    console.log(`[Relation Match] 未找到相似度 > 0.9 的 relation_id，沿用先前生成的 ${relation_id}`);
-                }
+        // 2. 進行相似度判斷，並覆蓋 relation_id
+        // 使用門檻值 0.9
+        const matchedRelationId = findRelationId(embedding, allRelationEmbeddings, 0.9);
+
+        if (matchedRelationId !== null) {
+            // 如果找到匹配，則覆蓋先前從 keyword 產生的 relation_id
+            relation_id = matchedRelationId;
+            console.log(`[Relation Match] 覆蓋 relation_id 為: ${matchedRelationId}`);
+
+        } else {
+            console.log(`[Relation Match] 未找到相似度 > 0.9 的 relation_id，沿用先前生成的 ${relation_id}`);
+        }
 
 
-                const embeddingJson = JSON.stringify(embedding);
+        const embeddingJson = JSON.stringify(embedding);
 
         // 插入資料庫
         let sql = '', params = []
