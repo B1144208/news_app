@@ -37,13 +37,15 @@ const keywordRouter = require('./keyword')
 const eventsortingRouter = require('./eventsorting')
 const multipleperspectivesRouter = require('./multipleperspectives')
 const searchRouter = require('./search')
-const scriptRouter = require('./script')
+
 
 const incrementRouter = require('./increment')
 const valueRouter = require('./value')
 const testRouter = require('./test')
 
-const ollamaRouter = require('./ollama')
+const classifierRouter = require('./classifier')
+const scriptRouter = require('./script')
+const curationRouter = require('./curation')
 const ttsRouter = require('./tts')
 
 
@@ -64,14 +66,13 @@ router.use('/eventsorting', eventsortingRouter)
 router.use('/multipleperspectives', multipleperspectivesRouter)
 router.use('/search', searchRouter)
 
-router.use('/script',scriptRouter)
-
 router.use('/increment',incrementRouter)
 router.use('/value', valueRouter)
 router.use('/test', testRouter)
 
-
-router.use('/ollama', ollamaRouter)
+router.use('/classifier', classifierRouter)
+router.use('/script', scriptRouter)
+router.use('/curation', curationRouter)
 router.use('/tts', ttsRouter)
 
 
