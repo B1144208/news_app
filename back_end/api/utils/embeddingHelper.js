@@ -96,7 +96,7 @@ function findRelationId(newsEmbedding, relations, threshold = 0.9) {
 }
 
 module.exports = {
-    getEmbedding
+    getEmbedding,
     calculateSimilarity,
     findRelationId
 };
