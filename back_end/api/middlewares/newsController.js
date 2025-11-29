@@ -425,13 +425,11 @@ async function insertNews(req, res, next) {
         let totalText = title + detail.map(p => p).join('\n');
         let embedding;
         try {
-            //embedding = await getEmbedding(totalText);
-            embedding = null;
+            embedding = await getEmbedding(totalText);
         } catch (err) {
             err.desc = "middlewares-insertNews(): ollama use error ( embedding )";
             return next(err);
         }
-        //const embeddingJson = JSON.stringify(embedding);
 
         // 【💡 增加 relation_id 判斷邏輯 💡】
                 // ----------------------------------------------------------------------------------------
@@ -493,7 +491,7 @@ async function insertNews(req, res, next) {
 
         // 1. 插入 news_data ( FK: channel_id, cover_image )
         let news_id = null;
-        /*sql = `
+        sql = `
             INSERT INTO news_data (
                 origin_url,
                 channel_id,
@@ -504,18 +502,7 @@ async function insertNews(req, res, next) {
                 news_embedding
             ) VALUES (?, ?, ?, ?, ?, ?, ?);
         `;
-        params = [ url, channel_id, relation_id, cover_img_id, title, publish_date, embeddingJson ];*/
-        sql = `
-            INSERT INTO news_data (
-                origin_url,
-                channel_id,
-                relation_id,
-                cover_image,
-                news_title,
-                news_date
-            ) VALUES (?, ?, ?, ?, ?, ?);
-        `;
-        params = [ url, channel_id, relation_id, cover_img_id, title, publish_date ];
+        params = [ url, channel_id, relation_id, cover_img_id, title, publish_date, embeddingJson ];
 
         try {
             const [newsDataResult] = await pool.query(sql, params);
