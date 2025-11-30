@@ -69,7 +69,7 @@ async function callOllamaNewsModel (modelName, newsText, promptPrefix) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: modelName,
+      model: modelName, 
       format: 'json',   // 強制只產生 JSON
       stream: false,
       messages: [
@@ -90,16 +90,28 @@ ${newsText}`
   const ollamaData = await ollamaRes.json();
   let result = ollamaData?.message?.content;
 
-  // content 可能是字串形式的 JSON，再 parse 一次
+  // 1) content 是字串的話，先 parse 成 JSON
   if (typeof result === 'string') {
     try {
       result = JSON.parse(result);
     } catch (e) {
-      // parse 失敗就維持原樣，讓上層決定要不要處理
+      console.warn('news-group parse JSON 失敗，原始內容：', result);
+      result = null;
     }
   }
 
-  return result;
+  // 2) 如果模型還是輸出 { group:[...] }，幫它轉成陣列
+  if (result && !Array.isArray(result) && Array.isArray(result.group)) {
+    result = result.group;
+  }
+
+  // 3) 最後保險：一定要是陣列，不是就給 ["其他"]
+  if (!Array.isArray(result)) {
+    console.warn('news-group 輸出不是陣列，fallback -> ["其他"]，實際輸出：', result);
+    result = ['其他'];
+  }
+
+  return result;   // 這裡保證是 string[]
 }
 
 
@@ -121,7 +133,7 @@ async function newsGroupClassifier (req, res, next) {
     const result = await callOllamaNewsModel(
       'news-group',
       newsText,
-      '請依照 SYSTEM 規則，對以下新聞判斷「group 主題分類」，只輸出 JSON 物件：'
+      '請依照 SYSTEM 規則，對以下新聞判斷「group 主題分類」，只輸出 JSON 陣列：'
     );
 
     return res.json({
