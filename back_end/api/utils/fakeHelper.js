@@ -15,4 +15,22 @@ async function callAndCatchApiSuccess(middlewaresFn, fakeReq) {
     return data;
 }
 
-module.exports = { callAndCatchApiSuccess }
+function callAndCatchApiSuccessInGeneralFunction(handler, fakeReq) {
+  return new Promise((resolve, reject) => {
+    const fakeRes = {
+      status(code) {
+        this.statusCode = code;
+        return this;
+      },
+      json(body) {
+        // 這裡把 controller 回來的資料丟給 resolve
+        resolve(body.data ?? body);
+      },
+    };
+    const fakeNext = (err) => err ? reject(err) : null;
+
+    handler(fakeReq, fakeRes, fakeNext);
+  });
+}
+
+module.exports = { callAndCatchApiSuccess, callAndCatchApiSuccessInGeneralFunction }

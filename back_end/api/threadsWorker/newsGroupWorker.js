@@ -3,7 +3,8 @@
 
 const pool = require('../connect_db');
 const { newsGroupClassifier } = require('../middlewares/classifierController');
-const { callAndCatchApiSuccess } = require('../utils/fakeHelper');
+const { getText } = require('../middlewares/scriptController');  
+const { callAndCatchApiSuccessInGeneralFunction } = require('../utils/fakeHelper');
 
 const SLEEP_WHEN_EMPTY_MS = 60 * 60 * 1000;
 const SHORT_SLEEP_MS = 5 * 1000;
@@ -181,19 +182,35 @@ async function markTaskDone(newsId) {
  * 2. 寫入 news_group
  * 3. 將 news_task.news_group 設為 1
  */
-async function handleOneNews(newsId) {
-    console.log('[newsGroupWorker] 開始處理 news_id =', newsId);
-    let fakeReq = {
-        body: { newsId }
-    };
-    try {
-        let result = await callAndCatchApiSuccess(newsGroupClassifier, fakeReq);
-        await insertNewsGroupsForOneNews(newsId, result);
-        await markTaskDone(newsId);
-    } catch (err) {
-        err.desc = "threadsWorker-newsGroup-handleOneNews(): "
-    }
-    console.log('[newsGroupWorker] 完成 news_id =', newsId);
+async function handleOneNews(newsItem) {
+  const newsId = newsItem.id;
+  const title  = newsItem.title || '';
+  const body   = newsItem.text  || '';
+
+  console.log('[newsGroupWorker] 開始處理 news_id =', newsId);
+
+  // 組成送進模型的文字：標題 + 內文
+  const newsText = `${title}\n${body}`.trim();
+
+  const fakeReq = {
+    body: { newsText }   // 對應 newsGroupClassifier 裡面的：const { newsText } = req.body || {}
+  };
+
+  try {
+    // 用通用版 helper 呼叫 controller
+    const result = await callAndCatchApiSuccessInGeneralFunction(
+      newsGroupClassifier,
+      fakeReq
+    );
+
+    await insertNewsGroupsForOneNews(newsId, result);
+    await markTaskDone(newsId);
+  } catch (err) {
+    err.desc = 'threadsWorker-newsGroup-handleOneNews(): ' + (err.message || '');
+    console.error(err.desc);
+  }
+
+  console.log('[newsGroupWorker] 完成 news_id =', newsId);
 }
 
 /**
@@ -203,50 +220,81 @@ async function handleOneNews(newsId) {
  * - 若沒有資料，sleep 一小時後再試
  */
 async function mainLoop() {
-     console.log('[newsGroupWorker] 啟動');
+  console.log('[newsGroupWorker] 啟動');
 
-    while (true) {
-        try {
-            const idList = await fetchPendingNewsIds();
+  while (true) {
+    try {
+      // 1) 先從 DB 抓待處理的 news_id 清單
+      const idList = await fetchPendingNewsIds();
 
-            if (idList.length === 0) {
-                console.log('[newsGroupWorker] 目前沒有待處理的 news_group 任務，睡一小時再檢查');
-                await sleep(SLEEP_WHEN_EMPTY_MS);
-                continue;
-            }
+      if (idList.length === 0) {
+        console.log('[newsGroupWorker] 目前沒有待處理的 news_group 任務，睡一小時再檢查');
+        await sleep(SLEEP_WHEN_EMPTY_MS);
+        continue;
+      }
 
-            console.log(
-                '[newsGroupWorker] 本輪取得',
-                idList.length,
-                '筆任務：',
-                idList.join(', ')
-            );
+      console.log(
+        '[newsGroupWorker] 本輪取得',
+        idList.length,
+        '筆任務：',
+        idList.join(', ')
+      );
 
-            for (const newsId of idList) {
-                try {
-                await handleOneNews(newsId);
-                } catch (err) {
-                console.error(
-                    '[newsGroupWorker] 處理 news_id =',
-                    newsId,
-                    '時發生錯誤：',
-                    err
-                );
-                // 單筆錯就寫 log，繼續處理下一筆
-                }
+      // 2) 呼叫 getText，把這批 id 換成 {id, title, text} 陣列
+      let newsTextList;
+      try {
+        const fakeReqForGetText = {
+          query: { idList }   // getText 內部會用 checkRequireField 驗證 array
+        };
 
-                // 稍微休息一下，避免瞬間打太多 DB / 模型請求
-                await sleep(SHORT_SLEEP_MS);
-            }
-
-            // 一輪跑完，立刻再去 DB 抓新的一輪
-            console.log('[newsGroupWorker] 本輪處理完畢，重新抓取任務...');
-        } catch (err) {
-            console.error('[newsGroupWorker] 主迴圈發生錯誤：', err);
-            // 發生非預期錯誤時，避免死循環瘋狂重試，先睡一下再繼續
-            await sleep(30 * 1000);
+        newsTextList = await callAndCatchApiSuccessInGeneralFunction(
+          getText,
+          fakeReqForGetText
+        );
+        // 預期格式：[{ id, title, text }, ...]
+        if (!Array.isArray(newsTextList)) {
+          console.warn('[newsGroupWorker] getText 回傳不是陣列，實際：', newsTextList);
+          newsTextList = [];
         }
+      } catch (err) {
+        console.error('[newsGroupWorker] 呼叫 getText 發生錯誤：', err);
+        // 避免死循環，先睡一下再重新跑 while
+        await sleep(30 * 1000);
+        continue;
+      }
+
+      // 3) 對這批文字逐筆做 group 分類
+      for (const newsItem of newsTextList) {
+        // 基本防禦：沒有 id 就跳過
+        if (!newsItem || typeof newsItem.id === 'undefined') {
+          console.warn('[newsGroupWorker] newsItem 格式不正確，略過：', newsItem);
+          continue;
+        }
+
+        try {
+          await handleOneNews(newsItem); // 傳整個 {id, title, text}
+        } catch (err) {
+          console.error(
+            '[newsGroupWorker] 處理 news_id =',
+            newsItem.id,
+            '時發生錯誤：',
+            err
+          );
+          // 單筆錯就寫 log，繼續處理下一筆
+        }
+
+        // 稍微休息一下，避免瞬間打太多 DB / 模型請求
+        await sleep(SHORT_SLEEP_MS);
+      }
+
+      // 一輪跑完，立刻再去 DB 抓新的一輪
+      console.log('[newsGroupWorker] 本輪處理完畢，重新抓取任務...');
+    } catch (err) {
+      console.error('[newsGroupWorker] 主迴圈發生錯誤：', err);
+      // 發生非預期錯誤時，避免死循環瘋狂重試，先睡一下再繼續
+      await sleep(30 * 1000);
     }
+  }
 }
 
 // 直接啟動主程式
