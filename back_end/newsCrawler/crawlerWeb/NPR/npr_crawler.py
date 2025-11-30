@@ -8,19 +8,19 @@ BASE_URL = "https://www.npr.org"
 
 # 新聞頻道列表
 CHANNELS = [
-    {"name": "National", "url": "/sections/national/"},
-    {"name": "World", "url": "/sections/world/"},
-    {"name": "Politics", "url": "/sections/politics/"},
-    {"name": "Business", "url": "/sections/business/"},
-    {"name": "Health", "url": "/sections/health/"},
-    {"name": "Science", "url": "/sections/science/"},
-    {"name": "Climate", "url": "/sections/climate/"},
-    {"name": "Race", "url": "/sections/codeswitch/"}
+    {"name": "National", "url": "/sections/national/", "group": "National"},
+    {"name": "World", "url": "/sections/world/", "group": "World"},
+    {"name": "Politics", "url": "/sections/politics/", "group": "Politics"},
+    {"name": "Business", "url": "/sections/business/", "group": "Business"},
+    {"name": "Health", "url": "/sections/health/", "group": "Health"},
+    {"name": "Science", "url": "/sections/science/", "group": "Science"},
+    {"name": "Climate", "url": "/sections/climate/", "group": "Climate"},
+    {"name": "Race", "url": "/sections/codeswitch/", "group": "Race"}
 ]
 
 
-def get_news_list(channel_name, channel_url):
-    #從指定頻道的 featured 和 overflow 區塊獲取新聞列表
+def get_news_list(channel_name, channel_url, group):
+    """從指定頻道的 featured 和 overflow 區塊獲取新聞列表"""
     full_url = BASE_URL + channel_url
     res = requests.get(full_url, headers={"User-Agent": "Mozilla/5.0"})
     res.raise_for_status()
@@ -53,14 +53,14 @@ def get_news_list(channel_name, channel_url):
             url = BASE_URL + url
 
         # 封面圖片
-        cover_img = {}
+        cover_img = None
         item_image_div = art.select_one(".item-image")
         if item_image_div:
             img_tag = item_image_div.select_one("img[src][alt]")
             if img_tag:
                 cover_img = {
                     "src": img_tag.get("src"),
-                    "alt": img_tag.get("alt")
+                    "alt": img_tag.get("alt", "")
                 }
 
         # 外層日期（備用）
@@ -80,12 +80,14 @@ def get_news_list(channel_name, channel_url):
 
         news_items.append({
             "url": url,
-            "channel": channel_name,
-            "cover_img": cover_img if cover_img else None,
+            "group": group,
+            "channel": "NPR",
+            "cover_img": cover_img,
             "title": title,
             "publish_date": publish_date,
             "detail": detail,
-            "comment": []
+            "keyword": [],
+            "comment": None
         })
 
         time.sleep(0.5)
@@ -94,7 +96,7 @@ def get_news_list(channel_name, channel_url):
 
 
 def get_news_detail(url):
-    #獲取新聞詳細內容與內文日期
+    """獲取新聞詳細內容與內文日期"""
     try:
         res = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
         res.raise_for_status()
@@ -110,7 +112,7 @@ def get_news_detail(url):
             try:
                 date_part, time_part = raw_dt.split("T")
                 time_part = time_part.split("-")[0]  # 移除時區部分
-                publish_date = f"{date_part.replace('-', '/') } {time_part}"
+                publish_date = f"{date_part.replace('-', '/')} {time_part}"
             except:
                 publish_date = None
 
@@ -132,7 +134,7 @@ def get_news_detail(url):
                     details.append({"text": text})
             elif elem.name == "img":
                 img_src = elem.get("src")
-                img_alt = elem.get("alt")
+                img_alt = elem.get("alt", "")
                 if img_src:
                     details.append({
                         "img": {
@@ -148,7 +150,7 @@ def get_news_detail(url):
 
 
 def get_channel_data():
-    #生成頻道資料
+    """生成頻道資料"""
     channel_data = []
     for channel in CHANNELS:
         channel_data.append({
@@ -167,7 +169,7 @@ def main():
     for channel in CHANNELS:
         print(f"\n開始爬取 {channel['name']} 頻道...")
         try:
-            news_list = get_news_list(channel['name'], channel['url'])
+            news_list = get_news_list(channel['name'], channel['url'], channel['group'])
             all_news.extend(news_list)
             print(f"✓ {channel['name']} 完成，共 {len(news_list)} 篇")
         except Exception as e:
@@ -176,14 +178,16 @@ def main():
 
     channel_data = get_channel_data()
 
-    with open("NEWS_DATA.json", "w", encoding="utf-8") as f:
-        json.dump(all_news, f, ensure_ascii=False, indent=2)
+    # 輸出新聞資料（包含 data 包裝）
+    with open("4_NEWS.json", "w", encoding="utf-8") as f:
+        json.dump({"data": all_news}, f, ensure_ascii=False, indent=2)
 
-    with open("CHANNEL_DATA.json", "w", encoding="utf-8") as f:
-        json.dump(channel_data, f, ensure_ascii=False, indent=2)
+    # 輸出頻道資料（包含 data 包裝）
+    with open("4_CHANNEL.json", "w", encoding="utf-8") as f:
+        json.dump({"data": channel_data}, f, ensure_ascii=False, indent=2)
 
     print(f"\n完成！共爬取 {len(all_news)} 篇新聞")
-    print("輸出檔案：NEWS_DATA.json, CHANNEL_DATA.json")
+    print("輸出檔案：4_NEWS.json, 4_CHANNEL.json")
 
 
 if __name__ == "__main__":
