@@ -12,6 +12,7 @@ from newsCrawler.object import CrawlerData
 
 # 載入新聞網站模組
 from newsCrawler.crawlerWeb.FTV_Crawler import ftv_crawler
+from newsCrawler.crawlerWeb.NPR import npr_errorlog_test
 
 from newsCrawler.crawlerWeb.BBC.bbc_spider import run as bbc_crawler_run
 from newsCrawler.crawlerWeb.USAToday.usatoday_spider import run as usatoday_run
