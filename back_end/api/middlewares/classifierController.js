@@ -107,6 +107,8 @@ ${newsText}`
 
 // 1) group 分類：呼叫 news-group
 async function newsGroupClassifier (req, res, next) {
+  console.log("into newsGroupClassifier");
+  return res.apiSuccess({}, "test success");
   try {
     const { newsText } = req.body || {};
 
