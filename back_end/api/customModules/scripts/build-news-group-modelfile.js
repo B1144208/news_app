@@ -14,10 +14,10 @@ const groupJson    = JSON.stringify(groupObj, null, 2);
 const OTHER_GROUP_ID = 15;
 
 // 組 Modelfile 內容
-const modelfileContent = `FROM qwen2.5:1.5b
+const modelfileContent = `FROM qwen2.5:7b
 
-PARAMETER temperature 0.2
-PARAMETER top_p 0.6
+PARAMETER temperature 0.15
+PARAMETER top_p 0.5
 
 SYSTEM """
 你是一個「新聞主題標籤分類」模型。
