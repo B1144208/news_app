@@ -22,16 +22,15 @@ async function batchNews(req, res, next) {
     try {
         [ data ] = await checkRequireField ([
             { field: 'data'     , data: data        , type: 'array' }
-        ], "utils-batchChannel()");
+        ]);
     } catch (err) {
+        err.desc = "utils-batchNews(): Missing or Invalid required fields";
         return next(err);
     }
 
     if ( data == null )
         return res.apiSuccess({}, "Batch Insert News Success");
 
-    // ai 生成 group, location, keyword
-    // ------------------------------------------------------------------------------------------------------------
     
     // 儲存錯誤資料
     let err_data = [];
@@ -42,12 +41,12 @@ async function batchNews(req, res, next) {
                     url: data[i].url,
                     channel: data[i].channel,
                     cover_img: data[i].cover_img || null,
-                    title: data[i].title || data[i].news_title, // -------------------------------------------
+                    title: data[i].title || data[i].news_title,
                     publish_date: data[i].publish_date,
                     detail: data[i].detail,
-                    group: data[i].group || null,
+                    group: null,
                     location: data[i].location || null,
-                    keyword: data[i].keyword || null,
+                    keyword: null,
                     comment: data[i].comment || null,
                 }
             }

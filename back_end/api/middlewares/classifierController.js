@@ -90,9 +90,6 @@ ${newsText}`
   const ollamaData = await ollamaRes.json();
   let result = ollamaData?.message?.content;
 
-
-  console.log("result:", result);
-
   // 1) content 是字串的話，先 parse 成 JSON
   if (typeof result === 'string') {
     try {

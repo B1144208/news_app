@@ -10,7 +10,7 @@ async function searchGroup (req, res, next) {
     // 檢查必要欄位 & 格式 - name
     try {
         [ name ] = await checkRequireField ([
-            { field: 'name' , data: name , type: 'string'  }
+            { field: 'name' , data: name , type: 'string' }
         ]);
     } catch (err) {
         err.desc = "middlewares-searchGroup(): Missing or Invalid required fields";
@@ -101,8 +101,8 @@ async function insertGroup(req, res, next) {
     if ( id  && id !== 'other' && isNaN( id ) ) {
         let err = new Error('middlewares-insertGroup(): Invalid Number - id');
         err.status = 400;
-        console.warn('[Invalid Number]', err.message);
-        id = 'other';
+        err.desc = "middlewares-insertGroup(): Invalid id";
+        return next(err);
     }
 
     // 查找 group
