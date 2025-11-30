@@ -6,7 +6,8 @@ from urllib.parse import urljoin
 headers = {"User-Agent": "Mozilla/5.0"}
 
 # Parser 區
-def parse_detail(news_soup):   #解析新聞內文與封面圖
+def parse_detail(news_soup):
+    """解析新聞內文與封面圖"""
     detail = []
     cover_img = None
 
@@ -24,8 +25,8 @@ def parse_detail(news_soup):   #解析新聞內文與封面圖
                 img_alt = block.get("alt", "")
                 if img_src:
                     if not cover_img:
-                        cover_img = {"src": img_src, "alt": img_alt}
-                    detail.append({"img": {"src": img_src, "alt": img_alt}})
+                        cover_img = {"src": img_src, "alt": img_alt if img_alt else None}
+                    detail.append({"img": {"src": img_src, "alt": img_alt if img_alt else None}})
         return cover_img, detail
 
     # printdiv 結構
@@ -42,14 +43,15 @@ def parse_detail(news_soup):   #解析新聞內文與封面圖
                 img_alt = block.get("alt", "")
                 if img_src:
                     if not cover_img:
-                        cover_img = {"src": img_src, "alt": img_alt}
-                    detail.append({"img": {"src": img_src, "alt": img_alt}})
+                        cover_img = {"src": img_src, "alt": img_alt if img_alt else None}
+                    detail.append({"img": {"src": img_src, "alt": img_alt if img_alt else None}})
         return cover_img, detail
 
     return cover_img, detail
 
 
-def parse_publish_date(news_soup):   #解析新聞時間
+def parse_publish_date(news_soup):
+    """解析新聞時間"""
     time_tag = news_soup.select_one("time.page_date")  # ckuse
     if time_tag:
         return time_tag.get_text(strip=True)
@@ -61,7 +63,8 @@ def parse_publish_date(news_soup):   #解析新聞時間
     return None
 
 
-def parse_author(news_soup):   #解析文章作者資訊
+def parse_author(news_soup):
+    """解析文章作者資訊"""
     author_tag = news_soup.select_one("a.reporter")
     if author_tag:
         author_url = "https://www.setn.com" + author_tag["href"] if author_tag["href"].startswith("/") else author_tag["href"]
@@ -76,7 +79,8 @@ def parse_author(news_soup):   #解析文章作者資訊
     return None
 
 
-def parse_channels():   #解析頻道清單
+def parse_channels():
+    """解析頻道清單"""
     url = "https://www.setn.com/viewall.aspx"
     res = requests.get(url, headers=headers)
     soup = BeautifulSoup(res.text, "html.parser")
@@ -108,7 +112,8 @@ def parse_channels():   #解析頻道清單
     return channels
 
 
-def parse_news_list(soup, channel_url):   #根據頻道 URL 選擇對應的解析器
+def parse_news_list(soup, channel_url):
+    """根據頻道 URL 選擇對應的解析器"""
     news_items = []
 
     # 判斷是哪種頻道類型
@@ -136,7 +141,7 @@ def parse_news_list(soup, channel_url):   #根據頻道 URL 選擇對應的解�
                         "title": title,
                         "link": link if link.startswith("http") else urljoin("https://www.setn.com/", link),
                         "img_src": img_src,
-                        "img_alt": img_alt,
+                        "img_alt": img_alt if img_alt else None,
                         "publish_time": publish_time
                     })
             except Exception as e:
@@ -173,7 +178,7 @@ def parse_news_list(soup, channel_url):   #根據頻道 URL 選擇對應的解�
                         "title": title,
                         "link": link if link.startswith("http") else urljoin("https://www.setn.com/", link),
                         "img_src": img_src,
-                        "img_alt": img_alt,
+                        "img_alt": img_alt if img_alt else None,
                         "publish_time": publish_time
                     })
             except Exception as e:
@@ -214,7 +219,7 @@ def parse_news_list(soup, channel_url):   #根據頻道 URL 選擇對應的解�
                         "title": title,
                         "link": link if link.startswith("http") else urljoin("https://fuhouse.setn.com/", link),
                         "img_src": img_src,
-                        "img_alt": img_alt,
+                        "img_alt": img_alt if img_alt else None,
                         "publish_time": publish_time
                     })
             except Exception as e:
@@ -245,7 +250,7 @@ def parse_news_list(soup, channel_url):   #根據頻道 URL 選擇對應的解�
                         "title": title,
                         "link": link if link.startswith("http") else urljoin("https://baodao.setn.com/", link),
                         "img_src": img_src,
-                        "img_alt": img_alt,
+                        "img_alt": img_alt if img_alt else None,
                         "publish_time": publish_time
                     })
             except Exception as e:
@@ -264,7 +269,7 @@ def parse_news_list(soup, channel_url):   #根據頻道 URL 選擇對應的解�
                         "title": title,
                         "link": link if link.startswith("http") else urljoin("https://www.setn.com/", link),
                         "img_src": None,
-                        "img_alt": "",
+                        "img_alt": None,
                         "publish_time": ""
                     })
             except Exception as e:
@@ -274,7 +279,8 @@ def parse_news_list(soup, channel_url):   #根據頻道 URL 選擇對應的解�
     return news_items
 
 
-def crawl_channel_news(channel_name, channel_url, limit=20):   #爬取單一頻道的新聞
+def crawl_channel_news(channel_name, channel_url, limit=20):
+    """爬取單一頻道的新聞"""
     print(f"正在爬取頻道: {channel_name} ({channel_url})")
 
     try:
@@ -302,17 +308,19 @@ def crawl_channel_news(channel_name, channel_url, limit=20):   #爬取單一頻�
                 if not cover_img and item["img_src"]:
                     cover_img = {"src": item["img_src"], "alt": item["img_alt"]}
 
+                # 新格式：channel改為group，channel固定為"三立新聞"
                 news_item = {
                     "url": link,
-                    "channel": channel_name,
+                    "group": channel_name,  # 原本的channel改為group
+                    "channel": "三立新聞",   # channel固定為"三立新聞"
                     "cover_img": cover_img,
                     "title": title,
                     "publish_date": publish_date,
                     "detail": detail,
-                    "comment": [],
+                    "keyword": [],
+                    "comment": None,  # 沒有就標null
                 }
                 news_list.append(news_item)
-                #print(f"  ✓ {title[:30]}...")
 
             except Exception as e:
                 print(f"  ✗ 爬取新聞失敗: {str(e)}")
@@ -325,11 +333,15 @@ def crawl_channel_news(channel_name, channel_url, limit=20):   #爬取單一頻�
         return []
 
 
-def crawler_setn():
+def crawl_setn():
+    """主程式:爬取所有頻道的新聞"""
+
+    # 1. 解析頻道清單
     print("正在解析頻道清單...")
     channels = parse_channels()
     print(f"找到 {len(channels)} 個頻道\n")
 
+    # 2. 爬取所有頻道的新聞
     ALL_NEWS = []
     CHANNEL_DATA = []
 
@@ -350,16 +362,17 @@ def crawler_setn():
 
         print(f"{channel['name']}: {len(news_list)} 篇新聞\n")
 
+    # 3. 輸出 JSON (新格式：包裹在data陣列中)
     with open("4_NEWS.json", "w", encoding="utf-8") as f:
-        json.dump(ALL_NEWS, f, ensure_ascii=False, indent=2)
+        json.dump({"data": ALL_NEWS}, f, ensure_ascii=False, indent=2)
 
     with open("4_CHANNEL.json", "w", encoding="utf-8") as f:
-        json.dump(CHANNEL_DATA, f, ensure_ascii=False, indent=2)
+        json.dump({"data": CHANNEL_DATA}, f, ensure_ascii=False, indent=2)
 
-    print(f"\n爬取完成！")
+    print(f"\n爬取完成!")
     print(f"總共爬取 {len(ALL_NEWS)} 篇新聞")
     print(f"已輸出 4_NEWS.json 與 4_CHANNEL.json")
 
 
 if __name__ == "__main__":
-    crawler_setn()
+    crawl_setn()
