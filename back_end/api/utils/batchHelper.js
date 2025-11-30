@@ -32,7 +32,7 @@ async function batchNews(req, res, next) {
         return res.apiSuccess({}, "Batch Insert News Success");
 
     
-    // 儲存錯誤資料
+    // 匯入新聞資料
     let err_data = [];
     for ( let i=0; data[i]; i++) {
         try {
@@ -52,6 +52,7 @@ async function batchNews(req, res, next) {
             }
             let insertNewsResult = await callAndCatchApiSuccess ( insertNews, fakeReq );
         } catch (err) {
+            // 儲存錯誤資料
             err_data.push(data[i]);
         }
     }
