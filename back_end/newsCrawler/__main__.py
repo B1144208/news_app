@@ -82,7 +82,16 @@ def run():
                     traceback.print_exc()
 
         case '4':
-            print("todo: channel 4")
+            try:
+                while(1):
+                    try:
+                        npr_crawler.run(crawlerData)
+                    except Exception as e:
+                        pass
+
+                    time.sleep(60)
+            except KeyboardInterrupt:
+                print("收到中斷訊號，停止爬蟲。")
         case '5':
             print("todo: channel 5")
         case _:
