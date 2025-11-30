@@ -70,7 +70,7 @@ async function callOllamaNewsModel (modelName, newsText, promptPrefix) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: modelName, 
-      format: 'json',   // 強制只產生 JSON
+      //format: 'json',
       stream: false,
       messages: [
         {
