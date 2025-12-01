@@ -3,6 +3,7 @@
 
 const pool = require('../connect_db');
 const { newsKeywordClassifier } = require('../middlewares/classifierController');
+const { insertKeyword } = require('../middlewares/keywordController');
 const { getText } = require('../middlewares/scriptController');
 const { callAndCatchApiSuccessInGeneralFunction } = require('../utils/fakeHelper');
 
