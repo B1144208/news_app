@@ -116,16 +116,33 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE8E3FF),
+      backgroundColor: const Color(0xFF0a1428),
       appBar: AppBar(
-        title: const Text('修改密碼'),
-        backgroundColor: Colors.blue,
+        title: const Text(
+          '修改密碼',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
+          ),
+        ),
+        backgroundColor: const Color(0xFF1a2a4e),
         foregroundColor: Colors.white,
+        elevation: 0,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(
+            color: const Color(0xFF6366f1).withOpacity(0.1),
+            height: 1,
+          ),
+        ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Form(
           key: _formKey,
           child: Column(
@@ -135,31 +152,46 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.orange[50],
+                  color: const Color(0xFFf59e0b).withOpacity(0.15),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.orange[200]!),
+                  border: Border.all(
+                    color: const Color(0xFFf59e0b).withOpacity(0.3),
+                    width: 1,
+                  ),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.security, color: Colors.orange[700]),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFf59e0b).withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.security,
+                        color: Color(0xFFf59e0b),
+                        size: 20,
+                      ),
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          const Text(
                             '安全提醒',
                             style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.orange[700],
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             '為了您的帳號安全，請定期更新密碼並使用強密碼',
                             style: TextStyle(
-                              color: Colors.orange[600],
+                              color: Colors.grey[400],
                               fontSize: 13,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ],
@@ -176,13 +208,16 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: const Color(0xFF1a2a4e),
                   borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFF6366f1).withOpacity(0.2),
+                    width: 1,
+                  ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.grey.withOpacity(0.3),
-                      spreadRadius: 1,
-                      blurRadius: 3,
+                      color: const Color(0xFF6366f1).withOpacity(0.08),
+                      blurRadius: 8,
                     ),
                   ],
                 ),
@@ -193,13 +228,15 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                       '目前密碼',
                       style: TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     TextFormField(
                       controller: _currentPasswordController,
                       obscureText: _obscureCurrentPassword,
+                      style: const TextStyle(color: Colors.white),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return '請輸入目前密碼';
@@ -207,13 +244,35 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                         return null;
                       },
                       decoration: InputDecoration(
-                        border: const OutlineInputBorder(),
                         hintText: '請輸入目前使用的密碼',
+                        hintStyle: TextStyle(color: Colors.grey[400]),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(
+                            color: const Color(0xFF6366f1).withOpacity(0.3),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(
+                            color: const Color(0xFF6366f1).withOpacity(0.3),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF6366f1),
+                            width: 2,
+                          ),
+                        ),
+                        filled: true,
+                        fillColor: const Color(0xFF0a1428),
                         suffixIcon: IconButton(
                           icon: Icon(
                             _obscureCurrentPassword
                                 ? Icons.visibility_off
                                 : Icons.visibility,
+                            color: const Color(0xFF60a5fa),
                           ),
                           onPressed: () {
                             setState(() {

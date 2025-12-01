@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:share_plus/share_plus.dart';
 import 'dart:convert';
 import 'universal_template.dart';
 import 'ChannelDetailPage.dart';
@@ -30,22 +31,22 @@ class _ChannelPageState extends State<ChannelPage> {
     setState(() => isLoading = true);
 
     try {
-      final url = (name != null && name.isNotEmpty)
-          ? "$apiUrl?name=$name"
-          : apiUrl;
+      final url =
+          (name != null && name.isNotEmpty) ? "$apiUrl?name=$name" : apiUrl;
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         setState(() {
-          channels = name != null && name.isNotEmpty
-              ? [
-                  {
-                    "channel_id": data["data"]["searchId"],
-                    "channel_name": name,
-                  },
-                ]
-              : data["data"];
+          channels =
+              name != null && name.isNotEmpty
+                  ? [
+                    {
+                      "channel_id": data["data"]["searchId"],
+                      "channel_name": name,
+                    },
+                  ]
+                  : data["data"];
           searchQuery = name ?? "";
         });
       } else {
@@ -237,17 +238,18 @@ class _ChannelPageState extends State<ChannelPage> {
               channel["channel_name"] ?? "未命名頻道",
               style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
             ),
-            subtitle: channel["channel_introduction"] != null
-                ? Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      channel["channel_introduction"],
-                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  )
-                : null,
+            subtitle:
+                channel["channel_introduction"] != null
+                    ? Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        channel["channel_introduction"],
+                        style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    )
+                    : null,
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -268,17 +270,19 @@ class _ChannelPageState extends State<ChannelPage> {
                 ),
               ],
             ),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ChannelDetailPage(
-                  channelId: channel["channel_id"],
-                  channelName: channel["channel_name"] ?? "未命名頻道",
-                  channelDescription: channel["channel_introduction"],
-                  channelUrl: channel["channel_url"],
+            onTap:
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder:
+                        (context) => ChannelDetailPage(
+                          channelId: channel["channel_id"],
+                          channelName: channel["channel_name"] ?? "未命名頻道",
+                          channelDescription: channel["channel_introduction"],
+                          channelUrl: channel["channel_url"],
+                        ),
+                  ),
                 ),
-              ),
-            ),
           ),
 
           // 展開的詳細資訊
@@ -506,111 +510,119 @@ class _ChannelPageState extends State<ChannelPage> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.tv, color: Colors.purple),
-            const SizedBox(width: 8),
-            const Text("新增頻道"),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                autofocus: true,
-                decoration: const InputDecoration(
-                  labelText: "頻道名稱",
-                  hintText: "請輸入頻道名稱",
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.tv),
-                ),
+      builder:
+          (context) => AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.tv, color: Colors.purple),
+                const SizedBox(width: 8),
+                const Text("新增頻道"),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    autofocus: true,
+                    decoration: const InputDecoration(
+                      labelText: "頻道名稱",
+                      hintText: "請輸入頻道名稱",
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.tv),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: introController,
+                    decoration: const InputDecoration(
+                      labelText: "頻道介紹",
+                      hintText: "請輸入頻道介紹",
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.description),
+                    ),
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: urlController,
+                    decoration: const InputDecoration(
+                      labelText: "頻道網址",
+                      hintText: "請輸入頻道網址",
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.link),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: introController,
-                decoration: const InputDecoration(
-                  labelText: "頻道介紹",
-                  hintText: "請輸入頻道介紹",
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.description),
-                ),
-                maxLines: 2,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("取消"),
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: urlController,
-                decoration: const InputDecoration(
-                  labelText: "頻道網址",
-                  hintText: "請輸入頻道網址",
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.link),
+              ElevatedButton(
+                onPressed: () {
+                  if (nameController.text.isNotEmpty) {
+                    addChannelToDB(
+                      nameController.text,
+                      introduction:
+                          introController.text.isEmpty
+                              ? null
+                              : introController.text,
+                      url:
+                          urlController.text.isEmpty
+                              ? null
+                              : urlController.text,
+                    );
+                    Navigator.pop(context);
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.purple,
+                  foregroundColor: Colors.white,
                 ),
+                child: const Text("新增"),
               ),
             ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("取消"),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (nameController.text.isNotEmpty) {
-                addChannelToDB(
-                  nameController.text,
-                  introduction: introController.text.isEmpty
-                      ? null
-                      : introController.text,
-                  url: urlController.text.isEmpty ? null : urlController.text,
-                );
-                Navigator.pop(context);
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.purple,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text("新增"),
-          ),
-        ],
-      ),
     );
   }
 
   void _showDeleteConfirmDialog(dynamic channel) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.warning, color: Colors.red[600]),
-            const SizedBox(width: 8),
-            const Text('確認刪除'),
-          ],
-        ),
-        content: Text('確定要刪除頻道 "${channel["channel_name"]}" 嗎？\n\n此操作無法復原。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              deleteChannelFromDB(channel["channel_id"]);
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
+      builder:
+          (context) => AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.warning, color: Colors.red[600]),
+                const SizedBox(width: 8),
+                const Text('確認刪除'),
+              ],
             ),
-            child: const Text('刪除'),
+            content: Text(
+              '確定要刪除頻道 "${channel["channel_name"]}" 嗎？\n\n此操作無法復原。',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('取消'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  deleteChannelFromDB(channel["channel_id"]);
+                  Navigator.pop(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('刪除'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
@@ -649,13 +661,14 @@ class _ChannelPageState extends State<ChannelPage> {
 
   // 主 Widget
   @override
+  @override
   Widget build(BuildContext context) {
     return UniversalManagePage(
       // 頁面基本資訊
       pageTitle: '頻道管理',
       pageDescription: '管理所有頻道的資訊和設定',
       pageIcon: Icons.tv,
-      themeColor: Colors.purple,
+      themeColor: const Color(0xFF60a5fa),
 
       // 搜尋功能配置
       searchHint: '搜尋頻道名稱...',

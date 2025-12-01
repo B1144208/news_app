@@ -15,7 +15,14 @@ class CommentsPage extends StatefulWidget {
   final String dataType;
 
   // 修正 insertUserAction 接受 anonymous 參數
-  final Future<void> Function(String actionType, String dataType, {String? text, int? score, String? anonymous}) insertUserAction;
+  final Future<void> Function(
+    String actionType,
+    String dataType, {
+    String? text,
+    int? score,
+    String? anonymous,
+  })
+  insertUserAction;
 
   final int totalScore;
   final int totalRater;
@@ -42,7 +49,9 @@ class _CommentsPageState extends State<CommentsPage> {
   final TextEditingController _commentController = TextEditingController();
 
   // 🌟 匿名功能相關的狀態和控制器 🌟
-  final TextEditingController _anonymousNameController = TextEditingController(text: '匿名用戶');
+  final TextEditingController _anonymousNameController = TextEditingController(
+    text: '匿名用戶',
+  );
   bool _isAnonymous = false;
 
   List<dynamic> _comments = [];
@@ -66,7 +75,9 @@ class _CommentsPageState extends State<CommentsPage> {
         _fetchUserScore();
       });
     } else {
-      setState(() { _isLoading = false; });
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -80,7 +91,8 @@ class _CommentsPageState extends State<CommentsPage> {
   @override
   void didUpdateWidget(covariant CommentsPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.totalScore != widget.totalScore || oldWidget.totalRater != widget.totalRater) {
+    if (oldWidget.totalScore != widget.totalScore ||
+        oldWidget.totalRater != widget.totalRater) {
       _calculateAverageScore(widget.totalScore, widget.totalRater);
     }
   }
@@ -103,19 +115,21 @@ class _CommentsPageState extends State<CommentsPage> {
   // 刷新所有數據 (留言和評分)，並通知父元件更新
   Future<void> _refreshAllData() async {
     widget.onParentDataUpdated(); // 1. 通知父元件更新所有數據 (包括留言總數)
-    await _fetchUserScore();      // 2. 獲取本地頁面的最新分數
-    await _fetchComments();       // 3. 獲取本地頁面的最新留言列表
+    await _fetchUserScore(); // 2. 獲取本地頁面的最新分數
+    await _fetchComments(); // 3. 獲取本地頁面的最新留言列表
   }
 
   // 獲取現有留言 (包含 display_name)
   Future<void> _fetchComments() async {
     if (!mounted) return;
-    setState(() { _isLoading = true; });
+    setState(() {
+      _isLoading = true;
+    });
 
     // URL: /api/user/comment/dataType?dataId=...
-    final uri = Uri.parse('$_userActionBaseUrl/user/comment/${widget.dataType}').replace(queryParameters: {
-      'dataId': widget.dataId.toString(),
-    });
+    final uri = Uri.parse(
+      '$_userActionBaseUrl/user/comment/${widget.dataType}',
+    ).replace(queryParameters: {'dataId': widget.dataId.toString()});
 
     try {
       final response = await http.get(uri);
@@ -124,7 +138,8 @@ class _CommentsPageState extends State<CommentsPage> {
       if (response.statusCode == 200) {
         final data = json.decode(utf8.decode(response.bodyBytes));
 
-        List<dynamic> fetchedComments = data['data'] is List ? data['data'] : [];
+        List<dynamic> fetchedComments =
+            data['data'] is List ? data['data'] : [];
 
         // 依據時間倒序排列 (最新的在前)
         // 修正：您的 API 欄位是 'ceated_at'，這裡修正為 'created_at' 比較常見，但為了與您程式碼匹配，保持 'ceated_at'
@@ -143,7 +158,9 @@ class _CommentsPageState extends State<CommentsPage> {
       print('Error fetching comments: $e');
     } finally {
       if (!mounted) return;
-      setState(() { _isLoading = false; });
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -152,10 +169,14 @@ class _CommentsPageState extends State<CommentsPage> {
     if (!mounted) return;
 
     // URL: /api/user/score/dataType?dataId=...&userId=...
-    final uri = Uri.parse('$_userActionBaseUrl/user/score/${widget.dataType}').replace(queryParameters: {
-      'dataId': widget.dataId.toString(),
-      'userId': widget.currentUserId.toString(),
-    });
+    final uri = Uri.parse(
+      '$_userActionBaseUrl/user/score/${widget.dataType}',
+    ).replace(
+      queryParameters: {
+        'dataId': widget.dataId.toString(),
+        'userId': widget.currentUserId.toString(),
+      },
+    );
 
     try {
       final response = await http.get(uri);
@@ -170,15 +191,19 @@ class _CommentsPageState extends State<CommentsPage> {
           int? fetchedScoreId;
 
           // 處理後端返回單一物件或單元素列表
-          if (scoreData is Map<String, dynamic> && scoreData['target_score'] is int) {
+          if (scoreData is Map<String, dynamic> &&
+              scoreData['target_score'] is int) {
             fetchedScore = scoreData['target_score'] as int;
             fetchedScoreId = scoreData['score_id'] as int?;
-          } else if (scoreData is List && scoreData.isNotEmpty && scoreData[0]['target_score'] is int) {
+          } else if (scoreData is List &&
+              scoreData.isNotEmpty &&
+              scoreData[0]['target_score'] is int) {
             fetchedScore = scoreData[0]['target_score'] as int;
             fetchedScoreId = scoreData[0]['score_id'] as int?;
           }
 
-          _userScore = (fetchedScore != null && fetchedScore > 0) ? fetchedScore : null;
+          _userScore =
+              (fetchedScore != null && fetchedScore > 0) ? fetchedScore : null;
           _userScoreId = fetchedScoreId;
         });
       }
@@ -196,9 +221,9 @@ class _CommentsPageState extends State<CommentsPage> {
     final text = _commentController.text.trim();
     if (text.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('請輸入留言內容')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('請輸入留言內容')));
       }
       return;
     }
@@ -208,9 +233,9 @@ class _CommentsPageState extends State<CommentsPage> {
       anonymousName = _anonymousNameController.text.trim();
       if (anonymousName.isEmpty) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('請輸入匿名名稱')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('請輸入匿名名稱')));
         }
         return;
       }
@@ -234,9 +259,9 @@ class _CommentsPageState extends State<CommentsPage> {
   Future<void> _submitScore(int newScore) async {
     if (widget.currentUserId == 0 || widget.currentUserId == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('請先登入才能進行評分')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('請先登入才能進行評分')));
       }
       return;
     }
@@ -247,19 +272,23 @@ class _CommentsPageState extends State<CommentsPage> {
         await _updateScore(_userScoreId!, newScore);
       } else {
         // POST: 新增評分
-        await widget.insertUserAction('score', widget.dataType, score: newScore);
+        await widget.insertUserAction(
+          'score',
+          widget.dataType,
+          score: newScore,
+        );
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('評分 $newScore 成功！')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('評分 $newScore 成功！')));
         }
         await _refreshAllData();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('評分提交失敗: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('評分提交失敗: $e')));
       }
     }
   }
@@ -279,7 +308,9 @@ class _CommentsPageState extends State<CommentsPage> {
       );
 
       if (response.statusCode != 200) {
-        throw Exception('後端評分更新失敗: Status ${response.statusCode}, Body: ${response.body}');
+        throw Exception(
+          '後端評分更新失敗: Status ${response.statusCode}, Body: ${response.body}',
+        );
       }
 
       if (mounted) {
@@ -288,18 +319,16 @@ class _CommentsPageState extends State<CommentsPage> {
         );
       }
       await _refreshAllData();
-
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('評分更新失敗: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('評分更新失敗: $e')));
       }
       // 即使失敗也要刷新數據以確保 UI 狀態正確
       await _refreshAllData();
     }
   }
-
 
   // 💥 REMOVED: _showRatingDialog (已移除，改為直接點擊)
 
@@ -309,25 +338,25 @@ class _CommentsPageState extends State<CommentsPage> {
     await _updateScore(_userScoreId!, 0); // 傳遞 0 表示清除
   }
 
-
   // 刪除留言的函式 (DELETE API) - 保持不變
   Future<void> _deleteComment(int commentId) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('確認刪除'),
-        content: const Text('您確定要刪除這則留言嗎？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('確認刪除'),
+            content: const Text('您確定要刪除這則留言嗎？'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('取消'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('刪除', style: TextStyle(color: Colors.red)),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('刪除', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
     );
 
     if (confirmed == true) {
@@ -335,27 +364,26 @@ class _CommentsPageState extends State<CommentsPage> {
         // URL: /api/user/comment/:commentId
         final url = '$_userActionBaseUrl/user/comment/$commentId';
 
-        final response = await http.delete(
-          Uri.parse(url),
-        );
+        final response = await http.delete(Uri.parse(url));
 
         if (response.statusCode != 200 && response.statusCode != 204) {
-          throw Exception('後端刪除失敗: Status ${response.statusCode}, Body: ${response.body}');
+          throw Exception(
+            '後端刪除失敗: Status ${response.statusCode}, Body: ${response.body}',
+          );
         }
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('留言已成功刪除！')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('留言已成功刪除！')));
         }
 
         await _refreshAllData();
-
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('刪除失敗: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('刪除失敗: $e')));
         }
       }
     }
@@ -363,33 +391,36 @@ class _CommentsPageState extends State<CommentsPage> {
 
   // 編輯留言的函式 (PUT API) - 保持不變
   Future<void> _editComment(int commentId, String currentText) async {
-    final TextEditingController editController = TextEditingController(text: currentText);
+    final TextEditingController editController = TextEditingController(
+      text: currentText,
+    );
 
     final String? newText = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('編輯留言'),
-        content: TextField(
-          controller: editController,
-          minLines: 1,
-          maxLines: 5,
-          decoration: const InputDecoration(hintText: "編輯您的留言..."),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(null),
-            child: const Text('取消'),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('編輯留言'),
+            content: TextField(
+              controller: editController,
+              minLines: 1,
+              maxLines: 5,
+              decoration: const InputDecoration(hintText: "編輯您的留言..."),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(null),
+                child: const Text('取消'),
+              ),
+              TextButton(
+                onPressed: () {
+                  if (editController.text.trim().isNotEmpty) {
+                    Navigator.of(context).pop(editController.text.trim());
+                  }
+                },
+                child: const Text('儲存'),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () {
-              if (editController.text.trim().isNotEmpty) {
-                Navigator.of(context).pop(editController.text.trim());
-              }
-            },
-            child: const Text('儲存'),
-          ),
-        ],
-      ),
     );
 
     if (newText != null && newText != currentText) {
@@ -407,20 +438,22 @@ class _CommentsPageState extends State<CommentsPage> {
         );
 
         if (response.statusCode != 200) {
-          throw Exception('後端編輯失敗: Status ${response.statusCode}, Body: ${response.body}');
+          throw Exception(
+            '後端編輯失敗: Status ${response.statusCode}, Body: ${response.body}',
+          );
         }
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('留言已成功編輯！')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('留言已成功編輯！')));
         }
         await _refreshAllData();
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('編輯失敗: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('編輯失敗: $e')));
         }
       }
     }
@@ -441,7 +474,8 @@ class _CommentsPageState extends State<CommentsPage> {
 
   // 💥 MODIFIED: 頂部評分統計區塊 (直接點擊星星評分)
   Widget _buildRatingStatsHeader() {
-    final displayScore = _averageScore != null ? _averageScore!.toStringAsFixed(1) : 'N/A';
+    final displayScore =
+        _averageScore != null ? _averageScore!.toStringAsFixed(1) : 'N/A';
     final ratingsCount = _totalRatings ?? 0;
 
     return Container(
@@ -456,7 +490,10 @@ class _CommentsPageState extends State<CommentsPage> {
             children: [
               Text(
                 displayScore,
-                style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 40,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(width: 8),
               const Icon(Icons.star, color: Colors.amber, size: 30),
@@ -479,11 +516,18 @@ class _CommentsPageState extends State<CommentsPage> {
                 ...List.generate(5, (index) {
                   final scoreIndex = index + 1;
                   return InkWell(
-                    onTap: () => _submitScore(scoreIndex), // 💥 直接呼叫 _submitScore 進行評分
+                    onTap:
+                        () => _submitScore(
+                          scoreIndex,
+                        ), // 💥 直接呼叫 _submitScore 進行評分
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 2.0), // 調整間距以避免誤觸
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 2.0,
+                      ), // 調整間距以避免誤觸
                       child: Icon(
-                        scoreIndex <= (_userScore ?? 0) ? Icons.star : Icons.star_border,
+                        scoreIndex <= (_userScore ?? 0)
+                            ? Icons.star
+                            : Icons.star_border,
                         color: Colors.amber,
                         size: 28,
                       ),
@@ -494,12 +538,15 @@ class _CommentsPageState extends State<CommentsPage> {
                 if (_userScore != null)
                   TextButton(
                     onPressed: () => _clearUserScore(), // 💥 清除評分
-                    child: const Text('清除', style: TextStyle(color: Colors.red)),
-                  )
+                    child: const Text(
+                      '清除',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  ),
                 // 首次評分時，無需評分按鈕，點擊星星即可
               ],
             ),
-          )
+          ),
         ],
       ),
     );
@@ -527,7 +574,7 @@ class _CommentsPageState extends State<CommentsPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('評分與評論'),
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFF0a1428),
         elevation: 1,
       ),
       body: Column(
@@ -537,65 +584,96 @@ class _CommentsPageState extends State<CommentsPage> {
           _buildCommentHeader(),
 
           Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _comments.isEmpty
-                ? const Center(child: Text('目前沒有留言，快來搶頭香！'))
-                : RefreshIndicator(
-              onRefresh: _refreshAllData,
-              child: ListView.builder(
-                itemCount: _comments.length,
-                itemBuilder: (context, index) {
-                  final comment = _comments[index];
+            child:
+                _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _comments.isEmpty
+                    ? const Center(child: Text('目前沒有留言，快來搶頭香！'))
+                    : RefreshIndicator(
+                      onRefresh: _refreshAllData,
+                      child: ListView.builder(
+                        itemCount: _comments.length,
+                        itemBuilder: (context, index) {
+                          final comment = _comments[index];
 
-                  final displayUser = comment['display_name'] ?? '用戶 #${comment['user_id'] ?? '訪客'}';
-                  final date = comment['ceated_at'] != null ? _formatDate(comment['ceated_at']) : '未知日期';
-                  final commentText = comment['comment_text'] ?? '無留言內容';
+                          final displayUser =
+                              comment['display_name'] ??
+                              '用戶 #${comment['user_id'] ?? '訪客'}';
+                          final date =
+                              comment['ceated_at'] != null
+                                  ? _formatDate(comment['ceated_at'])
+                                  : '未知日期';
+                          final commentText =
+                              comment['comment_text'] ?? '無留言內容';
 
-                  final isCurrentUserComment = comment['user_id'] == widget.currentUserId;
-                  final commentId = comment['comment_id'] as int?;
+                          final isCurrentUserComment =
+                              comment['user_id'] == widget.currentUserId;
+                          final commentId = comment['comment_id'] as int?;
 
-                  return ListTile(
-                    leading: CircleAvatar(
-                      child: Icon(comment['is_anonymous'] == true ? Icons.masks : Icons.person),
-                    ),
-                    title: Text(
-                      displayUser,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Text(commentText, maxLines: 5, overflow: TextOverflow.ellipsis),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(date, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-
-                        if (isCurrentUserComment && commentId != null)
-                          PopupMenuButton<String>(
-                            onSelected: (String result) {
-                              if (result == 'edit') {
-                                _editComment(commentId, commentText);
-                              } else if (result == 'delete') {
-                                _deleteComment(commentId);
-                              }
-                            },
-                            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                              const PopupMenuItem<String>(
-                                value: 'edit',
-                                child: Text('編輯'),
+                          return ListTile(
+                            leading: CircleAvatar(
+                              child: Icon(
+                                comment['is_anonymous'] == true
+                                    ? Icons.masks
+                                    : Icons.person,
                               ),
-                              const PopupMenuItem<String>(
-                                value: 'delete',
-                                child: Text('刪除', style: TextStyle(color: Colors.red)),
+                            ),
+                            title: Text(
+                              displayUser,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
                               ),
-                            ],
-                            icon: const Icon(Icons.more_vert),
-                          ),
-                      ],
+                            ),
+                            subtitle: Text(
+                              commentText,
+                              maxLines: 5,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  date,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+
+                                if (isCurrentUserComment && commentId != null)
+                                  PopupMenuButton<String>(
+                                    onSelected: (String result) {
+                                      if (result == 'edit') {
+                                        _editComment(commentId, commentText);
+                                      } else if (result == 'delete') {
+                                        _deleteComment(commentId);
+                                      }
+                                    },
+                                    itemBuilder:
+                                        (BuildContext context) =>
+                                            <PopupMenuEntry<String>>[
+                                              const PopupMenuItem<String>(
+                                                value: 'edit',
+                                                child: Text('編輯'),
+                                              ),
+                                              const PopupMenuItem<String>(
+                                                value: 'delete',
+                                                child: Text(
+                                                  '刪除',
+                                                  style: TextStyle(
+                                                    color: Colors.red,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                    icon: const Icon(Icons.more_vert),
+                                  ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
                     ),
-                  );
-                },
-              ),
-            ),
           ),
 
           _buildCommentInput(),
@@ -630,8 +708,13 @@ class _CommentsPageState extends State<CommentsPage> {
                       controller: _anonymousNameController,
                       decoration: const InputDecoration(
                         hintText: '輸入匿名名稱',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(10)),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
                       ),
                     ),
                   ),
@@ -646,8 +729,13 @@ class _CommentsPageState extends State<CommentsPage> {
                   controller: _commentController,
                   decoration: const InputDecoration(
                     hintText: '輸入你的留言...',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(20))),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(20)),
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                   ),
                   minLines: 1,
                   maxLines: 5,

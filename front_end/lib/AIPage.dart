@@ -43,7 +43,6 @@ class _AIPageState extends State<AIPage> {
   // 記錄是否正在搜尋中 (可以不用，但有利於區分狀態)
   bool _isSearching = false;
 
-
   // 🌟 修正點 1：統一的 Future，確保所有數據載入完成，解決刷新不同步問題 🌟
   late Future<void> _loadingFuture;
 
@@ -104,18 +103,21 @@ class _AIPageState extends State<AIPage> {
     _isSearching = true;
 
     // 篩選事件整理 (Eventsorting)
-    final filteredEvents = _eventsortingList.where((event) {
-      final title = event['eventsorting_title']?.toLowerCase() ?? '';
-      final summary = event['eventsorting_summary']?.toLowerCase() ?? '';
-      return title.contains(lowerCaseKeyword) || summary.contains(lowerCaseKeyword);
-    }).toList();
+    final filteredEvents =
+        _eventsortingList.where((event) {
+          final title = event['eventsorting_title']?.toLowerCase() ?? '';
+          final summary = event['eventsorting_summary']?.toLowerCase() ?? '';
+          return title.contains(lowerCaseKeyword) ||
+              summary.contains(lowerCaseKeyword);
+        }).toList();
 
     // 篩選多方看法 (MultiplePerspectives)
-    final filteredMP = _multiplePerspectivesList.where((view) {
-      final title = view['multipleperspectives_title']?.toLowerCase() ?? '';
-      // 由於多方看法資料沒有 summary，只篩選 title
-      return title.contains(lowerCaseKeyword);
-    }).toList();
+    final filteredMP =
+        _multiplePerspectivesList.where((view) {
+          final title = view['multipleperspectives_title']?.toLowerCase() ?? '';
+          // 由於多方看法資料沒有 summary，只篩選 title
+          return title.contains(lowerCaseKeyword);
+        }).toList();
 
     setState(() {
       _filteredEventsortingList = filteredEvents;
@@ -181,7 +183,9 @@ class _AIPageState extends State<AIPage> {
     if (id != null) {
       queryParams['id'] = id.toString();
     }
-    final uri = Uri.parse('$_baseUrl/EventSorting').replace(queryParameters: queryParams);
+    final uri = Uri.parse(
+      '$_baseUrl/EventSorting',
+    ).replace(queryParameters: queryParams);
 
     try {
       final response = await http.get(uri);
@@ -189,7 +193,9 @@ class _AIPageState extends State<AIPage> {
         final data = json.decode(response.body);
         return data['data'];
       } else {
-        throw Exception('Failed to load eventsorting data: Status Code ${response.statusCode}');
+        throw Exception(
+          'Failed to load eventsorting data: Status Code ${response.statusCode}',
+        );
       }
     } catch (e) {
       throw Exception('Failed to connect to eventsorting API: $e');
@@ -202,7 +208,9 @@ class _AIPageState extends State<AIPage> {
     if (id != null) {
       queryParams['id'] = id.toString();
     }
-    final uri = Uri.parse('$_baseUrl/MultiplePerspectives').replace(queryParameters: queryParams);
+    final uri = Uri.parse(
+      '$_baseUrl/MultiplePerspectives',
+    ).replace(queryParameters: queryParams);
 
     try {
       final response = await http.get(uri);
@@ -210,7 +218,9 @@ class _AIPageState extends State<AIPage> {
         final data = json.decode(response.body);
         return data['data'];
       } else {
-        throw Exception('Failed to load multipleperspectives data: Status Code ${response.statusCode}');
+        throw Exception(
+          'Failed to load multipleperspectives data: Status Code ${response.statusCode}',
+        );
       }
     } catch (e) {
       throw Exception('Failed to connect to multipleperspectives API: $e');
@@ -226,7 +236,8 @@ class _AIPageState extends State<AIPage> {
       final Map<int, int?> newMultiplePerspectivesStatus = {};
 
       // 1. 獲取事件整理 (Eventsorting) 的收藏
-      final eventsortingUrl = '$_baseUrl/user/bookmark/eventsorting?userId=$_currentUserId';
+      final eventsortingUrl =
+          '$_baseUrl/user/bookmark/eventsorting?userId=$_currentUserId';
       final eventsortingResponse = await http.get(Uri.parse(eventsortingUrl));
 
       if (eventsortingResponse.statusCode == 200) {
@@ -244,7 +255,8 @@ class _AIPageState extends State<AIPage> {
       }
 
       // 2. 獲取多方看法 (MultiplePerspectives) 的收藏
-      final mpUrl = '$_baseUrl/user/bookmark/multipleperspectives?userId=$_currentUserId';
+      final mpUrl =
+          '$_baseUrl/user/bookmark/multipleperspectives?userId=$_currentUserId';
       final mpResponse = await http.get(Uri.parse(mpUrl));
 
       if (mpResponse.statusCode == 200) {
@@ -266,7 +278,6 @@ class _AIPageState extends State<AIPage> {
         _bookmarkIdStatus = newEventsortingStatus;
         _multiplePerspectivesBookmarkIdStatus = newMultiplePerspectivesStatus;
       });
-
     } catch (e) {
       print('Failed to fetch bookmarks: $e');
     }
@@ -276,9 +287,9 @@ class _AIPageState extends State<AIPage> {
   Future<void> _toggleBookmark(int dataId, String dataType) async {
     if (_currentUserId == null) {
       // 處理未登入狀態 (不變)
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('請先登入以使用收藏功能')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('請先登入以使用收藏功能')));
 
       await Navigator.push(
         context,
@@ -294,7 +305,10 @@ class _AIPageState extends State<AIPage> {
     }
 
     final isEventsorting = dataType == 'eventsorting';
-    final statusMap = isEventsorting ? _bookmarkIdStatus : _multiplePerspectivesBookmarkIdStatus;
+    final statusMap =
+        isEventsorting
+            ? _bookmarkIdStatus
+            : _multiplePerspectivesBookmarkIdStatus;
 
     // 檢查是否已收藏，並取出 bookmark_id
     final bookmarkId = statusMap[dataId];
@@ -309,10 +323,7 @@ class _AIPageState extends State<AIPage> {
     final url = isBookmarked ? deleteUrl : addUrl;
     final method = isBookmarked ? 'DELETE' : 'POST';
 
-    final body = {
-      'userId': _currentUserId,
-      'dataId': dataId,
-    };
+    final body = {'userId': _currentUserId, 'dataId': dataId};
 
     try {
       http.Response response;
@@ -327,29 +338,29 @@ class _AIPageState extends State<AIPage> {
         if (bookmarkId == null) {
           throw Exception("Cannot delete, bookmarkId is missing.");
         }
-        response = await http.delete(
-          Uri.parse(url),
-        );
+        response = await http.delete(Uri.parse(url));
       }
 
       if (response.statusCode == 200) {
         // 🌟 修正點 7：操作成功後，強制重新獲取狀態以確保高亮同步 🌟
         await _fetchBookmarks();
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(isBookmarked ? '已取消收藏' : '已收藏')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(isBookmarked ? '已取消收藏' : '已收藏')));
       } else {
-        print('Bookmark failed. Status: ${response.statusCode}, Method: $method, URL: $url, Body: ${response.body}');
+        print(
+          'Bookmark failed. Status: ${response.statusCode}, Method: $method, URL: $url, Body: ${response.body}',
+        );
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('操作失敗 (Status: ${response.statusCode})')),
         );
       }
     } catch (e) {
       print('Error toggling bookmark: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('網路連線錯誤，無法完成操作')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('網路連線錯誤，無法完成操作')));
     }
   }
 
@@ -358,7 +369,7 @@ class _AIPageState extends State<AIPage> {
     return FutureBuilder<bool>(
       // 檢查是否登入
       future: SharedPreferences.getInstance().then(
-            (prefs) => prefs.getBool('IsLogin') ?? false,
+        (prefs) => prefs.getBool('IsLogin') ?? false,
       ),
       builder: (context, snapshot) {
         final isLoggedIn = snapshot.data ?? false;
@@ -368,7 +379,7 @@ class _AIPageState extends State<AIPage> {
           child: Row(
             children: [
               if (!isLoggedIn)
-              // 未登入狀態 - 顯示登入和註冊按鈕
+                // 未登入狀態 - 顯示登入和註冊按鈕
                 Row(
                   children: [
                     ElevatedButton(
@@ -386,14 +397,17 @@ class _AIPageState extends State<AIPage> {
                         });
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.black,
-                        elevation: 2,
+                        backgroundColor: const Color(0xFF6366f1),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
                           vertical: 6,
                         ),
                         minimumSize: const Size(60, 32),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
+                        ),
                       ),
                       child: const Text('登入', style: TextStyle(fontSize: 12)),
                     ),
@@ -413,21 +427,24 @@ class _AIPageState extends State<AIPage> {
                         });
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
+                        backgroundColor: const Color(0xFF60a5fa),
                         foregroundColor: Colors.white,
-                        elevation: 2,
+                        elevation: 0,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
                           vertical: 6,
                         ),
                         minimumSize: const Size(60, 32),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
+                        ),
                       ),
                       child: const Text('註冊', style: TextStyle(fontSize: 12)),
                     ),
                   ],
                 )
               else
-              // 已登入狀態 - 顯示用戶頭像
+                // 已登入狀態 - 顯示用戶頭像
                 FutureBuilder<Map<String, dynamic>>(
                   future: _getUserInfo(),
                   builder: (context, userSnapshot) {
@@ -507,15 +524,19 @@ class _AIPageState extends State<AIPage> {
                 onTap: () {
                   // 檢查是否登入，未登入則導向登入頁面
                   if (!isLoggedIn) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('請先登入以查看收藏')),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(const SnackBar(content: Text('請先登入以查看收藏')));
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const LoginPage()),
-                    ).then((_) => setState(() {
-                      _loadUserId().then((__) => _fetchData());
-                    }));
+                      MaterialPageRoute(
+                        builder: (context) => const LoginPage(),
+                      ),
+                    ).then(
+                      (_) => setState(() {
+                        _loadUserId().then((__) => _fetchData());
+                      }),
+                    );
                     return;
                   }
 
@@ -551,106 +572,27 @@ class _AIPageState extends State<AIPage> {
 
               const SizedBox(width: 8),
 
-              // 替換原有的 Switch 元件
-              _buildModeToggle(),
-
+              // Switch for Event Sorting / Multiple Perspectives (原 AIPage 邏輯)
+              Switch(
+                value: !_isEventSortingMode,
+                onChanged: (bool value) {
+                  setState(() {
+                    _isEventSortingMode = !value;
+                    // # 🌟 搜尋功能修正 🌟
+                    // 切換模式後，如果正在搜尋，重新觸發篩選，確保切換後的列表是正確篩選的
+                    _filterData(_currentSearchKeyword);
+                  });
+                },
+                activeColor: Colors.blue,
+                inactiveTrackColor: Colors.grey.shade300,
+                inactiveThumbColor: Colors.white,
+              ),
             ],
           ),
         );
       },
     );
   }
-
-  // ========== 模式切換元件 (Switch 替換為 Icon/Text 切換) ==========
-  Widget _buildModeToggle() {
-    // 兩個模式的圖示和名稱
-    const String eventModeName = "事件整理";
-    const IconData eventModeIcon = Icons.auto_stories; // 事件整理 (書本/故事)
-    const String mpModeName = "多方看法";
-    const IconData mpModeIcon = Icons.compare_arrows; // 多方看法 (對比/箭頭)
-
-    // 當前模式的顏色
-    final Color activeColor = Colors.blue.shade700;
-    final Color inactiveColor = Colors.grey.shade500;
-    final Color activeBgColor = Colors.blue.shade50;
-    final Color inactiveBgColor = Colors.grey.shade100;
-
-    // 定義切換卡片的樣式
-    Widget buildToggleItem(
-        String name, IconData icon, bool isActive, VoidCallback onTap) {
-      return GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          decoration: BoxDecoration(
-            color: isActive ? activeBgColor : inactiveBgColor,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isActive ? activeColor : inactiveColor.withOpacity(0.5),
-              width: 1,
-            ),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                icon,
-                size: 16,
-                color: isActive ? activeColor : inactiveColor,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                name,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: isActive ? activeColor : inactiveColor,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Row(
-      // 使用 Row 來並排放置兩個切換選項
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // 1. 事件整理 (Event Sorting)
-        buildToggleItem(
-          eventModeName,
-          eventModeIcon,
-          _isEventSortingMode,
-              () {
-            if (!_isEventSortingMode) {
-              setState(() {
-                _isEventSortingMode = true;
-                // 切換模式後，如果正在搜尋，重新觸發篩選
-                _filterData(_currentSearchKeyword);
-              });
-            }
-          },
-        ),
-        const SizedBox(width: 4), // 增加間隔
-        // 2. 多方看法 (Multiple Perspectives)
-        buildToggleItem(
-          mpModeName,
-          mpModeIcon,
-          !_isEventSortingMode, // 當前不是事件整理模式，就是多方看法模式
-              () {
-            if (_isEventSortingMode) {
-              setState(() {
-                _isEventSortingMode = false;
-                // 切換模式後，如果正在搜尋，重新觸發篩選
-                _filterData(_currentSearchKeyword);
-              });
-            }
-          },
-        ),
-      ],
-    );
-  }
-
 
   // ========== 搜尋列 (從 AIPage 原本邏輯改為 HomePage 樣式) ==========
   Widget _buildSearchBar() {
@@ -661,16 +603,20 @@ class _AIPageState extends State<AIPage> {
         decoration: InputDecoration(
           hintText: _isEventSortingMode ? "搜尋事件整理" : "搜尋多方觀點",
           prefixIcon: const Icon(Icons.search, color: Colors.grey),
-          suffixIcon: _currentSearchKeyword.isNotEmpty
-              ? IconButton(
-            icon: const Icon(Icons.clear, color: Colors.grey, size: 20),
-            onPressed: () {
-              _searchController.clear(); // 清空輸入框
-              // _onSearchChanged 會被觸發，重新顯示完整列表
-            },
-          )
-              : null,
-          contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+          suffixIcon:
+              _currentSearchKeyword.isNotEmpty
+                  ? IconButton(
+                    icon: const Icon(Icons.clear, color: Colors.grey, size: 20),
+                    onPressed: () {
+                      _searchController.clear(); // 清空輸入框
+                      // _onSearchChanged 會被觸發，重新顯示完整列表
+                    },
+                  )
+                  : null,
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 0,
+            horizontal: 16,
+          ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(25),
             borderSide: BorderSide.none,
@@ -685,6 +631,7 @@ class _AIPageState extends State<AIPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF0a1428),
       body: SafeArea(
         child: Column(
           children: [
@@ -697,11 +644,21 @@ class _AIPageState extends State<AIPage> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: Row(
                 children: [
-                  const Text("使用AI技術協助", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  const Text(
+                    "使用AI技術協助",
+                    style: TextStyle(color: Color(0xFF9ca3af), fontSize: 12),
+                  ),
                   const SizedBox(width: 4),
-                  const Icon(Icons.info_outline, size: 14, color: Colors.grey),
+                  const Icon(
+                    Icons.info_outline,
+                    size: 14,
+                    color: Color(0xFF9ca3af),
+                  ),
                   const Spacer(),
-                  const Text("資訊若有失真狀況，一概不負法律責任", style: TextStyle(color: Colors.red, fontSize: 10)),
+                  const Text(
+                    "資訊若有失真狀況，一概不負法律責任",
+                    style: TextStyle(color: Color(0xFFef4444), fontSize: 10),
+                  ),
                 ],
               ),
             ),
@@ -717,7 +674,9 @@ class _AIPageState extends State<AIPage> {
                     return Center(child: Text('數據載入失敗: ${snapshot.error}'));
                   } else {
                     // 只有在數據和收藏狀態都載入完畢後，才繪製內容
-                    return _isEventSortingMode ? _buildEventSortingContent() : _buildMultiplePerspectivesContent();
+                    return _isEventSortingMode
+                        ? _buildEventSortingContent()
+                        : _buildMultiplePerspectivesContent();
                   }
                 },
               ),
@@ -743,44 +702,56 @@ class _AIPageState extends State<AIPage> {
                 _isSearching && _currentSearchKeyword.isNotEmpty
                     ? "搜尋結果 (${listToShow.length} 筆)"
                     : "AI整理近期焦點新聞",
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
         ),
         const Divider(height: 1),
         Expanded(
-          child: listToShow.isEmpty
-              ? Center(child: Text('找不到與 "$_currentSearchKeyword" 相關的事件'))
-              : ListView.builder(
-            itemCount: listToShow.length,
-            itemBuilder: (context, index) {
-              final event = listToShow[index];
+          child:
+              listToShow.isEmpty
+                  ? Center(child: Text('找不到與 "$_currentSearchKeyword" 相關的事件'))
+                  : ListView.builder(
+                    itemCount: listToShow.length,
+                    itemBuilder: (context, index) {
+                      final event = listToShow[index];
 
-              final String title = event['eventsorting_title'] ?? '';
-              if (title.isEmpty) {
-                return const SizedBox.shrink();
-              }
+                      final String title = event['eventsorting_title'] ?? '';
+                      if (title.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
 
-              final eventId = event['eventsorting_id'];
-              // 收藏狀態判斷：檢查 _bookmarkIdStatus 中是否有非 null 的 bookmark_id
-              final isBookmarked = _bookmarkIdStatus.containsKey(eventId) && _bookmarkIdStatus[eventId] != null;
+                      final eventId = event['eventsorting_id'];
+                      // 收藏狀態判斷：檢查 _bookmarkIdStatus 中是否有非 null 的 bookmark_id
+                      final isBookmarked =
+                          _bookmarkIdStatus.containsKey(eventId) &&
+                          _bookmarkIdStatus[eventId] != null;
 
-              return _buildNewsCard(
-                title: title,
-                content: event['eventsorting_summary'] ?? '',
-                details: '${event['eventsorting_background_count'] ?? 0}則事件背景',
-                isBookmarked: isBookmarked,
-                onBookmarkTap: () => _toggleBookmark(eventId, 'eventsorting'),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => EventSortingDetailPage(id: eventId)),
-                  );
-                },
-              );
-            },
-          ),
+                      return _buildNewsCard(
+                        title: title,
+                        content: event['eventsorting_summary'] ?? '',
+                        details:
+                            '${event['eventsorting_background_count'] ?? 0}則事件背景',
+                        isBookmarked: isBookmarked,
+                        onBookmarkTap:
+                            () => _toggleBookmark(eventId, 'eventsorting'),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (context) =>
+                                      EventSortingDetailPage(id: eventId),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
         ),
       ],
     );
@@ -801,47 +772,61 @@ class _AIPageState extends State<AIPage> {
                 _isSearching && _currentSearchKeyword.isNotEmpty
                     ? "搜尋結果 (${listToShow.length} 筆)"
                     : "近期新聞不同觀點之討論",
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
         ),
         const Divider(height: 1),
         Expanded(
-          child: listToShow.isEmpty
-              ? Center(child: Text('找不到與 "$_currentSearchKeyword" 相關的觀點'))
-              : ListView.builder(
-            itemCount: listToShow.length,
-            itemBuilder: (context, index) {
-              final view = listToShow[index];
+          child:
+              listToShow.isEmpty
+                  ? Center(child: Text('找不到與 "$_currentSearchKeyword" 相關的觀點'))
+                  : ListView.builder(
+                    itemCount: listToShow.length,
+                    itemBuilder: (context, index) {
+                      final view = listToShow[index];
 
-              final String title = view['multipleperspectives_title'] ?? '';
-              if (title.isEmpty) {
-                return const SizedBox.shrink();
-              }
+                      final String title =
+                          view['multipleperspectives_title'] ?? '';
+                      if (title.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
 
-              final mpId = view['multipleperspectives_id'];
-              // 收藏狀態判斷：檢查 _multiplePerspectivesBookmarkIdStatus 中是否有非 null 的 bookmark_id
-              final isBookmarked = _multiplePerspectivesBookmarkIdStatus.containsKey(mpId) && _multiplePerspectivesBookmarkIdStatus[mpId] != null;
+                      final mpId = view['multipleperspectives_id'];
+                      // 收藏狀態判斷：檢查 _multiplePerspectivesBookmarkIdStatus 中是否有非 null 的 bookmark_id
+                      final isBookmarked =
+                          _multiplePerspectivesBookmarkIdStatus.containsKey(
+                            mpId,
+                          ) &&
+                          _multiplePerspectivesBookmarkIdStatus[mpId] != null;
 
-              return _buildNewsCard(
-                title: title,
-                content: '看法統整',
-                details: '${view['multipleperspectives_view_count'] ?? 0}種對立觀點',
-                isMultiplePerspectives: true,
-                isBookmarked: isBookmarked,
-                onBookmarkTap: () {
-                  _toggleBookmark(mpId, 'multipleperspectives');
-                },
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => MultiplePerspectivesDetailPage(id: mpId)),
-                  );
-                },
-              );
-            },
-          ),
+                      return _buildNewsCard(
+                        title: title,
+                        content: '看法統整',
+                        details:
+                            '${view['multipleperspectives_view_count'] ?? 0}種對立觀點',
+                        isMultiplePerspectives: true,
+                        isBookmarked: isBookmarked,
+                        onBookmarkTap: () {
+                          _toggleBookmark(mpId, 'multipleperspectives');
+                        },
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (context) =>
+                                      MultiplePerspectivesDetailPage(id: mpId),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
         ),
       ],
     );
@@ -873,7 +858,10 @@ class _AIPageState extends State<AIPage> {
                   Expanded(
                     child: Text(
                       title,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
                   ),
                   if (isMultiplePerspectives) ...[
@@ -899,7 +887,10 @@ class _AIPageState extends State<AIPage> {
                 children: [
                   Text(
                     details,
-                    style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      color: Colors.blue,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),

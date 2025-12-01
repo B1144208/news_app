@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -127,45 +128,60 @@ class _ChannelDetailPageState extends State<ChannelDetailPage> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFE8E3FF), // 與截圖相似的淺紫色背景
+      backgroundColor: const Color(0xFF0a1428),
       appBar: _buildAppBar(),
-      body: isLoading
-          ? Center(child: CircularProgressIndicator(color: Colors.deepPurple))
-          : SingleChildScrollView(
-              child: Column(
-                children: [
-                  _buildChannelHeader(),
-                  SizedBox(height: 16),
-                  _buildNewsSection(),
-                  SizedBox(height: 16),
-                  _buildRatingSection(),
-                  SizedBox(height: 16),
-                  _buildDescriptionSection(),
-                  SizedBox(height: 16),
-                  _buildInfoSection(),
-                  SizedBox(height: 20),
-                ],
+      body:
+          isLoading
+              ? Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.grey[400]!),
+                ),
+              )
+              : SingleChildScrollView(
+                child: Column(
+                  children: [
+                    _buildChannelHeader(),
+                    const SizedBox(height: 16),
+                    _buildNewsSection(),
+                    const SizedBox(height: 16),
+                    _buildRatingSection(),
+                    const SizedBox(height: 16),
+                    _buildDescriptionSection(),
+                    const SizedBox(height: 16),
+                    _buildInfoSection(),
+                    const SizedBox(height: 20),
+                  ],
+                ),
               ),
-            ),
     );
   }
 
   // 自定義AppBar
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      backgroundColor: Color(0xFFB39DDB), // 與截圖相似的紫色
-      foregroundColor: Colors.black87,
+      backgroundColor: const Color(0xFF1a2a4e),
+      foregroundColor: Colors.white,
+      elevation: 0,
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(1),
+        child: Container(
+          color: const Color(0xFF6366f1).withOpacity(0.1),
+          height: 1,
+        ),
+      ),
       title: Row(
         children: [
           Expanded(
             child: Text(
               widget.channelName,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+                letterSpacing: 0.3,
               ),
               overflow: TextOverflow.ellipsis,
             ),
@@ -173,9 +189,11 @@ class _ChannelDetailPageState extends State<ChannelDetailPage> {
         ],
       ),
       actions: [
-        IconButton(icon: Icon(Icons.more_horiz), onPressed: _showMoreOptions),
+        IconButton(
+          icon: const Icon(Icons.more_horiz, color: Color(0xFF60a5fa)),
+          onPressed: _showMoreOptions,
+        ),
       ],
-      elevation: 1,
     );
   }
 
@@ -197,15 +215,16 @@ class _ChannelDetailPageState extends State<ChannelDetailPage> {
             children: [
               // 背景圖片層（從資料庫獲取）
               Positioned.fill(
-                child: channelBackgroundImage != null
-                    ? Image.network(
-                        channelBackgroundImage!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return _buildDefaultBackground();
-                        },
-                      )
-                    : _buildDefaultBackground(),
+                child:
+                    channelBackgroundImage != null
+                        ? Image.network(
+                          channelBackgroundImage!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return _buildDefaultBackground();
+                          },
+                        )
+                        : _buildDefaultBackground(),
               ),
 
               // 漸變遮罩層
@@ -270,36 +289,37 @@ class _ChannelDetailPageState extends State<ChannelDetailPage> {
                                   break;
                               }
                             },
-                            itemBuilder: (BuildContext context) => [
-                              PopupMenuItem<String>(
-                                value: 'share',
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.share,
-                                      size: 18,
-                                      color: Colors.blue,
+                            itemBuilder:
+                                (BuildContext context) => [
+                                  PopupMenuItem<String>(
+                                    value: 'share',
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.share,
+                                          size: 18,
+                                          color: Colors.blue,
+                                        ),
+                                        SizedBox(width: 8),
+                                        Text('分享頻道'),
+                                      ],
                                     ),
-                                    SizedBox(width: 8),
-                                    Text('分享頻道'),
-                                  ],
-                                ),
-                              ),
-                              PopupMenuItem<String>(
-                                value: 'report',
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.report,
-                                      size: 18,
-                                      color: Colors.red,
+                                  ),
+                                  PopupMenuItem<String>(
+                                    value: 'report',
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.report,
+                                          size: 18,
+                                          color: Colors.red,
+                                        ),
+                                        SizedBox(width: 8),
+                                        Text('檢舉頻道'),
+                                      ],
                                     ),
-                                    SizedBox(width: 8),
-                                    Text('檢舉頻道'),
-                                  ],
-                                ),
-                              ),
-                            ],
+                                  ),
+                                ],
                           ),
                         ],
                       ),
@@ -593,28 +613,29 @@ class _ChannelDetailPageState extends State<ChannelDetailPage> {
                       break;
                   }
                 },
-                itemBuilder: (BuildContext context) => [
-                  PopupMenuItem<String>(
-                    value: 'share',
-                    child: Row(
-                      children: [
-                        Icon(Icons.share, size: 18, color: Colors.blue),
-                        SizedBox(width: 8),
-                        Text('分享新聞'),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem<String>(
-                    value: 'report',
-                    child: Row(
-                      children: [
-                        Icon(Icons.report, size: 18, color: Colors.red),
-                        SizedBox(width: 8),
-                        Text('檢舉新聞'),
-                      ],
-                    ),
-                  ),
-                ],
+                itemBuilder:
+                    (BuildContext context) => [
+                      PopupMenuItem<String>(
+                        value: 'share',
+                        child: Row(
+                          children: [
+                            Icon(Icons.share, size: 18, color: Colors.blue),
+                            SizedBox(width: 8),
+                            Text('分享新聞'),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem<String>(
+                        value: 'report',
+                        child: Row(
+                          children: [
+                            Icon(Icons.report, size: 18, color: Colors.red),
+                            SizedBox(width: 8),
+                            Text('檢舉新聞'),
+                          ],
+                        ),
+                      ),
+                    ],
               ),
             ],
           ),
@@ -683,8 +704,8 @@ class _ChannelDetailPageState extends State<ChannelDetailPage> {
                   index < averageRating.floor()
                       ? Icons.star
                       : (index < averageRating
-                            ? Icons.star_half
-                            : Icons.star_border),
+                          ? Icons.star_half
+                          : Icons.star_border),
                   color: Colors.amber,
                   size: 20,
                 );
@@ -995,8 +1016,7 @@ class _ChannelDetailPageState extends State<ChannelDetailPage> {
   // 分享頻道功能
   void _shareChannel() async {
     try {
-      final String shareContent =
-          '''
+      final String shareContent = '''
 📺 ${widget.channelName}
 ${channelStats['publisher'] ?? ''}
 
@@ -1007,69 +1027,10 @@ ${widget.channelDescription ?? '頻道描述'}
 
 立即查看更多精彩內容！
 ${widget.channelUrl ?? 'https://example.com/channel/${widget.channelId}'}
-      ''';
+    ''';
 
-      // TODO: 實際分享功能實現
-      // 可以使用 share_plus 套件: await Share.share(shareContent);
-
-      // 目前顯示分享對話框
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Row(
-            children: [
-              Icon(Icons.share, color: Colors.blue),
-              SizedBox(width: 8),
-              Text('分享頻道'),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('分享內容預覽：'),
-                SizedBox(height: 12),
-                Container(
-                  padding: EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey[300]!),
-                  ),
-                  child: Text(shareContent, style: TextStyle(fontSize: 14)),
-                ),
-                SizedBox(height: 16),
-                Text('分享選項：', style: TextStyle(fontWeight: FontWeight.bold)),
-                SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    _buildShareOption('複製連結', Icons.link, () {
-                      Navigator.pop(context);
-                      _copyToClipboard(shareContent);
-                    }),
-                    _buildShareOption('LINE', Icons.message, () {
-                      Navigator.pop(context);
-                      _showComingSoon('LINE分享');
-                    }),
-                    _buildShareOption('Facebook', Icons.facebook, () {
-                      Navigator.pop(context);
-                      _showComingSoon('Facebook分享');
-                    }),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('取消'),
-            ),
-          ],
-        ),
-      );
+      // ✅ 調用系統分享功能
+      await Share.share(shareContent, subject: '分享頻道：${widget.channelName}');
     } catch (e) {
       _showErrorMessage('分享失敗: $e');
     }
@@ -1078,8 +1039,7 @@ ${widget.channelUrl ?? 'https://example.com/channel/${widget.channelId}'}
   // 分享新聞功能
   void _shareNews(Map<String, dynamic> news) async {
     try {
-      final String shareContent =
-          '''
+      final String shareContent = '''
 📰 ${news['title']}
 
 來自頻道: ${widget.channelName}
@@ -1091,54 +1051,55 @@ ${news['url'] ?? 'https://example.com/news/${news['id']}'}
 
       showDialog(
         context: context,
-        builder: (context) => AlertDialog(
-          title: Row(
-            children: [
-              Icon(Icons.share, color: Colors.blue),
-              SizedBox(width: 8),
-              Text('分享新聞'),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('分享內容預覽：'),
-                SizedBox(height: 12),
-                Container(
-                  padding: EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey[300]!),
-                  ),
-                  child: Text(shareContent, style: TextStyle(fontSize: 14)),
-                ),
-                SizedBox(height: 16),
-                Wrap(
-                  spacing: 8,
+        builder:
+            (context) => AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.share, color: Colors.blue),
+                  SizedBox(width: 8),
+                  Text('分享新聞'),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildShareOption('複製連結', Icons.link, () {
-                      Navigator.pop(context);
-                      _copyToClipboard(shareContent);
-                    }),
-                    _buildShareOption('分享', Icons.share, () {
-                      Navigator.pop(context);
-                      _showComingSoon('系統分享');
-                    }),
+                    Text('分享內容預覽：'),
+                    SizedBox(height: 12),
+                    Container(
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey[300]!),
+                      ),
+                      child: Text(shareContent, style: TextStyle(fontSize: 14)),
+                    ),
+                    SizedBox(height: 16),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        _buildShareOption('複製連結', Icons.link, () {
+                          Navigator.pop(context);
+                          _copyToClipboard(shareContent);
+                        }),
+                        _buildShareOption('分享', Icons.share, () {
+                          Navigator.pop(context);
+                          _showComingSoon('系統分享');
+                        }),
+                      ],
+                    ),
                   ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('取消'),
                 ),
               ],
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('取消'),
-            ),
-          ],
-        ),
       );
     } catch (e) {
       _showErrorMessage('分享新聞失敗: $e');
@@ -1149,43 +1110,44 @@ ${news['url'] ?? 'https://example.com/news/${news['id']}'}
   void _reportChannel() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.report, color: Colors.red),
-            SizedBox(width: 8),
-            Text('檢舉頻道'),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('請選擇檢舉原因：'),
-              SizedBox(height: 16),
+      builder:
+          (context) => AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.report, color: Colors.red),
+                SizedBox(width: 8),
+                Text('檢舉頻道'),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('請選擇檢舉原因：'),
+                  SizedBox(height: 16),
 
-              ...['不當內容', '虛假資訊', '版權侵權', '垃圾訊息', '其他'].map(
-                (reason) => RadioListTile<String>(
-                  title: Text(reason),
-                  value: reason,
-                  groupValue: null, // TODO: 實現選擇狀態管理
-                  onChanged: (value) {
-                    Navigator.pop(context);
-                    _submitChannelReport(reason);
-                  },
-                ),
+                  ...['不當內容', '虛假資訊', '版權侵權', '垃圾訊息', '其他'].map(
+                    (reason) => RadioListTile<String>(
+                      title: Text(reason),
+                      value: reason,
+                      groupValue: null, // TODO: 實現選擇狀態管理
+                      onChanged: (value) {
+                        Navigator.pop(context);
+                        _submitChannelReport(reason);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('取消'),
               ),
             ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('取消'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -1193,50 +1155,51 @@ ${news['url'] ?? 'https://example.com/news/${news['id']}'}
   void _reportNews(Map<String, dynamic> news) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.report, color: Colors.red),
-            SizedBox(width: 8),
-            Text('檢舉新聞'),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('新聞標題：'),
-              SizedBox(height: 4),
-              Text(
-                news['title'],
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 16),
-              Text('請選擇檢舉原因：'),
-              SizedBox(height: 16),
+      builder:
+          (context) => AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.report, color: Colors.red),
+                SizedBox(width: 8),
+                Text('檢舉新聞'),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('新聞標題：'),
+                  SizedBox(height: 4),
+                  Text(
+                    news['title'],
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 16),
+                  Text('請選擇檢舉原因：'),
+                  SizedBox(height: 16),
 
-              ...['不實消息', '不當內容', '版權侵權', '仇恨言論', '其他'].map(
-                (reason) => RadioListTile<String>(
-                  title: Text(reason),
-                  value: reason,
-                  groupValue: null, // TODO: 實現選擇狀態管理
-                  onChanged: (value) {
-                    Navigator.pop(context);
-                    _submitNewsReport(news['id'], reason);
-                  },
-                ),
+                  ...['不實消息', '不當內容', '版權侵權', '仇恨言論', '其他'].map(
+                    (reason) => RadioListTile<String>(
+                      title: Text(reason),
+                      value: reason,
+                      groupValue: null, // TODO: 實現選擇狀態管理
+                      onChanged: (value) {
+                        Navigator.pop(context);
+                        _submitNewsReport(news['id'], reason);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('取消'),
               ),
             ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('取消'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -1251,30 +1214,31 @@ ${news['url'] ?? 'https://example.com/news/${news['id']}'}
 
       showDialog(
         context: context,
-        builder: (context) => AlertDialog(
-          title: Row(
-            children: [
-              Icon(Icons.bookmark_added, color: Colors.green),
-              SizedBox(width: 8),
-              Text('書籤成功'),
-            ],
-          ),
-          content: Text('已將「${widget.channelName}」加入您的書籤清單'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('確定'),
+        builder:
+            (context) => AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.bookmark_added, color: Colors.green),
+                  SizedBox(width: 8),
+                  Text('書籤成功'),
+                ],
+              ),
+              content: Text('已將「${widget.channelName}」加入您的書籤清單'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('確定'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    // TODO: 導航到書籤頁面
+                    _showComingSoon('書籤頁面');
+                  },
+                  child: Text('查看書籤'),
+                ),
+              ],
             ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                // TODO: 導航到書籤頁面
-                _showComingSoon('書籤頁面');
-              },
-              child: Text('查看書籤'),
-            ),
-          ],
-        ),
       );
     } catch (e) {
       _showErrorMessage('加入書籤失敗: $e');
