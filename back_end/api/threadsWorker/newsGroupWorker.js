@@ -93,6 +93,8 @@ async function insertNewsGroupsForOneNews(newsId, result) {
         let dataId = null;
         let detailId = null;
 
+        console.log("7. type, id: ", type, id);
+
         if (type === 'data') {
             dataId = id;
         } else if (type === 'detail') {
@@ -100,10 +102,11 @@ async function insertNewsGroupsForOneNews(newsId, result) {
         } else {
             continue;
         }
-
+        let params = [newsId, dataId, detailId];
+        console.log("8. params: ", params);
         try {
-            let [result] = await pool.query(insertSql, [newsId, dataId, detailId]);
-            console.log("7. insertSql result: ", result);
+            let [result] = await pool.query(insertSql, parmas);
+            console.log("9. insertSql result: ", result);
         } catch (err) {
             console.warn("err for insertSql: ", err.message);
         }
@@ -137,7 +140,6 @@ async function handleOneNews(newsItem) {
 
     // 組成送進模型的文字：標題 + 內文
     const newsText = `${title}\n${body}`.trim();
-    console.log("1. newsText: ", newsText);
 
     const fakeReq = {
         body: { newsText: newsText }

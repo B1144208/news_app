@@ -123,8 +123,6 @@ async function newsGroupClassifier (req, res, next) {
   try {
     const { newsText } = req.body || {};
 
-    console.log("2. newsText: ", newsText, "\n");
-
     if (!newsText || typeof newsText !== 'string') {
       return res.status(400).json({
         ok: false,
