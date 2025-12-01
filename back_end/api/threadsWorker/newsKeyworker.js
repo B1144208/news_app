@@ -115,6 +115,9 @@ async function insertNewsKeywordsForOneNews(newsId, keywords) {
     VALUES ?
   `;
 
+  const finalSql = pool.format(insertSql, [rowsToInsert]);
+  console.log('[DEBUG SQL]', finalSql);
+
   try {
     const [result] = await pool.query(insertSql, [rowsToInsert]);
     // 有成功影響到任何列就回 true

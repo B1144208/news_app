@@ -166,9 +166,9 @@ async function insertKeyword(req, res, next) {
 
         if (matchedRelationId !== null) {
             keyword_relation_id = matchedRelationId;
-            console.log(`[Keyword Match] 找到相似度 > 0.75 的 keyword_relation_id: ${keyword_relation_id}`);
+            //console.log(`[Keyword Match] 找到相似度 > 0.75 的 keyword_relation_id: ${keyword_relation_id}`);
         } else {
-            console.log(`[Keyword Match] 未找到匹配，將執行舊有邏輯（Search/Insert Relation）。`);
+            //console.log(`[Keyword Match] 未找到匹配，將執行舊有邏輯（Search/Insert Relation）。`);
         }
 
     } catch (err) {
