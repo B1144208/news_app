@@ -718,11 +718,11 @@ async function insertNews(req, res, next) {
             // 批量插入 news_keyword 橋接表
             if (keyword_ids.length > 0) {
                 let keywordValuesSql = keyword_ids.map(() => `( ?, ? )`).join(', ');
-                let keywordParams = keyword_ids.flatMap(id => [news_id, id]);
+                let keywordParams = keyword_ids.flatMap(id => [relation, id]);
 
                 sql = `
-                    INSERT INTO news_keyword (
-                        news_id,
+                    INSERT INTO relation_keyword (
+                        relation,
                         keyword_id
                     ) VALUES ${keywordValuesSql}
                 `;
