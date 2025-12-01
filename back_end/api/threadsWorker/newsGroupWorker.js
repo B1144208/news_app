@@ -65,34 +65,26 @@ async function insertNewsGroupsForOneNews(newsId, result) {
 
         let searchGroupResult;
         try {
-        // searchGroup 用的是 req.query.name
-        const fakeReq = {
-            query: { name: groupName }
-        };
+            // searchGroup 用的是 req.query.name
+            const fakeReq = {
+                query: { name: groupName }
+            };
 
-        searchGroupResult = await callAndCatchApiSuccess(searchGroup, fakeReq);
+            searchGroupResult = await callAndCatchApiSuccessInGeneralFunction(searchGroup, fakeReq);
         } catch (err) {
-        console.warn(
-            '[newsGroupWorker] 搜尋 group 失敗，news_id =',
-            newsId,
-            'name =',
-            groupName,
-            'err =',
-            err.message
-        );
-        // 這個標籤失敗就跳過，處理下一個
-        continue;
+            console.warn('[newsGroupWorker] 搜尋 group 失敗，news_id =', newsId, 'name =', groupName, 'err =', err.message);
+            // 這個標籤失敗就跳過，處理下一個
+            continue;
         }
 
         // 沒找到或 success === false 就略過
         if (!searchGroupResult || searchGroupResult.success === false || !searchGroupResult.data) {
-        console.warn(
-            '[newsGroupWorker] 找不到 group，news_id =',
+        /*console.warn('[newsGroupWorker] 找不到 group，news_id =',
             newsId,
             'name =',
             groupName
-        );
-        continue;
+        );*/
+            continue;
         }
 
         const { type, id } = searchGroupResult.data || {};
@@ -100,34 +92,34 @@ async function insertNewsGroupsForOneNews(newsId, result) {
         let detailId = null;
 
         if (type === 'data') {
-        dataId = id;
+            dataId = id;
         } else if (type === 'detail') {
-        detailId = id;
+            detailId = id;
         } else {
-        console.warn(
-            '[newsGroupWorker] 未知的 group.type =',
-            type,
-            'news_id =',
-            newsId,
-            'name =',
-            groupName
-        );
-        continue;
+            /*console.warn(
+                '[newsGroupWorker] 未知的 group.type =',
+                type,
+                'news_id =',
+                newsId,
+                'name =',
+                groupName
+            );*/
+            continue;
         }
 
         try {
-        await pool.query(insertSql, [newsId, dataId, detailId]);
+            await pool.query(insertSql, [newsId, dataId, detailId]);
         } catch (err) {
-        console.error(
-            '[newsGroupWorker] 寫入 news_group 失敗，news_id =',
-            newsId,
-            'name =',
-            groupName,
-            'err =',
-            err.message
-        );
-        // 這裡依照你需求：要不要整個 throw 讓外層處理？
-        // throw err;
+            console.error(
+                '[newsGroupWorker] 寫入 news_group 失敗，news_id =',
+                newsId,
+                'name =',
+                groupName,
+                'err =',
+                err.message
+            );
+            // 這裡依照你需求：要不要整個 throw 讓外層處理？
+            // throw err;
         }
     }
 }
