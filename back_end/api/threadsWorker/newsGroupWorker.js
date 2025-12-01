@@ -86,13 +86,13 @@ async function insertNewsGroupsForOneNews(newsId, result) {
         console.log("7. searchGroupResult, searchGroupResult.success, searchGroupResult.data: ", searchGroupResult, searchGroupResult.success, searchGroupResult.data);
 
         // 沒找到或 success === false 就略過
-        if (!searchGroupResult || searchGroupResult.success === false || !searchGroupResult.data) {
+        if (!searchGroupResult || !searchGroupResult.type || !searchGroupResult.id) {
             continue;
         }
 
         console.log("8. 888888888 ");
 
-        const { type, id } = searchGroupResult.data || {};
+        const { type, id } = searchGroupResult || {};
         let dataId = null;
         let detailId = null;
 
