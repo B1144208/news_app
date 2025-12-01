@@ -120,7 +120,7 @@ async function processTask(relationId) {
         const combinedNewsText = newsTexts.join('\n\n--- [新聞分隔線] ---\n\n');
 
         // 呼叫 Ollama 模型
-        const { title, summary } = await ollamaSummarize('eventsorting_model', combinedNewsText);
+        const { title, summary } = await ollamaSummarize('eventsorting-curation', combinedNewsText);
 
         // 取得 Embedding 向量
         const embedding = await getEmbedding(title + ' ' + summary);
