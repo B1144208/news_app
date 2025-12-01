@@ -123,6 +123,8 @@ async function newsGroupClassifier (req, res, next) {
   try {
     const { newsText } = req.body || {};
 
+    console.log("2. newsText: ", newsText, "\n");
+
     if (!newsText || typeof newsText !== 'string') {
       return res.status(400).json({
         ok: false,
@@ -135,6 +137,8 @@ async function newsGroupClassifier (req, res, next) {
       newsText,
       '請依照 SYSTEM 規則，對以下新聞判斷「group 主題分類」，只輸出 JSON 陣列：'
     );
+
+    console.log("3. result: ", result, "\n");
 
     return res.json({
       ok: true,
