@@ -23,6 +23,8 @@ const OLLAMA_MODEL = 'qwen2.5:1.5b';
 async function getText (req, res, next) {
     let { idList } = req.query ?? {}
 
+    console.log("0-1. idList: ", idList);
+
     try {
       [ id, idList, times, limit ] = await checkRequireField ([
         { field: 'idList' , data: idList  , type: 'array'   , other: ['non-null'], array_filter: 'number' }
@@ -39,6 +41,8 @@ async function getText (req, res, next) {
     try {
       let result = await callAndCatchApiSuccess(searchNews, fakeReq);
 
+      console.log("0-2. result: ", result);
+
       result = result.complexList.map(item => {
         const bodyText = (item.newsBody || [])
           .filter(part => typeof part.text === 'string' && part.text.trim() !== '')
@@ -51,6 +55,8 @@ async function getText (req, res, next) {
           text: bodyText
         }
       });
+
+      console.log("0-3. result: ", result);
       return res.apiSuccess(result, "Search Success");
     } catch (err) {
       err.desc = "middlewares-scriptController(): error";
