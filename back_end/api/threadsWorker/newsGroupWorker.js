@@ -17,7 +17,7 @@ function sleep(ms) {
 /**
  * 從 news_task 抓出「還沒做 group（news_group = 0）」的 news_id
  * 依照五個欄位的加總分數由大到小排序，再依照 created_at 越新越前面
- * 一次最多抓 10 筆
+ * 一次最多抓 100 筆
  */
 async function fetchPendingNewsIds() {
   const sql = `
@@ -35,7 +35,7 @@ async function fetchPendingNewsIds() {
     ORDER BY
       score DESC,
       nd.created_at
-    LIMIT 10;
+    LIMIT 100;
   `;
 
   const [rows] = await pool.query(sql);
@@ -167,7 +167,19 @@ async function handleOneNews(newsItem) {
 
     try {
         const result = await callAndCatchApiSuccessInGeneralFunction(newsGroupClassifier, fakeReq);
-        await insertNewsGroupsForOneNews(newsId, result.data);
+        console.log("result: ", result);
+        if (!result || result.success === false || !result.data) {
+            console.warn( `[newsGroupWorker] news_id=${newsId} newsGroupClassifier 未正常完成，略過 markTaskDone`);
+            return; // 直接跳過這筆，讓外層去跑下一個 newsId
+        }
+        
+        const insertResult = await insertNewsGroupsForOneNews(newsId, result.data);
+        console.log("insertResult: ", insertResult);
+        if (insertResult === false) {
+            console.warn(`[newsGroupWorker] news_id=${newsId} insertNewsGroupsForOneNews 回傳失敗，略過 markTaskDone`);
+            return;
+        }
+
         await markTaskDone(newsId);
     } catch (err) {
         err.desc = 'threadsWorker-newsGroup-handleOneNews(): ' + (err.message || '');
@@ -181,78 +193,76 @@ async function handleOneNews(newsItem) {
  * - 若有資料，逐筆處理
  * - 若沒有資料，sleep 一小時後再試
  */
-async function mainLoop() {
+async function runNewsGroupWorker() {
     console.log('[newsGroupWorker] 啟動');
 
-    while (true) {
-        try {
-        // 1) 先從 DB 抓待處理的 news_id 清單
-        const idList = await fetchPendingNewsIds();
+    try {
+    // 1) 先從 DB 抓待處理的 news_id 清單
+    const idList = await fetchPendingNewsIds();
 
-        if (idList.length === 0) {
-            console.log('[newsGroupWorker] 目前沒有待處理的 news_group 任務，一小時後再檢查');
-            await sleep(SLEEP_WHEN_EMPTY_MS);
+    if (idList.length === 0) {
+        console.log('[newsGroupWorker] 目前沒有待處理的 news_group 任務');
+        return;
+    }
+
+    // 2) 呼叫 getText，把這批 id 換成 {id, title, text} 陣列
+    let newsTextList;
+    try {
+        const fakeReqForGetText = {
+            query: { idList }
+        };
+
+        newsTextList = await callAndCatchApiSuccessInGeneralFunction(getText, fakeReqForGetText);
+
+        // 預期格式：[{ id, title, text }, ...]
+        if (!Array.isArray(newsTextList)) {
+            console.warn('[newsGroupWorker] getText 回傳不是陣列，實際：', newsTextList);
+            newsTextList = [];
+        }
+    } catch (err) {
+        console.error('[newsGroupWorker] 呼叫 getText 發生錯誤：', err);
+        // 避免死循環，先睡一下再重新跑 while
+        await sleep(30 * 1000);
+        return;
+    }
+
+    // 3) 對這批文字逐筆做 group 分類
+    for (const newsItem of newsTextList) {
+        if (!newsItem || typeof newsItem.id === 'undefined') {
+            console.warn('[newsGroupWorker] newsItem 格式不正確，略過：', newsItem);
             continue;
         }
 
-        // 2) 呼叫 getText，把這批 id 換成 {id, title, text} 陣列
-        let newsTextList;
         try {
-            const fakeReqForGetText = {
-                query: { idList }
-            };
-
-            newsTextList = await callAndCatchApiSuccessInGeneralFunction(getText, fakeReqForGetText);
-
-            // 預期格式：[{ id, title, text }, ...]
-            if (!Array.isArray(newsTextList)) {
-                console.warn('[newsGroupWorker] getText 回傳不是陣列，實際：', newsTextList);
-                newsTextList = [];
-            }
+            await handleOneNews(newsItem); // 傳整個 {id, title, text}
         } catch (err) {
-            console.error('[newsGroupWorker] 呼叫 getText 發生錯誤：', err);
-            // 避免死循環，先睡一下再重新跑 while
-            await sleep(30 * 1000);
-            continue;
-        }
-
-        // 3) 對這批文字逐筆做 group 分類
-        for (const newsItem of newsTextList) {
-            if (!newsItem || typeof newsItem.id === 'undefined') {
-                console.warn('[newsGroupWorker] newsItem 格式不正確，略過：', newsItem);
-                continue;
-            }
-
-            try {
-                await handleOneNews(newsItem); // 傳整個 {id, title, text}
-            } catch (err) {
-                console.error('[newsGroupWorker] 處理 news_id =', newsItem.id, '時發生錯誤：', err);
-            }
-        }
-
-        // 一輪跑完，立刻再去 DB 抓新的一輪
-        } catch (err) {
-            console.error('[newsGroupWorker] 主迴圈發生錯誤：', err);
-            // 發生非預期錯誤時，避免死循環瘋狂重試，先睡一下再繼續
-            await sleep(30 * 1000);
+            console.error('[newsGroupWorker] 處理 news_id =', newsItem.id, '時發生錯誤：', err);
         }
     }
+
+    // 一輪跑完，立刻再去 DB 抓新的一輪
+    } catch (err) {
+        console.error('[newsGroupWorker] 主迴圈發生錯誤：', err);
+        // 發生非預期錯誤時，避免死循環瘋狂重試，先睡一下再繼續
+        await sleep(30 * 1000);
+    }
+    //}
 }
 
 // 直接啟動主程式
-mainLoop().catch(err => {
-  console.error('[newsGroupWorker] 無法啟動：', err);
-  process.exit(1);
+runNewsGroupWorker().catch(err => {
+    console.error('[newsGroupWorker] 無法啟動：', err);
+    process.exit(1);
 });
 
 // 優雅關閉
 process.on('SIGINT', () => {
-  console.log('\n[newsGroupWorker] 收到 SIGINT，準備結束');
-  process.exit(0);
+    console.log('\n[newsGroupWorker] 收到 SIGINT，準備結束');
+    process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-  console.log('\n[newsGroupWorker] 收到 SIGTERM，準備結束');
-  process.exit(0);
+    console.log('\n[newsGroupWorker] 收到 SIGTERM，準備結束');
+    process.exit(0);
 });
 

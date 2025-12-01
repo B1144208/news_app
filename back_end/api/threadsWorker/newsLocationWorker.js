@@ -17,7 +17,7 @@ function sleep (ms) {
 /**
  * 從 news_task 抓出「還沒做 location（news_location = 0）」的 news_id
  * 依照五個欄位的加總分數由大到小排序，再依照 created_at 越新越前面
- * 一次最多抓 10 筆
+ * 一次最多抓 100 筆
  */
 async function fetchPendingNewsIds () {
   const sql = `
@@ -35,7 +35,7 @@ async function fetchPendingNewsIds () {
     ORDER BY
       score DESC,
       nd.created_at
-    LIMIT 10;
+    LIMIT 100;
   `;
 
   const [rows] = await pool.query(sql);
@@ -61,7 +61,6 @@ async function insertNewsLocationsForOneNews (newsId, result) {
 
     // 若最後沒有任何有效地點名稱，就直接結束，不寫入任何東西
     if (names.length === 0) {
-        // console.log('[newsLocationWorker] news_id =', newsId, '沒有任何 location，略過');
         return;
     }
 
@@ -107,7 +106,6 @@ async function insertNewsLocationsForOneNews (newsId, result) {
         } else if (type === 'state') {
             stateId = id;
         } else {
-            // 不認識的 type 直接略過
             continue;
         }
 
@@ -126,97 +124,6 @@ async function insertNewsLocationsForOneNews (newsId, result) {
         console.warn('[newsLocationWorker] 批次寫入 news_location 失敗，news_id =', newsId, 'err =', err.message);
     }
 }
-/*async function insertNewsLocationsForOneNews (newsId, result) {
-    // === 0. 先準備要查的名稱陣列，若原本就是 []，就當作 ['其他'] ===
-    let namesToSearch;
-    if (Array.isArray(result) && result.length > 0) {
-        namesToSearch = result;
-    } else {
-        namesToSearch = [];
-    }
-
-    const insertSql = `
-        INSERT IGNORE INTO news_location (news_id, location_data_id, location_detail_id)
-        VALUES ?
-    `;
-
-    const rowsToInsert = []; // [[newsId, dataId, detailId], ...]
-
-    // === 1. 逐一呼叫 searchLocation，把結果整理成 {type,id} → rowsToInsert ===
-    for (const rawName of namesToSearch) {
-        const locationName = rawName || '其他';
-
-        let searchLocationResult;
-        try {
-        const fakeReq = { query: { name: locationName } };
-        searchLocationResult = await callAndCatchApiSuccessInGeneralFunction(
-            searchLocation,
-            fakeReq
-        );
-        } catch (err) {
-        // 搜尋失敗就跳過
-        continue;
-        }
-
-        if (!searchLocationResult || !searchLocationResult.type || !searchLocationResult.id) {
-        continue;
-        }
-
-        const { type, id } = searchLocationResult;
-        let dataId = null;
-        let detailId = null;
-
-        if (type === 'data') {
-            dataId = id;
-        } else if (type === 'detail') {
-            detailId = id;
-        } else {
-            continue;
-        }
-
-        rowsToInsert.push([newsId, dataId, detailId]);
-    }
-
-    // === 2. 若全部 search 完還是沒有任何可用的結果，再保底塞「其他」一次 ===
-    if (rowsToInsert.length === 0) {
-        try {
-        const fakeReq = { query: { name: '其他' } };
-        const fallback = await callAndCatchApiSuccessInGeneralFunction(
-            searchLocation,
-            fakeReq
-        );
-
-        if (fallback && fallback.type && fallback.id) {
-            let dataId = null;
-            let detailId = null;
-
-            if (fallback.type === 'data') {
-                dataId = fallback.id;
-            } else if (fallback.type === 'detail') {
-                detailId = fallback.id;
-            }
-
-            if (dataId !== null || detailId !== null) {
-                rowsToInsert.push([newsId, dataId, detailId]);
-            }
-        }
-        } catch (err) {
-        console.warn('[newsLocationWorker] fallback「其他」搜尋也失敗，news_id =', newsId, 'err =', err.message);
-        }
-    }
-
-    // === 3. 真的完全沒有任何 row 可以寫入就結束 ===
-    if (rowsToInsert.length === 0) {
-        return;
-    }
-
-    // === 4. 一次批次 INSERT IGNORE ===
-    try {
-        await pool.query(insertSql, [rowsToInsert]);
-    } catch (err) {
-        console.warn('[newsLocationWorker] 批次寫入 news_location 失敗，news_id =', newsId, 'err =', err.message);
-    }
-}*/
 
 /**
  * 將單一 news 的 news_task.news_location 設為 1 （表示已完成）
@@ -250,14 +157,20 @@ async function handleOneNews (newsItem) {
   };
 
   try {
-    const result = await callAndCatchApiSuccessInGeneralFunction(
-      newsLocationClassifier,
-      fakeReq
-    );
-
+    const result = await callAndCatchApiSuccessInGeneralFunction(newsLocationClassifier, fakeReq);
     console.log("result: ", result);
+    if (!result || result.success === false || !result.data) {
+        console.warn( `[newsLocationWorker] news_id=${newsId} newsLocationClassifier 未正常完成，略過 markTaskDone`);
+        return; // 直接跳過這筆，讓外層去跑下一個 newsId
+    }
 
-    await insertNewsLocationsForOneNews(newsId, result.data);
+    const insertResult = await insertNewsLocationsForOneNews(newsId, result.data);
+    console.log("insertResult: ", insertResult);
+    if (insertResult === false) {
+        console.warn(`[newsLocationWorker] news_id=${newsId} insertNewsLocationForOneNews 回傳失敗，略過 markTaskDone`);
+        return;
+    }
+
     await markTaskDone(newsId);
   } catch (err) {
     err.desc = 'threadsWorker-newsLocation-handleOneNews(): ' + (err.message || '');
@@ -271,65 +184,62 @@ async function handleOneNews (newsItem) {
  * - 若有資料，逐筆處理
  * - 若沒有資料，sleep 一小時後再試
  */
-async function mainLoop () {
+async function runLocationWorker() {
   console.log('[newsLocationWorker] 啟動');
 
-  while (true) {
     try {
-      const idList = await fetchPendingNewsIds();
+        const idList = await fetchPendingNewsIds();
 
-      if (idList.length === 0) {
-        console.log('[newsLocationWorker] 目前沒有待處理的 news_location 任務，一小時後再檢查');
-        await sleep(SLEEP_WHEN_EMPTY_MS);
-        continue;
-      }
-
-      // 2) 呼叫 getText，把這批 id 換成 {id, title, text} 陣列
-      let newsTextList;
-      try {
-        const fakeReqForGetText = {
-          query: { idList }
-        };
-
-        newsTextList = await callAndCatchApiSuccessInGeneralFunction(
-          getText,
-          fakeReqForGetText
-        );
-
-        if (!Array.isArray(newsTextList)) {
-          console.warn('[newsLocationWorker] getText 回傳不是陣列，實際：', newsTextList);
-          newsTextList = [];
-        }
-      } catch (err) {
-        console.error('[newsLocationWorker] 呼叫 getText 發生錯誤：', err);
-        await sleep(30 * 1000);
-        continue;
-      }
-
-      // 3) 對這批文字逐筆做 location 分類
-      for (const newsItem of newsTextList) {
-        if (!newsItem || typeof newsItem.id === 'undefined') {
-          console.warn('[newsLocationWorker] newsItem 格式不正確，略過：', newsItem);
-          continue;
+        if (idList.length === 0) {
+            console.log('[newsLocationWorker] 目前沒有待處理的 news_location 任務');
+            return;
         }
 
+        // 1) 呼叫 getText，把這批 id 換成 {id, title, text} 陣列
+        let newsTextList;
         try {
-          await handleOneNews(newsItem);
-        } catch (err) {
-          console.error('[newsLocationWorker] 處理 news_id =', newsItem.id, '時發生錯誤：', err);
-        }
-      }
+            const fakeReqForGetText = {
+                query: { idList }
+            };
 
-      // 一輪跑完後 while 會自動再抓下一輪
+            newsTextList = await callAndCatchApiSuccessInGeneralFunction(
+                getText,
+                fakeReqForGetText
+            );
+
+            if (!Array.isArray(newsTextList)) {
+                console.warn('[newsLocationWorker] getText 回傳不是陣列，實際：', newsTextList);
+                newsTextList = [];
+            }
+        } catch (err) {
+            console.error('[newsLocationWorker] 呼叫 getText 發生錯誤：', err);
+            await sleep(30 * 1000);
+            return;
+        }
+
+        // 2) 對這批文字逐筆做 location 分類
+        for (const newsItem of newsTextList) {
+            if (!newsItem || typeof newsItem.id === 'undefined') {
+                console.warn('[newsLocationWorker] newsItem 格式不正確，略過：', newsItem);
+                continue;
+            }
+
+            try {
+                await handleOneNews(newsItem);
+            } catch (err) {
+                console.error('[newsLocationWorker] 處理 news_id =', newsItem.id, '時發生錯誤：', err);
+            }
+        }
+
     } catch (err) {
-      console.error('[newsLocationWorker] 主迴圈發生錯誤：', err);
-      await sleep(30 * 1000);
+        console.error('[newsLocationWorker] 主迴圈發生錯誤：', err);
+        await sleep(30 * 1000);
     }
-  }
+
 }
 
 // 直接啟動主程式
-mainLoop().catch(err => {
+runLocationWorker().catch(err => {
   console.error('[newsLocationWorker] 無法啟動：', err);
   process.exit(1);
 });
