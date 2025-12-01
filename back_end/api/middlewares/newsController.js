@@ -598,7 +598,7 @@ async function insertNews(req, res, next) {
         }
 
         // 3. 插入 news_group
-        group = !group? [null]: group;
+        /*group = !group? [null]: group;
         for (let each_group of group) {
             // 查找 group_type, group_id
             let group_type = null;
@@ -629,7 +629,7 @@ async function insertNews(req, res, next) {
                 err.desc = 'middlewares-insertNews(): database insert error ( group )';
                 return next(err)
             }
-        }
+        }*/
 
         // 4. 插入 news_location
         if ( location ) {

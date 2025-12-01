@@ -55,7 +55,7 @@ async function insertNewsGroupsForOneNews(newsId, result) {
     }
 
     const insertSql = `
-        INSERT INTO news_group (news_id, group_data_id, group_detail_id)
+        INSERT IGNORE INTO news_group (news_id, group_data_id, group_detail_id)
         VALUES (?, ?, ?)
     `;
 
