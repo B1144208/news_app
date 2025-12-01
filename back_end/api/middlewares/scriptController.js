@@ -39,9 +39,10 @@ async function getText (req, res, next) {
       body: { id: idList}
     }
     try {
+      console.log("0-2. idList: ", idList);
       let result = await callAndCatchApiSuccess(searchNews, fakeReq);
 
-      console.log("0-2. result: ", result);
+      console.log("0-3. result: ", result);
 
       result = result.complexList.map(item => {
         const bodyText = (item.newsBody || [])
