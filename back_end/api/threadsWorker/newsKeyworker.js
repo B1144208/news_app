@@ -63,23 +63,60 @@ async function insertNewsKeywordsForOneNews(newsId, keywords) {
   // 去重
   namesToInsert = [...new Set(namesToInsert)];
 
+  // 查詢 relation_id
+  const relationSql = `
+    SELECT relation_id
+    FROM news_data
+    WHERE news_id = ?
+  `;
+  const relationParams = [newsId];
+  let relationId;
+  try {
+    relationId = await pool.query(relationSql, [relationParams]);
+  } catch (err) {
+    console.error("[newsKeywordWorker] relation_id search error");
+    return false;
+  }
+
+  // 1) 逐一呼叫 insertKeyword，整理出 keyword_id 陣列
+  for (const rawName of keywords) {
+    const keyword = (rawName || '').trim();
+    if (!keyword) continue;
+
+    let insertKeywordResult;
+    try {
+      // 依照你原本的 insertKeyword 介面調整，這裡假設用 body.keyword
+      const fakeReq = { body: { keyword } };
+
+      insertKeywordResult = await callAndCatchApiSuccessInGeneralFunction(insertKeyword, fakeReq);
+    } catch (err) {
+      console.warn('[keywordWorker] insertKeyword 失敗，keyword =', keyword, 'err =', err.message);
+      continue;
+    }
+
+    const keywordId = insertKeywordResult?.insertId;
+    if (!keywordId) continue;
+
+    rowsToInsert.push([relationId, keywordId]);
+  }
+
+  // 2) 沒有任何 keyword_id 可以寫入就直接結束
+  if (rowsToInsert.length === 0) {
+    return true;
+  }
+
+  // 3) 批次寫入 relation_keyword
   const insertSql = `
-    INSERT IGNORE INTO news_keyword (news_id, keyword_text)
+    INSERT IGNORE INTO relation_keyword (relation_id, keyword_id)
     VALUES ?
   `;
 
-  const rowsToInsert = namesToInsert.map(name => [newsId, name]);
-
   try {
-    await pool.query(insertSql, [rowsToInsert]);
-    return true;
+    const [result] = await pool.query(insertSql, [rowsToInsert]);
+    // 有成功影響到任何列就回 true
+    return result.affectedRows > 0;
   } catch (err) {
-    console.warn(
-      '[newsKeywordWorker] 批次寫入 news_keyword 失敗，news_id =',
-      newsId,
-      'err =',
-      err.message
-    );
+    console.warn('[keywordWorker] 批次寫入 relation_keyword 失敗，relation_id =', relationId, 'err =', err.message);
     return false;
   }
 }

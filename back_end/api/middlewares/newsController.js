@@ -693,7 +693,7 @@ async function insertNews(req, res, next) {
         }
 
         // 5. 插入 news_keyword
-        if (keyword && keyword.length > 0) {
+        /*if (keyword && keyword.length > 0) {
             let keyword_ids = [];
             // 先將所有關鍵字插入 keyword_data 表，並取得其 ID
             for (let each_keyword of keyword) {
@@ -733,7 +733,7 @@ async function insertNews(req, res, next) {
                     console.warn('middlewares-insertNews(): database insert error ( news_keyword )', err.message);
                 }
             }
-        }
+        }*/
 
         // 6. 插入 news_comment
         /*if (comment && Array.isArray(comment) && comment.length > 0) {
