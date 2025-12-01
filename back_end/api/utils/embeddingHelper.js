@@ -185,7 +185,7 @@ async function getEmbedding(text) {
 module.exports = {
     getEmbedding,
     calculateSimilarity,
-    findRelationId,
+    findNewsRelationId,
     findKeywordRelationId,
     findSimilarEvents
 };

@@ -6,7 +6,7 @@ const { insertImage, deleteImage } = require('./imageController');
 const { insertGroup } = require('./groupController');
 const { searchLocation } = require('./locationController');
 const { insertRelation, deleteRelation } = require('./relationController');
-const { getEmbedding, findRelationId } = require('../utils/embeddingHelper');
+const { getEmbedding, findNewsRelationId } = require('../utils/embeddingHelper');
 
 // search
 async function searchNews(req, res, next) {
@@ -459,8 +459,8 @@ async function insertNews(req, res, next) {
         }
 
         // 2. 進行相似度判斷
-        // 假設 findRelationId (您引入的函式) 已經被更正為使用 Eventsorting Embedding 邏輯
-        const matchedRelationId = findRelationId(embedding, allEventsortingEmbeddings, SIMILARITY_THRESHOLD);
+        // 假設 findNewsRelationId (您引入的函式) 已經被更正為使用 Eventsorting Embedding 邏輯
+        const matchedRelationId = findNewsRelationId(embedding, allEventsortingEmbeddings, SIMILARITY_THRESHOLD);
 
         if (matchedRelationId !== null) {
             // A. 找到匹配，使用現有的 ID (Eventsorting ID 即為 Relation ID)
@@ -624,7 +624,7 @@ async function insertNews(req, res, next) {
 
 
         // 3. 插入 news_group
-        group = !group? [null]: group;
+        /*group = !group? [null]: group;
         for (let each_group of group) {
             // 查找 group_type, group_id
             let group_type = null;
@@ -656,7 +656,7 @@ async function insertNews(req, res, next) {
                     console.warn('middlewares-insertNews(): database insert error ( group )', err.message);
                 }
             }
-        }
+        }*/
 
         // 4. 插入 news_location
         if ( location ) {
@@ -696,83 +696,75 @@ async function insertNews(req, res, next) {
         }
 
         // 5. 插入 news_keyword
-                if (keyword && keyword.length > 0) {
-                    let keyword_ids = [];
-                    // 先將所有關鍵字插入 keyword_data 表，並取得其 ID
-                    for (let each_keyword of keyword) {
-                        if (each_keyword) {
-                            try {
-                                // 假設 insertKeyword 接受 keyword name 並返回 { insertId: keyword_id }
-                                fakeReq = {
-                                    body: { name: each_keyword }
-                                };
-                                // 確保 insertKeyword 函式已被引入
-                                let insertKeywordResult = await callAndCatchApiSuccess( insertKeyword, fakeReq );
-                                if (insertKeywordResult?.insertId) {
-                                    keyword_ids.push(insertKeywordResult.insertId);
-                                }
-                            } catch (err) {
-                                // 警告並繼續下一個關鍵字，不中斷主流程
-                                console.warn('[Insert Keyword Failed]', err.message);
-                            }
+        if (keyword && keyword.length > 0) {
+            let keyword_ids = [];
+            // 先將所有關鍵字插入 keyword_data 表，並取得其 ID
+            for (let each_keyword of keyword) {
+                if (each_keyword) {
+                    try {
+                        // 假設 insertKeyword 接受 keyword name 並返回 { insertId: keyword_id }
+                        fakeReq = {
+                            body: { name: each_keyword }
+                        };
+                        // 確保 insertKeyword 函式已被引入
+                        let insertKeywordResult = await callAndCatchApiSuccess( insertKeyword, fakeReq );
+                        if (insertKeywordResult?.insertId) {
+                            keyword_ids.push(insertKeywordResult.insertId);
                         }
-                    }
-
-                    // 批量插入 news_keyword 橋接表
-                    if (keyword_ids.length > 0) {
-                        let keywordValuesSql = keyword_ids.map(() => `( ?, ? )`).join(', ');
-                        let keywordParams = keyword_ids.flatMap(id => [news_id, id]);
-
-                        sql = `
-                            INSERT INTO news_keyword (
-                                news_id,
-                                keyword_id
-                            ) VALUES ${keywordValuesSql}
-                        `;
-                        try {
-                            await pool.query(sql, keywordParams);
-                        } catch (err) {
-                            // 這裡只警告，不中斷主流程
-                            console.warn('middlewares-insertNews(): database insert error ( news_keyword )', err.message);
-                        }
+                    } catch (err) {
+                        // 警告並繼續下一個關鍵字，不中斷主流程
+                        console.warn('[Insert Keyword Failed]', err.message);
                     }
                 }
-                // 6. 插入 news_comment
-                if (comment && Array.isArray(comment) && comment.length > 0) {
+            }
 
-                    // 由於 comment 陣列可能包含空字串或無效值，先過濾
-                    const validComments = comment.filter(cmt => cmt && typeof cmt === 'string' && cmt.trim().length > 0);
+            // 批量插入 news_keyword 橋接表
+            if (keyword_ids.length > 0) {
+                let keywordValuesSql = keyword_ids.map(() => `( ?, ? )`).join(', ');
+                let keywordParams = keyword_ids.flatMap(id => [news_id, id]);
 
-                    if (validComments.length > 0) {
-                        let commentValuesSql = validComments.map(() => `( ?, ? )`).join(', ');
-                        // 參數格式: [news_id, comment_text_1, news_id, comment_text_2, ...]
-                        let commentParams = validComments.flatMap(cmt => [news_id, cmt]);
-
-                        sql = `
-                            INSERT INTO news_comment (
-                                news_id,
-                                comment_text
-                            ) VALUES ${commentValuesSql}
-                        `;
-                        try {
-                            await pool.query(sql, commentParams);
-                        } catch (err) {
-                            // 這裡只警告，不中斷主流程
-                            console.warn('middlewares-insertNews(): database insert error ( news_comment )', err.message);
-                        }
-                    }
+                sql = `
+                    INSERT INTO news_keyword (
+                        news_id,
+                        keyword_id
+                    ) VALUES ${keywordValuesSql}
+                `;
+                try {
+                    await pool.query(sql, keywordParams);
+                } catch (err) {
+                    // 這裡只警告，不中斷主流程
+                    console.warn('middlewares-insertNews(): database insert error ( news_keyword )', err.message);
                 }
-
-                // 最終回傳
-                return res.apiSuccess({insertId: news_id, relation_id: relation_id}, "Insert Success");
-            } catch (err) {
-                await callDeleteNews ( news_id, image_id, relation_id )
-
-                err.desc = "middlewares-insertNews: unknown error";
-                return next(err);
             }
         }
 
+        // 6. 插入 news_comment
+        if (comment && Array.isArray(comment) && comment.length > 0) {
+
+            // 由於 comment 陣列可能包含空字串或無效值，先過濾
+            const validComments = comment.filter(cmt => cmt && typeof cmt === 'string' && cmt.trim().length > 0);
+
+            if (validComments.length > 0) {
+                let commentValuesSql = validComments.map(() => `( ?, ? )`).join(', ');
+                // 參數格式: [news_id, comment_text_1, news_id, comment_text_2, ...]
+                let commentParams = validComments.flatMap(cmt => [news_id, cmt]);
+
+                sql = `
+                    INSERT INTO news_comment (
+                        news_id,
+                        comment_text
+                    ) VALUES ${commentValuesSql}
+                `;
+                try {
+                    await pool.query(sql, commentParams);
+                } catch (err) {
+                    // 這裡只警告，不中斷主流程
+                    console.warn('middlewares-insertNews(): database insert error ( news_comment )', err.message);
+                }
+            }
+        }
+
+        // 最終回傳
         return res.apiSuccess({insertId: news_id, relation_id: relation_id}, "Insert Success");
     } catch (err) {
         await callDeleteNews ( news_id, image_id, relation_id )
