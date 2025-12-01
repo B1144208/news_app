@@ -47,7 +47,7 @@ async function fetchPendingNewsIds() {
 async function insertNewsGroupsForOneNews(newsId, result) {
 
     console.log("5. result: ", result, "\n");
-    
+
     // 沒有結果就直接結束
     if (!Array.isArray(result) || result.length === 0) {
         console.log('[newsGroupWorker] news_id =', newsId, '沒有任何 group，標記完成');
@@ -168,7 +168,7 @@ async function handleOneNews(newsItem) {
     try {
         const result = await callAndCatchApiSuccessInGeneralFunction(newsGroupClassifier, fakeReq);
         console.log("4. result: ", result, "\n");
-        await insertNewsGroupsForOneNews(newsId, result);
+        await insertNewsGroupsForOneNews(newsId, result.data);
         await markTaskDone(newsId);
     } catch (err) {
         err.desc = 'threadsWorker-newsGroup-handleOneNews(): ' + (err.message || '');
