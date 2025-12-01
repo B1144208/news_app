@@ -48,9 +48,9 @@ async function insertNewsLocationsForOneNews (newsId, result) {
 
     if (Array.isArray(result)) {
         names = result
-            .filter(v => typeof v === 'string')   // 只留字串
-            .map(v => v.trim())                  // 去空白
-            .filter(Boolean);                    // 去掉空字串
+            .filter(v => typeof v === 'string')
+            .map(v => v.trim())
+            .filter(Boolean);
     }
 
     // 去重

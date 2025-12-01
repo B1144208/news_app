@@ -488,14 +488,12 @@ async function insertNews(req, res, next) {
                 // 這裡假設 eventsorting_id = relation_id
                 let eventSql = `
                     INSERT INTO eventsorting_data
-                    ( eventsorting_id, eventsorting_embedding, total_news_heat, total_heat, created_at, updated_at )
-                    VALUE ( ?, ?, ?, ?, NOW(), NOW() )
+                    ( eventsorting_id, eventsorting_embedding )
+                    VALUE ( ?, ? )
                 `;
                 let eventParams = [
                     relation_id,
                     embeddingJson,
-                    0, // 初始熱度設為 0
-                    0
                 ];
 
                 await pool.query(eventSql, eventParams);

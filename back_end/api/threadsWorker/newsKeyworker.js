@@ -53,12 +53,11 @@ async function insertNewsKeywordsForOneNews(newsId, keywords) {
       .map(k => k.trim())
       .filter(Boolean); // 去掉空字串
   } else {
-    // 完全沒有 keyword，就不寫任何東西，交由上層判斷是否要 markTaskDone
-    return false;
+    return true;
   }
 
   if (namesToInsert.length === 0) {
-    return false;
+    return true;
   }
 
   // 去重
@@ -116,38 +115,20 @@ async function handleOneNews(newsItem) {
   };
 
   try {
-    // 1) 呼叫 keyword 模型
-    const result = await callAndCatchApiSuccessInGeneralFunction(
-      newsKeywordClassifier,
-      fakeReq
-    );
+    const result = await callAndCatchApiSuccessInGeneralFunction(newsKeywordClassifier, fakeReq);
     console.log('[newsKeywordWorker] classifier result:', result);
-
-    // 檢查 classifier 是否正常
     if (!result || result.success === false || !result.data) {
-      console.warn(
-        `[newsKeywordWorker] news_id=${newsId} newsKeywordClassifier 未正常完成，略過 markTaskDone`
-      );
+      console.warn(`[newsKeywordWorker] news_id=${newsId} newsKeywordClassifier 未正常完成，略過 markTaskDone`);
       return;
     }
 
-    const keywords = result.data; // 預期為 string[]
-
-    // 2) 寫入 DB
-    const ok = await insertNewsKeywordsForOneNews(newsId, keywords);
-    console.log(
-      `[newsKeywordWorker] insertNewsKeywordsForOneNews result for news_id=${newsId}:`,
-      ok
-    );
-
-    if (!ok) {
-      console.warn(
-        `[newsKeywordWorker] news_id=${newsId} insertNewsKeywordsForOneNews 失敗或沒有任何 keyword，略過 markTaskDone`
-      );
+    const insertResult = await insertNewsKeywordsForOneNews(newsId, result.data);
+    console.log("insertResult: ", insertResult);
+    if (!insertResult) {
+      console.warn(`[newsKeywordWorker] news_id=${newsId} insertNewsKeywordsForOneNews 失敗或沒有任何 keyword，略過 markTaskDone`);
       return;
     }
 
-    // 3) 只有在前兩步都正常才標記完成
     await markTaskDone(newsId);
   } catch (err) {
     err.desc =
