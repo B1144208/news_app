@@ -445,8 +445,8 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
     } else {
       if (text != null && text.isNotEmpty) body['text'] = text;
       if (score != null) body['score'] = score;
-      if (anonymous != null && anonymous.isNotEmpty)
-        body['anonymous'] = anonymous;
+      if (anonymous != null)
+        body['anonymous'] = anonymous; // ✅ 修正：int型不能調用isNotEmpty
 
       if (_currentUserId == null) {
         print('Error: Action $actionType requires a logged-in user.');
@@ -505,12 +505,12 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
+      backgroundColor: const Color(0xFF0a1428),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFF1a2a4e),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
             Navigator.pop(context);
           },
@@ -521,11 +521,11 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
             if (snapshot.hasData) {
               return Text(
                 snapshot.data!['eventsorting_title'] ?? '事件整理',
-                style: const TextStyle(color: Colors.black, fontSize: 16),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
                 overflow: TextOverflow.ellipsis,
               );
             }
-            return const Text('事件整理', style: TextStyle(color: Colors.black));
+            return const Text('事件整理', style: TextStyle(color: Colors.white));
           },
         ),
         actions: [

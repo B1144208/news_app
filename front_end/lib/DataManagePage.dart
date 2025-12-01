@@ -162,19 +162,30 @@ class _DataManagePageState extends State<DataManagePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF0a1428),
       appBar: AppBar(
-        title: const Text('數據管理'),
-        backgroundColor: Colors.green[700],
-        foregroundColor: Colors.white,
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.green[50]!, Colors.green[100]!],
+        title: const Text(
+          '數據管理',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
           ),
         ),
+        backgroundColor: const Color(0xFF1a2a4e),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(
+            color: const Color(0xFF6366f1).withOpacity(0.1),
+            height: 1,
+          ),
+        ),
+      ),
+      body: Container(
+        color: const Color(0xFF0a1428),
         child: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.all(20.0),
@@ -184,42 +195,60 @@ class _DataManagePageState extends State<DataManagePage> {
                 // 標題區域
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  margin: const EdgeInsets.only(bottom: 30),
+                  padding: const EdgeInsets.all(24),
+                  margin: const EdgeInsets.only(bottom: 24),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(15),
+                    color: const Color(0xFF1a2a4e),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: const Color(0xFF6366f1).withOpacity(0.3),
+                      width: 1,
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.grey.withOpacity(0.3),
-                        spreadRadius: 2,
-                        blurRadius: 5,
-                        offset: const Offset(0, 3),
+                        color: const Color(0xFF6366f1).withOpacity(0.1),
+                        blurRadius: 12,
+                        spreadRadius: 0,
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
                   child: Column(
                     children: [
-                      Icon(
-                        Icons.storage,
-                        size: 50,
-                        color: Colors.green[700],
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              const Color(0xFF6366f1),
+                              const Color(0xFF60a5fa),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.storage,
+                          size: 32,
+                          color: Colors.white,
+                        ),
                       ),
-                      const SizedBox(height: 10),
-                      Text(
+                      const SizedBox(height: 16),
+                      const Text(
                         '數據管理中心',
                         style: TextStyle(
                           fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green[800],
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          letterSpacing: 0.5,
                         ),
                       ),
-                      const SizedBox(height: 5),
+                      const SizedBox(height: 8),
                       Text(
                         '管理系統中的各種數據類型',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.grey[600],
+                          color: Colors.grey[400],
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
@@ -229,15 +258,19 @@ class _DataManagePageState extends State<DataManagePage> {
                 // 數據管理項目列表
                 Column(
                   children: [
-                    _buildSimpleButton('news', Icons.newspaper, Colors.blue,
-                        () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const NewsManagePage(),
-                        ),
-                      );
-                    }),
+                    _buildSimpleButton(
+                      'news',
+                      Icons.newspaper,
+                      Colors.blue,
+                      () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const NewsManagePage(),
+                          ),
+                        );
+                      },
+                    ),
                     const SizedBox(height: 15),
                     _buildSimpleButton('channel', Icons.tv, Colors.purple, () {
                       Navigator.push(
@@ -266,14 +299,19 @@ class _DataManagePageState extends State<DataManagePage> {
                     }),
 
                     const SizedBox(height: 15),
-                    _buildSimpleButton('location', Icons.location_on, Colors.red, () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const LocationPage(),
-                        ),
-                      );
-                    }),
+                    _buildSimpleButton(
+                      'location',
+                      Icons.location_on,
+                      Colors.red,
+                      () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const LocationPage(),
+                          ),
+                        );
+                      },
+                    ),
                     const SizedBox(height: 15),
                     _buildSimpleButton('keyword', Icons.key, Colors.indigo, () {
                       Navigator.push(
@@ -285,10 +323,14 @@ class _DataManagePageState extends State<DataManagePage> {
                     }),
                     const SizedBox(height: 15),
                     _buildSimpleButton(
-                        'relation', Icons.account_tree, Colors.brown, () {
-                      // TODO: 後續實現關聯管理功能
-                      _showComingSoon('關聯管理');
-                    }),
+                      'relation',
+                      Icons.account_tree,
+                      Colors.brown,
+                      () {
+                        // TODO: 後續實現關聯管理功能
+                        _showComingSoon('關聯管理');
+                      },
+                    ),
                     const SizedBox(height: 20), // 底部留白
                   ],
                 ),
@@ -301,40 +343,64 @@ class _DataManagePageState extends State<DataManagePage> {
   }
 
   Widget _buildSimpleButton(
-      String text, IconData icon, Color color, VoidCallback onTap) {
+    String text,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return Container(
       width: double.infinity,
       height: 60,
-      child: ElevatedButton(
-        onPressed: onTap,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: color,
-          side: BorderSide(color: color.withOpacity(0.3), width: 1),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          elevation: 2,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [const Color(0xFF6366f1), const Color(0xFF60a5fa)],
         ),
-        child: Row(
-          children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(width: 15),
-            Text(
-              '$text:',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
-                color: Colors.grey[800],
-              ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF6366f1).withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, color: Colors.white, size: 24),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    '$text',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+                const Icon(
+                  Icons.arrow_forward_ios,
+                  size: 16,
+                  color: Colors.white70,
+                ),
+              ],
             ),
-            const Spacer(),
-            Icon(
-              Icons.arrow_forward_ios,
-              size: 16,
-              color: Colors.grey[400],
-            ),
-          ],
+          ),
         ),
       ),
     );

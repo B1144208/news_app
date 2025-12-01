@@ -109,13 +109,30 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE8E3FF),
+      backgroundColor: const Color(0xFF0a1428),
       appBar: AppBar(
-        title: const Text('刪除帳號'),
-        backgroundColor: Colors.red,
+        title: const Text(
+          '刪除帳號',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
+          ),
+        ),
+        backgroundColor: const Color(0xFF1a2a4e),
         foregroundColor: Colors.white,
+        elevation: 0,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(
+            color: const Color(0xFFef4444).withOpacity(0.2),
+            height: 1,
+          ),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -126,28 +143,39 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.red[50],
+                color: const Color(0xFFef4444).withOpacity(0.15),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.red[300]!),
+                border: Border.all(
+                  color: const Color(0xFFef4444).withOpacity(0.3),
+                  width: 1,
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      Icon(
-                        Icons.warning_rounded,
-                        color: Colors.red[700],
-                        size: 24,
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFef4444).withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.warning_rounded,
+                          color: Color(0xFFef4444),
+                          size: 24,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           '危險操作',
                           style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.red[700],
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFFef4444),
                             fontSize: 16,
+                            letterSpacing: 0.3,
                           ),
                         ),
                       ),
@@ -157,7 +185,7 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                   Text(
                     '刪除帳號是不可逆操作。您的所有資料將被永久刪除，包括：',
                     style: TextStyle(
-                      color: Colors.red[600],
+                      color: Colors.grey[300],
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -173,7 +201,11 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                       padding: const EdgeInsets.only(bottom: 4),
                       child: Text(
                         item,
-                        style: TextStyle(color: Colors.red[600], fontSize: 13),
+                        style: TextStyle(
+                          color: Colors.grey[300],
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                   ),
@@ -181,8 +213,9 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                   Text(
                     '此操作無法撤銷，請謹慎考慮。',
                     style: TextStyle(
-                      color: Colors.red[700],
-                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFFef4444),
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.2,
                     ),
                   ),
                 ],
@@ -195,13 +228,16 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: const Color(0xFF1a2a4e),
                 borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: const Color(0xFF6366f1).withOpacity(0.2),
+                  width: 1,
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withOpacity(0.3),
-                    spreadRadius: 1,
-                    blurRadius: 3,
+                    color: const Color(0xFF6366f1).withOpacity(0.08),
+                    blurRadius: 8,
                   ),
                 ],
               ),
@@ -210,23 +246,51 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                 children: [
                   const Text(
                     '請輸入您的密碼以確認',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
+                    style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       hintText: '輸入您的帳號密碼',
+                      hintStyle: TextStyle(color: Colors.grey[400]),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: const Color(0xFF6366f1).withOpacity(0.3),
+                        ),
                       ),
-                      prefixIcon: Icon(Icons.lock, color: Colors.red),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: const Color(0xFF6366f1).withOpacity(0.3),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(
+                          color: Color(0xFFef4444),
+                          width: 2,
+                        ),
+                      ),
+                      filled: true,
+                      fillColor: const Color(0xFF0a1428),
+                      prefixIcon: const Icon(
+                        Icons.lock,
+                        color: Color(0xFFef4444),
+                      ),
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscurePassword
                               ? Icons.visibility_off
                               : Icons.visibility,
+                          color: const Color(0xFF60a5fa),
                         ),
                         onPressed: () {
                           setState(() => _obscurePassword = !_obscurePassword);
@@ -244,13 +308,16 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: const Color(0xFF1a2a4e),
                 borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: const Color(0xFF6366f1).withOpacity(0.2),
+                  width: 1,
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withOpacity(0.3),
-                    spreadRadius: 1,
-                    blurRadius: 3,
+                    color: const Color(0xFF6366f1).withOpacity(0.08),
+                    blurRadius: 8,
                   ),
                 ],
               ),
@@ -259,22 +326,53 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                 children: [
                   const Text(
                     '請輸入 "確認刪除" 以確認',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     '這是最後一步，輸入正確的文字才能刪除帳號',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    style: TextStyle(
+                      color: Colors.grey[400],
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: _confirmController,
+                    style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       hintText: '輸入：確認刪除',
+                      hintStyle: TextStyle(color: Colors.grey[400]),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: const Color(0xFF6366f1).withOpacity(0.3),
+                        ),
                       ),
-                      prefixIcon: Icon(Icons.check_circle, color: Colors.red),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: const Color(0xFF6366f1).withOpacity(0.3),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(
+                          color: Color(0xFFef4444),
+                          width: 2,
+                        ),
+                      ),
+                      filled: true,
+                      fillColor: const Color(0xFF0a1428),
+                      prefixIcon: const Icon(
+                        Icons.check_circle,
+                        color: Color(0xFFef4444),
+                      ),
                     ),
                   ),
                 ],
@@ -287,30 +385,50 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: const Color(0xFF1a2a4e),
                 borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: const Color(0xFF6366f1).withOpacity(0.2),
+                  width: 1,
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withOpacity(0.3),
-                    spreadRadius: 1,
-                    blurRadius: 3,
+                    color: const Color(0xFF6366f1).withOpacity(0.08),
+                    blurRadius: 8,
                   ),
                 ],
               ),
               child: Row(
                 children: [
-                  Checkbox(
-                    value: _agreedToDelete,
-                    onChanged: (value) {
-                      setState(() => _agreedToDelete = value ?? false);
-                    },
-                    activeColor: Colors.red,
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color:
+                            _agreedToDelete
+                                ? const Color(0xFFef4444)
+                                : const Color(0xFF6366f1).withOpacity(0.3),
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Checkbox(
+                      value: _agreedToDelete,
+                      onChanged: (value) {
+                        setState(() => _agreedToDelete = value ?? false);
+                      },
+                      activeColor: const Color(0xFFef4444),
+                      checkColor: Colors.white,
+                    ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       '我已了解刪除帳號將永久刪除所有資料，且無法恢復',
-                      style: TextStyle(color: Colors.grey[700], fontSize: 13),
+                      style: TextStyle(
+                        color: Colors.grey[300],
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ],
@@ -325,18 +443,25 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                 padding: const EdgeInsets.all(12),
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                  color: Colors.red[50],
+                  color: const Color(0xFFef4444).withOpacity(0.15),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.red[300]!),
+                  border: Border.all(
+                    color: const Color(0xFFef4444).withOpacity(0.3),
+                    width: 1,
+                  ),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.error_outline, color: Colors.red),
+                    const Icon(Icons.error_outline, color: Color(0xFFef4444)),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         _errorMessage!,
-                        style: TextStyle(color: Colors.red[700], fontSize: 13),
+                        style: const TextStyle(
+                          color: Color(0xFFef4444),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                   ],
@@ -344,20 +469,37 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
               ),
 
             // 刪除按鈕
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _deleteAccount,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
-                ),
-                child: Text(
-                  _isLoading ? '刪除中...' : '永久刪除帳號',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFef4444).withOpacity(0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _deleteAccount,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFef4444),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    _isLoading ? '刪除中...' : '永久刪除帳號',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ),
               ),
@@ -372,9 +514,19 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
               child: OutlinedButton(
                 onPressed: _isLoading ? null : () => Navigator.pop(context),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.grey[700],
+                  foregroundColor: const Color(0xFF60a5fa),
+                  side: BorderSide(
+                    color: const Color(0xFF6366f1).withOpacity(0.3),
+                    width: 1,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
-                child: const Text('取消', style: TextStyle(fontSize: 16)),
+                child: const Text(
+                  '取消',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
               ),
             ),
 
