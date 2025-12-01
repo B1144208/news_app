@@ -260,3 +260,7 @@ process.on('SIGTERM', () => {
   console.log('\n[newsKeywordWorker] 收到 SIGTERM，準備結束');
   process.exit(0);
 });
+
+module.exports = {
+    runNewsKeywordWorker
+}

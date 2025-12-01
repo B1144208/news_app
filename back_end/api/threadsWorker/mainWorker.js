@@ -9,6 +9,10 @@ const { runKeywordWorker }  = require('./newsKeywordWorker');
 const SLEEP_IF_IDLE_MS = 60 * 60 * 1000; // 1 小時
 const IDLE_THRESHOLD_MS = 20 * 1000;     // 20 秒
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 // 主迴圈
 async function mainLoop() {
   console.log('[newsMainWorker] 啟動');

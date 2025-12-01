@@ -247,3 +247,7 @@ process.on('SIGTERM', () => {
     console.log('\n[newsLocationWorker] 收到 SIGTERM，準備結束');
     process.exit(0);
 });
+
+module.exports = {
+    runLocationWorker
+}
