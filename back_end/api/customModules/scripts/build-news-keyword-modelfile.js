@@ -8,7 +8,7 @@ const __dirname  = path.dirname(__filename);
 
 // 這個版本的模型只負責抽取 keyword，不需要再讀 group / location 對照表
 
-const modelfileContent = `FROM qwen2.5:1.5b
+const modelfileContent = `FROM qwen2.5:3b
 
 PARAMETER temperature 0.2
 PARAMETER top_p 0.6

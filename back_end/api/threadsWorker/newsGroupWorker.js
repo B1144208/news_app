@@ -45,62 +45,6 @@ async function fetchPendingNewsIds() {
 /**
  * 把 classifier 回傳的 group 結果寫入 news_group 資料表
  */
-/*async function insertNewsGroupsForOneNews(newsId, result) {
-
-    // 沒有結果就直接結束
-    if (!Array.isArray(result) || result.length === 0) {
-        console.log('[newsGroupWorker] news_id =', newsId, '沒有任何 group，標記完成');
-        return;
-    }
-
-    const insertSql = `
-        INSERT IGNORE INTO news_group (news_id, group_data_id, group_detail_id)
-        VALUES (?, ?, ?)
-    `;
-
-    for (const rawName of result) {
-        // 空值就當成「其他」
-        const groupName = rawName || '其他';
-
-        let searchGroupResult;
-        try {
-            // searchGroup 用的是 req.query.name
-            const fakeReq = {
-                query: { name: groupName }
-            };
-
-            searchGroupResult = await callAndCatchApiSuccessInGeneralFunction(searchGroup, fakeReq);
-        } catch (err) {
-            // console.warn('[newsGroupWorker] 搜尋 group 失敗，news_id =', newsId, 'name =', groupName, 'err =', err.message);
-            // 這個標籤失敗就跳過，處理下一個
-            continue;
-        }
-
-        // 沒找到或 success === false 就略過
-        if (!searchGroupResult || !searchGroupResult.type || !searchGroupResult.id) {
-            continue;
-        }
-
-        const { type, id } = searchGroupResult || {};
-        let dataId = null;
-        let detailId = null;
-
-        if (type === 'data') {
-            dataId = id;
-        } else if (type === 'detail') {
-            detailId = id;
-        } else {
-            continue;
-        }
-        let params = [newsId, dataId, detailId];
-        try {
-            let [result] = await pool.query(insertSql, params);
-        } catch (err) {
-            console.warn("err for insertSql: ", err.message);
-        }
-    }
-}*/
-
 async function insertNewsGroupsForOneNews(newsId, result) {
     // === 0. 先準備要查的名稱陣列，若原本就是 []，就當作 ['其他'] ===
     let namesToSearch;
@@ -128,8 +72,6 @@ async function insertNewsGroupsForOneNews(newsId, result) {
             const fakeReq = { query: { name: groupName } };
             searchGroupResult = await callAndCatchApiSuccessInGeneralFunction(searchGroup, fakeReq);
         } catch (err) {
-            // 這個標籤失敗就跳過，處理下一個
-            console.warn('[newsGroupWorker] searchGroup 失敗，news_id =', newsId, 'name =', groupName, 'err =', err.message);
             continue;
         }
 
@@ -186,9 +128,7 @@ async function insertNewsGroupsForOneNews(newsId, result) {
 
     // === 4. 一次批次 INSERT IGNORE ===
     try {
-        // mysql2 多筆 insert 的寫法：VALUES ? + [rowsToInsert]
         await pool.query(insertSql, [rowsToInsert]);
-        //console.log('[newsGroupWorker] news_id =', newsId, '已批次寫入 group 筆數 =', rowsToInsert.length);
     } catch (err) {
         console.warn('[newsGroupWorker] 批次寫入 news_group 失敗，news_id =', newsId, 'err =', err.message);
     }
@@ -227,7 +167,6 @@ async function handleOneNews(newsItem) {
 
     try {
         const result = await callAndCatchApiSuccessInGeneralFunction(newsGroupClassifier, fakeReq);
-        console.log("group: ", result.data);
         await insertNewsGroupsForOneNews(newsId, result.data);
         await markTaskDone(newsId);
     } catch (err) {
@@ -251,12 +190,10 @@ async function mainLoop() {
         const idList = await fetchPendingNewsIds();
 
         if (idList.length === 0) {
-            console.log('[newsGroupWorker] 目前沒有待處理的 news_group 任務，睡一小時再檢查');
+            console.log('[newsGroupWorker] 目前沒有待處理的 news_group 任務，一小時後再檢查');
             await sleep(SLEEP_WHEN_EMPTY_MS);
             continue;
         }
-
-        console.log("抓取", idList.length, "筆資料: ", idList);
 
         // 2) 呼叫 getText，把這批 id 換成 {id, title, text} 陣列
         let newsTextList;

@@ -161,7 +161,7 @@ async function newsLocationClassifier (req, res, next) {
     const result = await callOllamaNewsModel(
       'news-location',
       newsText,
-      '請依照 SYSTEM 規則，對以下新聞判斷「location 地理位置」，只輸出 JSON 物件：'
+      '請依照 SYSTEM 規則，對以下新聞判斷「location 地理位置」，只輸出 JSON 陣列：'
     );
 
     return res.json({
@@ -189,7 +189,7 @@ async function newsKeywordClassifier (req, res, next) {
     const result = await callOllamaNewsModel(
       'news-keyword',
       newsText,
-      '請依照 SYSTEM 規則，從以下新聞抽取關鍵字，只輸出 JSON 物件：'
+      '請依照 SYSTEM 規則，從以下新聞抽取關鍵字，只輸出 JSON 陣列：'
     );
 
     return res.json({
