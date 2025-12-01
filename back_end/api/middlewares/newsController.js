@@ -739,7 +739,7 @@ async function insertNews(req, res, next) {
         }
 
         // 6. 插入 news_comment
-        if (comment && Array.isArray(comment) && comment.length > 0) {
+        /*if (comment && Array.isArray(comment) && comment.length > 0) {
 
             // 由於 comment 陣列可能包含空字串或無效值，先過濾
             const validComments = comment.filter(cmt => cmt && typeof cmt === 'string' && cmt.trim().length > 0);
@@ -762,7 +762,7 @@ async function insertNews(req, res, next) {
                     console.warn('middlewares-insertNews(): database insert error ( news_comment )', err.message);
                 }
             }
-        }
+        }*/
 
         // 最終回傳
         return res.apiSuccess({insertId: news_id, relation_id: relation_id}, "Insert Success");
