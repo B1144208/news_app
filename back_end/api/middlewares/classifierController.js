@@ -95,7 +95,7 @@ ${newsText}`
     try {
       result = JSON.parse(result);
     } catch (e) {
-      console.warn('news-group parse JSON 失敗，原始內容：', result);
+      console.warn(modelName, 'parse JSON 失敗，原始內容：', result);
       result = null;
     }
   }
@@ -105,9 +105,10 @@ ${newsText}`
     result = result.group;
   }
 
+  console.log("result: ", result);
   // 3) 最後保險：一定要是陣列，不是就給 ["其他"]
   if (!Array.isArray(result)) {
-    console.warn('news-group 輸出不是陣列，fallback -> ["其他"]，實際輸出：', result);
+    console.warn(modelName, '輸出不是陣列，fallback -> ["其他"]，實際輸出：', result);
     result = ['其他'];
   }
 
