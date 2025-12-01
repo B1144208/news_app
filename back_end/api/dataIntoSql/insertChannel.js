@@ -6,7 +6,7 @@ const path = require('path');
 
 const pool = require('../connect_db');
 const { checkRequireField } = require('../utils/checkHelper'); // 先保留引用，以後要檢查欄位可以用
-const { callAndCatchApiSuccess } = require('../utils/fakeHelper');
+const { callAndCatchApiSuccessInGeneralFunction } = require('../utils/fakeHelper');
 const { batchChannel } = require('../middlewares/channelController');
 
 async function main () {
@@ -63,9 +63,9 @@ async function main () {
 
     console.log('[insertChannel] 準備送出資料筆數：', data.length);
 
-    const result = await callAndCatchApiSuccess(batchChannel, fakeReq);
+    const result = await callAndCatchApiSuccessInGeneralFunction(batchChannel, fakeReq);
 
-    // 視你的 callAndCatchApiSuccess 回傳格式而定，這裡做個保守檢查
+    // 視你的 callAndCatchApiSuccessInGeneralFunction 回傳格式而定，這裡做個保守檢查
     if (!result || result.success === false) {
       console.error('[insertChannel] 呼叫 batchChannel 失敗：', result);
       return;
