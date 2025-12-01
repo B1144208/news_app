@@ -5,22 +5,26 @@ const fs   = require('fs');
 const path = require('path');
 
 const pool = require('../connect_db');
-const { checkRequireField } = require('../utils/checkHelper'); // 先保留引用，以後要檢查欄位可以用
 const { callAndCatchApiSuccessInGeneralFunction } = require('../utils/fakeHelper');
-const { batchChannel } = require('../middlewares/channelController');
+const { batchChannel } = require('../middlewares/channelController');  // 確定這裡有 export batchChannel
 
-async function main () {
+async function main() {
   try {
+    // 檢查 batchChannel 是否真的是一個 function
+    if (typeof batchChannel !== 'function') {
+      throw new Error('[insertChannel] batchChannel 不是一個函式，請檢查 channelController 的 export。');
+    }
+
     const channelDir = path.join(__dirname, 'channel');
 
-    // 要讀的檔名
+    // 目前要匯入的檔案清單（之後要加更多就直接加在這裡）
     const fileNames = [
       'channel_1.json'
     ];
 
     const data = [];
 
-    // 逐一讀檔 + parse JSON
+    // 逐一讀檔並 parse JSON
     for (const fileName of fileNames) {
       const filePath = path.join(channelDir, fileName);
 
@@ -43,7 +47,7 @@ async function main () {
         continue;
       }
 
-      // 檔案裡可能是 array 也可能是一個物件
+      // 檔案裡可能是 array 也可能是單一物件
       if (Array.isArray(json)) {
         data.push(...json);
       } else {
@@ -56,24 +60,27 @@ async function main () {
       return;
     }
 
-    // 準備 fakeReq 傳給 batchChannel
+    console.log('[insertChannel] 準備送出資料筆數：', data.length);
+
+    // 準備 fakeReq 給 batchChannel（跟一般 Express controller 一樣的介面）
     const fakeReq = {
       body: { data }
     };
 
-    console.log('[insertChannel] 準備送出資料筆數：', data.length);
+    // 這裡用通用 helper 來呼叫 controller
+    const resultData = await callAndCatchApiSuccessInGeneralFunction(batchChannel, fakeReq);
 
-    const result = await callAndCatchApiSuccessInGeneralFunction(batchChannel, fakeReq);
-
-    // 視你的 callAndCatchApiSuccessInGeneralFunction 回傳格式而定，這裡做個保守檢查
-    if (!result || result.success === false) {
-      console.error('[insertChannel] 呼叫 batchChannel 失敗：', result);
-      return;
+    // 根據你的 batchChannel 回傳格式做檢查：
+    // 假設 batchChannel 的 res.apiSuccess(data, message) 裡的 data 就是我們要的東西
+    if (!resultData) {
+      console.warn('[insertChannel] batchChannel 沒有回傳任何資料（resultData 為 falsy），仍視為成功結束。');
+    } else {
+      console.log('[insertChannel] 匯入成功，controller 回傳：', resultData);
     }
 
     console.log('[insertChannel] 匯入成功，開始刪除 JSON 檔案。');
 
-    // 只在匯入成功後刪檔
+    // 只在匯入成功之後刪檔
     for (const fileName of fileNames) {
       const filePath = path.join(channelDir, fileName);
       if (!fs.existsSync(filePath)) continue;
@@ -90,8 +97,7 @@ async function main () {
   } catch (err) {
     console.error('[insertChannel] 發生未預期錯誤：', err);
   } finally {
-    // 如果有需要關閉 pool，可以保留這段
-    if (pool && pool.end) {
+    if (pool && typeof pool.end === 'function') {
       try {
         await pool.end();
       } catch (e) {
