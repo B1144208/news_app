@@ -121,7 +121,7 @@ async function generalScript(req, res, next) {
 
 
 // ---- reporter ----
-async function reporterScriptFast(req, res, next) {
+/*async function reporterScriptFast(req, res, next) {
     let { id, times } = req.params ?? {}
     // 交給 generalScript 生成的一組id及text，用deepseek 產生 reporterScript
 
@@ -173,7 +173,7 @@ async function reporterScriptFast(req, res, next) {
     err.desc = 'middlewares-reporterScript(): call deepseek error';
     return next(err);
   }
-}
+}*/
 
 async function reporterScript(req, res, next) {
     let { id, times } = req.params ?? {}
@@ -422,7 +422,6 @@ async function callAskScript(req, res, next) {
 module.exports = {
   getText,
   generalScript,
-  reporterScriptFast,
   reporterScript,
   chatScript,
   quickScript,
