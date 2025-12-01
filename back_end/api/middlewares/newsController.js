@@ -310,11 +310,9 @@ async function searchNews(req, res, next) {
     return res.apiSuccess({complexList: complexList}, "Search Success");
 }
 
-// insert
-// insert
 async function insertNews(req, res, next) {
     let { url, channel, cover_img, title, publish_date, detail, group, location, keyword, comment } = req.body ?? {};
-    let news_id = image_id = relation_id = null;
+    let news_id = image_id = relation_id = null; // 重新初始化 relation_id 為 null
     try {
         // 優先檢查 url 是否已經存在
         try {
@@ -407,58 +405,45 @@ async function insertNews(req, res, next) {
             return next(err);
         }
 
-        // 獲取 relation_id
-        let relation_id = null;
-        try {
-            let fakeReq = {
-                body: { keyword: keyword }
-            };
-            let insertRelationResult = await callAndCatchApiSuccess( insertRelation, fakeReq );
-            relation_id = insertRelationResult.insertId;
-        } catch(err) {
-            await callDeleteNews( null, image_id, relation_id );
-            err.desc = 'middlewares-insertNews(): database insert error ( relation )';
-            return next(err);
-        }
+        // 【此處移除原有的 relation_id 預先創建邏輯】
 
         // 獲取 news_embedding
-
-        let totalText = title + detail.map(p => p).join('\n');
+        // 確保 detail 是陣列，並且包含 text 內容
+        let totalText = title + (Array.isArray(detail) ? detail.map(item => item.text || (typeof item === 'string' ? item : '')).join('\n') : '');
         let embedding;
         try {
             embedding = await getEmbedding(totalText);
         } catch (err) {
             err.desc = "middlewares-insertNews(): ollama use error ( embedding )";
+            // 由於 embedding 失敗，後續無法判斷 relation，但其他流程可能仍可繼續，這裡選擇中斷以確保資料完整性。
             return next(err);
         }
 
-        // 【💡 增加 relation_id 判斷邏輯 💡】
+        const embeddingJson = JSON.stringify(embedding);
+        const SIMILARITY_THRESHOLD = 0.85;
 
+        // 【💡 增加 relation_id 判斷邏輯 - 整合查詢、比對、創建 💡】
 
-        // 1. 查詢所有 Relation 連結的 Eventsorting Embedding
-        let allRelationEmbeddings = [];
+        // 1. 查詢所有 Eventsorting Embedding (作為比對目標)
+        let allEventsortingEmbeddings = [];
         try {
             const sql = `
                 SELECT
-                    rd.relation_id,
-                    esd.eventsorting_embedding
-                FROM relation_data rd
-                JOIN eventsorting_data esd ON rd.eventsorting_id = esd.eventsorting_id
-                WHERE esd.eventsorting_embedding IS NOT NULL
-                AND esd.eventsorting_embedding <> ''; // 排除空字串的 embedding
+                    eventsorting_id AS relation_id,
+                    eventsorting_embedding
+                FROM eventsorting_data
+                WHERE eventsorting_embedding IS NOT NULL
+                AND eventsorting_embedding <> '';
             `;
             const [rows] = await pool.query(sql);
 
-
-
             // 將 JSON 字串解析為 number[] 向量
-            allRelationEmbeddings = rows.map(row => {
+            allEventsortingEmbeddings = rows.map(row => {
                 let eventEmbedding;
                 try {
-                    // JSON.parse 是關鍵步驟，如果資料庫儲存格式錯誤，這裡會失敗
                     eventEmbedding = JSON.parse(row.eventsorting_embedding);
                 } catch (e) {
-                    console.error(`Error parsing embedding for relation_id ${row.relation_id}:`, e);
+                    // console.error(`Error parsing embedding for relation_id ${row.relation_id}:`, e);
                     eventEmbedding = null;
                 }
 
@@ -468,33 +453,74 @@ async function insertNews(req, res, next) {
                 };
             }).filter(item => item.eventsorting_embedding !== null); // 過濾掉解析失敗的
 
-
         } catch (err) {
-            console.error('middlewares-insertNews(): database search error ( allRelationEmbeddings )', err);
-            // 這裡不中斷流程，如果查詢失敗，則沿用原來的 relation_id
+            // 這裡不中斷流程，如果查詢失敗，則進入創建新 ID 流程
+            console.error('middlewares-insertNews(): database search error ( Eventsorting Embeddings )', err);
         }
 
-        // 2. 進行相似度判斷，並覆蓋 relation_id
-        // 使用門檻值 0.85 (在 embeddingHelper.js 中已設定預設值)
-        const matchedRelationId = findRelationId(embedding, allRelationEmbeddings);
+        // 2. 進行相似度判斷
+        // 假設 findRelationId (您引入的函式) 已經被更正為使用 Eventsorting Embedding 邏輯
+        const matchedRelationId = findRelationId(embedding, allEventsortingEmbeddings, SIMILARITY_THRESHOLD);
 
         if (matchedRelationId !== null) {
-            // 如果找到匹配，則覆蓋先前從 keyword 產生的 relation_id
+            // A. 找到匹配，使用現有的 ID (Eventsorting ID 即為 Relation ID)
             relation_id = matchedRelationId;
-            console.log(`[Relation Match] 覆蓋 relation_id 為: ${matchedRelationId} (相似度 > 0.85)`);
+            console.log(`[Relation Match] 覆蓋 relation_id 為: ${matchedRelationId} (相似度 > ${SIMILARITY_THRESHOLD})`);
 
         } else {
-            console.log(`[Relation Match] 未找到相似度 > 0.85 的 relation_id，沿用先前生成的 ${relation_id}`);
+            // B. 未找到匹配，創建新的 Relation ID 並同步 Eventsorting Data
+
+            // i. 創建 Relation ID (插入 relation_data)
+            try {
+                let fakeReq = {
+                    body: { keyword: keyword } // 沿用原本通過 keyword 創建 relation 的方式
+                };
+                let insertRelationResult = await callAndCatchApiSuccess( insertRelation, fakeReq );
+
+                if (!insertRelationResult?.insertId) {
+                     throw new Error("insertRelation did not return a valid insertId");
+                }
+
+                relation_id = insertRelationResult.insertId;
+                console.log(`[Relation Creation] 創建新的 relation_id: ${relation_id}`);
+
+                // ii. 創建 Event Sorting Data (同步插入 eventsorting_data)
+                // 這裡假設 eventsorting_id = relation_id
+                let eventSql = `
+                    INSERT INTO eventsorting_data
+                    ( eventsorting_id, eventsorting_embedding, total_news_heat, total_heat, created_at, updated_at )
+                    VALUE ( ?, ?, ?, ?, NOW(), NOW() )
+                `;
+                let eventParams = [
+                    relation_id,
+                    embeddingJson,
+                    0, // 初始熱度設為 0
+                    0
+                ];
+
+                await pool.query(eventSql, eventParams);
+
+            } catch (err) {
+                // 如果失敗，則刪除可能已創建的 image 和 relation_data
+                await callDeleteNews( null, image_id, relation_id );
+                err.desc = 'middlewares-insertNews(): database insert error ( relation / eventsorting )';
+                return next(err);
+            }
         }
 
+        // 最終檢查
+        if ( !relation_id ) {
+            let err = new Error("relation_id cannot be null");
+            err.desc = "middlewares-insertNews(): relation_id is null after all checks and fallbacks";
+            return next(err);
+        }
 
-        const embeddingJson = JSON.stringify(embedding);
+        // -----------------------------------------------------
 
         // 插入資料庫
         let sql = '', params = []
 
         // 1. 插入 news_data
-        let news_id = null;
         sql = `
             INSERT INTO news_data (
                 origin_url,
@@ -517,37 +543,7 @@ async function insertNews(req, res, next) {
             return next(err)
         }
 
-
-        try {
-
-            sql = `
-                SELECT eventsorting_id
-                FROM relation_data
-                WHERE relation_id = ?
-            `;
-            const [relationRows] = await pool.query(sql, [relation_id]);
-            const eventsorting_id = relationRows[0]?.eventsorting_id;
-
-            if (eventsorting_id) {
-
-                sql = `
-                    UPDATE eventsorting_data
-                    SET eventsorting_embedding = ?
-                    WHERE eventsorting_id = ?
-                    AND (eventsorting_embedding IS NULL OR eventsorting_embedding = '');
-                `;
-                // 使用 embeddingJson，這是 JSON.stringify(embedding) 的結果
-                params = [embeddingJson, eventsorting_id];
-                const [updateResult] = await pool.query(sql, params);
-
-                if (updateResult.affectedRows > 0) {
-                     console.log(`[Eventsorting Update] 成功設置 eventsorting_id ${eventsorting_id} 的初始 Embedding。`);
-                }
-            }
-        } catch (err) {
-            console.error('middlewares-insertNews(): database update error ( Eventsorting Embedding )', err);
-            // 更新失敗不影響新聞插入，僅輸出警告
-        }
+        // 【此處移除原有的 Eventsorting UPDATE 邏輯，因為在創建時已同步完成】
 
 
         // 2. 插入 news_body
@@ -562,43 +558,73 @@ async function insertNews(req, res, next) {
             ) VALUE
         `;
         params = [];
-        for( let [index, item] of detail.entries() ) {
+        let bodyValuesSql = [];
 
-            let type = null;
-            let text = null;
-            let img_id = null;
+        if (detail && Array.isArray(detail)) {
+            for( let item of detail ) {
 
-            if ( typeof item === 'string' ) {
-                type = 'text';
-                text = item;
+                let type = null;
+                let text = null;
+                let img_id = null;
 
-            }
-            if ( typeof item === 'object' ) {
-                type = 'image';
-                try {
-                    img_id = await getImgId( item );
-                    image_id.push( img_id );
-                } catch (err) {
-                    await callDeleteNews( news_id, image_id, null );
-                    err.desc = 'middlewares-insertNews(): database insert error ( body - img )';
-                    return next(err);
+                if ( typeof item === 'string' ) {
+                    type = 'text';
+                    text = item;
+
+                } else if ( typeof item === 'object' && (item.text || item.img?.src) ) {
+                    // 根據您提供的資料結構 (text/img object) 進行解析
+                    text = item.text || null;
+                    if (item.img?.src) {
+                        type = 'image';
+                        try {
+                            // 呼叫 getImgId 處理圖片內容
+                            img_id = await getImgId( item.img );
+                            image_id.push( img_id );
+                        } catch (err) {
+                            await callDeleteNews( news_id, image_id, null );
+                            err.desc = 'middlewares-insertNews(): database insert error ( body - img )';
+                            return next(err);
+                        }
+                    } else if (text) {
+                        type = 'text';
+                    }
+                } else if (typeof item === 'object' && item.src) {
+                     // 處理直接是圖片物件的情況
+                    type = 'image';
+                    try {
+                        img_id = await getImgId( item );
+                        image_id.push( img_id );
+                    } catch (err) {
+                        await callDeleteNews( news_id, image_id, null );
+                        err.desc = 'middlewares-insertNews(): database insert error ( body - img )';
+                        return next(err);
+                    }
                 }
-                
-            }
 
-            sql += (index==0)? ` ( ?, ?, ?, ?, ?)`: `, ( ?, ?, ?, ?, ?)`;
-            params.push(news_id, type, text, img_id, order);
-            order += 10;
+                if (type) {
+                    bodyValuesSql.push( `( ?, ?, ?, ?, ?)` );
+                    params.push(news_id, type, text, img_id, order);
+                    order += 10;
+                }
+            }
         }
-        try {
-            let [newsBodyResult] = await pool.query(sql, params);
-        } catch (err) {
-            err.desc = 'middlewares-insertNews(): database insert error ( body )';
-            return next(err);
+
+        // 只有當有 body 內容時才執行 news_body 插入
+        if (bodyValuesSql.length > 0) {
+            let finalSql = sql + bodyValuesSql.join(', ');
+            try {
+                let [newsBodyResult] = await pool.query(finalSql, params);
+            } catch (err) {
+                // news_body 插入失敗，刪除已創建的 news 和所有關聯
+                await callDeleteNews( news_id, null, null );
+                err.desc = 'middlewares-insertNews(): database insert error ( body )';
+                return next(err);
+            }
         }
+
 
         // 3. 插入 news_group
-        /*group = !group? [null]: group;
+        group = !group? [null]: group;
         for (let each_group of group) {
             // 查找 group_type, group_id
             let group_type = null;
@@ -610,26 +636,27 @@ async function insertNews(req, res, next) {
                 insertGroupResult = await callAndCatchApiSuccess ( insertGroup, fakeReq );
                 ( {type: group_type, id: group_id } = insertGroupResult );
             } catch (err) {
-                await callDeleteNews( news_id, null, null );
+                // 不影響主流程，只記錄警告
                 console.warn('[Search Group Failed]', err.message);
             }
 
             // 插入 news_group
-            sql = `
-                INSERT INTO news_group (
-                    news_id,
-                    group_${group_type}_id
-                ) VALUES (?, ?)
-            `;
-            params = [ news_id, group_id ];
-            try {
-                let [newsGroupResult] = await pool.query(sql, params);
-            } catch (err) {
-                await callDeleteNews( news_id, null, null );
-                err.desc = 'middlewares-insertNews(): database insert error ( group )';
-                return next(err)
+            if ( group_type != null && group_id != null ) {
+                sql = `
+                    INSERT INTO news_group (
+                        news_id,
+                        group_${group_type}_id
+                    ) VALUES (?, ?)
+                `;
+                params = [ news_id, group_id ];
+                try {
+                    let [newsGroupResult] = await pool.query(sql, params);
+                } catch (err) {
+                    // 這裡只警告，不中斷主流程
+                    console.warn('middlewares-insertNews(): database insert error ( group )', err.message);
+                }
             }
-        }*/
+        }
 
         // 4. 插入 news_location
         if ( location ) {
@@ -649,7 +676,7 @@ async function insertNews(req, res, next) {
                     }
 
                     // 插入 news_location
-                    if ( location_type != null ) {
+                    if ( location_type != null && location_id != null ) {
                         try {
                             sql = `
                                 INSERT INTO news_location (
@@ -660,22 +687,99 @@ async function insertNews(req, res, next) {
                             params = [ news_id, location_id ];
                             let [newsLocationResult] = await pool.query(sql, params);
                         } catch(err) {
-                            await callDeleteNews( news_id, null, null );
-                            err.desc = 'middlewares-insertNews(): database insert error ( location )';
-                            return next(err)
+                            // 這裡只警告，不中斷主流程
+                            console.warn('middlewares-insertNews(): database insert error ( location )', err.message);
                         }
                     }
                 }
             }
         }
-        return res.apiSuccess({insertId: news_id}, "Insert Success");
+
+        // 5. 插入 news_keyword
+                if (keyword && keyword.length > 0) {
+                    let keyword_ids = [];
+                    // 先將所有關鍵字插入 keyword_data 表，並取得其 ID
+                    for (let each_keyword of keyword) {
+                        if (each_keyword) {
+                            try {
+                                // 假設 insertKeyword 接受 keyword name 並返回 { insertId: keyword_id }
+                                fakeReq = {
+                                    body: { name: each_keyword }
+                                };
+                                // 確保 insertKeyword 函式已被引入
+                                let insertKeywordResult = await callAndCatchApiSuccess( insertKeyword, fakeReq );
+                                if (insertKeywordResult?.insertId) {
+                                    keyword_ids.push(insertKeywordResult.insertId);
+                                }
+                            } catch (err) {
+                                // 警告並繼續下一個關鍵字，不中斷主流程
+                                console.warn('[Insert Keyword Failed]', err.message);
+                            }
+                        }
+                    }
+
+                    // 批量插入 news_keyword 橋接表
+                    if (keyword_ids.length > 0) {
+                        let keywordValuesSql = keyword_ids.map(() => `( ?, ? )`).join(', ');
+                        let keywordParams = keyword_ids.flatMap(id => [news_id, id]);
+
+                        sql = `
+                            INSERT INTO news_keyword (
+                                news_id,
+                                keyword_id
+                            ) VALUES ${keywordValuesSql}
+                        `;
+                        try {
+                            await pool.query(sql, keywordParams);
+                        } catch (err) {
+                            // 這裡只警告，不中斷主流程
+                            console.warn('middlewares-insertNews(): database insert error ( news_keyword )', err.message);
+                        }
+                    }
+                }
+                // 6. 插入 news_comment
+                if (comment && Array.isArray(comment) && comment.length > 0) {
+
+                    // 由於 comment 陣列可能包含空字串或無效值，先過濾
+                    const validComments = comment.filter(cmt => cmt && typeof cmt === 'string' && cmt.trim().length > 0);
+
+                    if (validComments.length > 0) {
+                        let commentValuesSql = validComments.map(() => `( ?, ? )`).join(', ');
+                        // 參數格式: [news_id, comment_text_1, news_id, comment_text_2, ...]
+                        let commentParams = validComments.flatMap(cmt => [news_id, cmt]);
+
+                        sql = `
+                            INSERT INTO news_comment (
+                                news_id,
+                                comment_text
+                            ) VALUES ${commentValuesSql}
+                        `;
+                        try {
+                            await pool.query(sql, commentParams);
+                        } catch (err) {
+                            // 這裡只警告，不中斷主流程
+                            console.warn('middlewares-insertNews(): database insert error ( news_comment )', err.message);
+                        }
+                    }
+                }
+
+                // 最終回傳
+                return res.apiSuccess({insertId: news_id, relation_id: relation_id}, "Insert Success");
+            } catch (err) {
+                await callDeleteNews ( news_id, image_id, relation_id )
+
+                err.desc = "middlewares-insertNews: unknown error";
+                return next(err);
+            }
+        }
+
+        return res.apiSuccess({insertId: news_id, relation_id: relation_id}, "Insert Success");
     } catch (err) {
         await callDeleteNews ( news_id, image_id, relation_id )
 
         err.desc = "middlewares-insertNews: unknown error";
         return next(err);
     }
-
 }
 
 // update

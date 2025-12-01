@@ -56,39 +56,56 @@ async function searchKeyword (req, res, next) {
 
 // insert
 async function insertKeyword(req, res, next) {
-    let text = req.body?.text;
-    const relation = req.query?.relation !== undefined;
+        let text = req.body?.text || req.query?.text;
 
-    // 檢查必要欄位 & 格式 - text
-    try {
-        [ text ] = relation
-            ? await checkRequireField ( [
-                { field: 'text' , data: text , type: 'string' , other: ['non_null'] }
-            ] )
-            : await checkRequireField ( [
-                { field: 'text' , data: text , type: 'string' }
-            ] )
-    } catch (err) {
-        err.desc = "middlewares-insertKeyword(): Missing or Invalid required fields";
-        return next(err);
-    }
+        const relation = req.query?.relation !== undefined;
 
-    // 如果 req.query 帶有 relation 參數，則執行舊有的「創建 keyword_relation_id」邏輯
-    if ( relation ) {
-        let sql = `
-            INSERT INTO keyword_relation_data ()
-            VALUE ()
-        `;
+        // 檢查必要欄位 & 格式 - text
         try {
-            let [result] = await pool.query(sql);
-            return res.apiSuccess({ insertId: result.insertId }, "Insert Success");
+
+            // ⭐ 修正 #2：確保 relation=true (內部呼叫) 時，不檢查 non_null ⭐
+            let checkList;
+
+            if (relation) {
+                // 情境 1: 內部呼叫創建 keyword_relation_id (text此時為 null)
+                checkList = [
+                    { field: 'text' , data: text , type: 'string' }
+                ];
+            } else {
+                // 情境 2: 正常的外部呼叫插入關鍵字
+                checkList = [
+                    { field: 'text' , data: text , type: 'string' , other: ['non_null'] }
+                ];
+            }
+
+            [ text ] = await checkRequireField (checkList);
+
         } catch (err) {
-            err.desc = "middlewares-insertKeywrod(): database insert error ( relation )";
+            err.desc = "middlewares-insertKeyword(): Missing or Invalid required fields";
             return next(err);
+        }
+
+    // 如果 req.query 帶有 relation 參數，則執行「創建 keyword_relation_id」邏輯
+    if ( relation ) {
+        // 只有當 text 為 null 時才執行創建 (這是 insertKeyword 內部呼叫時的行為)
+        if ( !text ) {
+            let sql = `
+                INSERT INTO keyword_relation ()
+                VALUE ()
+            `;
+            try {
+                let [result] = await pool.query(sql);
+                return res.apiSuccess({ insertId: result.insertId }, "Insert Success");
+            } catch (err) {
+                err.desc = "middlewares-insertKeywrod(): database insert error ( relation )";
+                return next(err);
+            }
         }
     }
 
+    // ----------------------------------------------------------------------------------------
     // 【Keyword 插入流程開始】(只在非 relation 呼叫時執行)
+    // ----------------------------------------------------------------------------------------
 
     // 1. 檢查 Keyword 是否已存在 (原有的 search 邏輯)
     let fakeReq = {
@@ -114,13 +131,12 @@ async function insertKeyword(req, res, next) {
         err.desc = "middlewares-insertKeyword(): ollama use error ( embedding )";
         return next(err);
     }
-    const embeddingJson = JSON.stringify(newKeywordEmbedding); // 準備插入 DB 的 JSON 字串
+    const embeddingJson = JSON.stringify(newKeywordEmbedding);
 
 
     // 3. 判斷 keyword_relation_id (使用 Embedding 優先判斷)
     let keyword_relation_id = null;
     try {
-        // 查詢所有現有 Keyword 的 Embedding 和 Relation ID
         const sql = `
             SELECT
                 keyword_relation_id,
@@ -134,7 +150,6 @@ async function insertKeyword(req, res, next) {
         const existingKeywords = rows.map(row => {
             let embedding;
             try {
-                // 假設 keyword_embedding 儲存為 JSON 字串
                 embedding = JSON.parse(row.keyword_embedding);
             } catch (e) {
                 console.error(`Error parsing embedding for keyword_relation_id ${row.keyword_relation_id}:`, e);
@@ -147,28 +162,25 @@ async function insertKeyword(req, res, next) {
             };
         }).filter(item => item.keyword_embedding !== null);
 
-        // 進行相似度判斷，使用門檻值 0.9
-        const matchedRelationId = findKeywordRelationId(newKeywordEmbedding, existingKeywords, 0.9);
+        const matchedRelationId = findKeywordRelationId(newKeywordEmbedding, existingKeywords, 0.75);
 
         if (matchedRelationId !== null) {
             keyword_relation_id = matchedRelationId;
-            console.log(`[Keyword Match] 找到相似度 > 0.9 的 keyword_relation_id: ${keyword_relation_id}`);
+            console.log(`[Keyword Match] 找到相似度 > 0.75 的 keyword_relation_id: ${keyword_relation_id}`);
         } else {
             console.log(`[Keyword Match] 未找到匹配，將執行舊有邏輯（Search/Insert Relation）。`);
         }
 
     } catch (err) {
         console.error('middlewares-insertKeyword(): database/embedding logic error', err);
-        // 如果相似度判斷失敗，則忽略錯誤，讓程式繼續執行舊有的 Search/Insert Relation 邏輯
     }
 
     // 4. Fallback 邏輯：如果 Embedding 判斷未找到匹配 (keyword_relation_id 仍為 null)
     if ( keyword_relation_id === null ) {
-        // 執行舊有的 text-based 關係判斷與創建邏輯
 
         // a. 先 search keyword_relation_id (使用 keyword_text LIKE)
         fakeReq = {
-            query: { text: text , relation:'' } // 帶上 relation 參數以觸發 text-based 關係搜索
+            query: { text: text , relation:'' }
         };
         try {
             let searchKeywordRelationResult = await callAndCatchApiSuccess ( searchKeyword, fakeReq );
@@ -183,7 +195,8 @@ async function insertKeyword(req, res, next) {
         // b. 如果沒有 keyword_relation_id ，就創一個
         if ( !keyword_relation_id ) {
             fakeReq = {
-                query: { relation:'' } // 再次呼叫 insertKeyword 自身來創建 relation ID
+                // 這裡故意不傳 body，讓它進入上面的 if ( relation ) 區塊來創建 ID
+                query: { relation:'' }
             };
             try {
                 let insertKeywordRelationResult = await callAndCatchApiSuccess ( insertKeyword, fakeReq );

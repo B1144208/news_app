@@ -1,0 +1,60 @@
+{
+  "data": [
+    {
+      "url": "https://www.npr.org/sections/national/",
+      "img": "https://media.npr.org/include/images/facebook-default-wide.jpg",
+      "name": "NPR National",
+      "type": null,
+      "introduce": "Latest national news from NPR."
+    },
+    {
+      "url": "https://www.npr.org/sections/world/",
+      "img": "https://media.npr.org/include/images/facebook-default-wide.jpg",
+      "name": "NPR World",
+      "type": null,
+      "introduce": "Latest world news from NPR."
+    },
+    {
+      "url": "https://www.npr.org/sections/politics/",
+      "img": "https://media.npr.org/include/images/facebook-default-wide.jpg",
+      "name": "NPR Politics",
+      "type": null,
+      "introduce": "Latest politics news from NPR."
+    },
+    {
+      "url": "https://www.npr.org/sections/business/",
+      "img": "https://media.npr.org/include/images/facebook-default-wide.jpg",
+      "name": "NPR Business",
+      "type": null,
+      "introduce": "Latest business news from NPR."
+    },
+    {
+      "url": "https://www.npr.org/sections/health/",
+      "img": "https://media.npr.org/include/images/facebook-default-wide.jpg",
+      "name": "NPR Health",
+      "type": null,
+      "introduce": "Latest health news from NPR."
+    },
+    {
+      "url": "https://www.npr.org/sections/science/",
+      "img": "https://media.npr.org/include/images/facebook-default-wide.jpg",
+      "name": "NPR Science",
+      "type": null,
+      "introduce": "Latest science news from NPR."
+    },
+    {
+      "url": "https://www.npr.org/sections/climate/",
+      "img": "https://media.npr.org/include/images/facebook-default-wide.jpg",
+      "name": "NPR Climate",
+      "type": null,
+      "introduce": "Latest climate news from NPR."
+    },
+    {
+      "url": "https://www.npr.org/sections/codeswitch/",
+      "img": "https://media.npr.org/include/images/facebook-default-wide.jpg",
+      "name": "NPR Race",
+      "type": null,
+      "introduce": "Latest race news from NPR."
+    }
+  ]
+}

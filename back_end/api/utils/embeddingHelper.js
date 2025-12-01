@@ -37,34 +37,29 @@ function calculateSimilarity(vectorA, vectorB) {
 
 /**
  * [News Relation 判斷]
- * 根據新聞 embedding 判斷最匹配的 relation_id。
- * @param {number[]} newsEmbedding - 新聞的 embedding 向量。
- * @param {Array<{relation_id: string|number, eventsorting_embedding: number[]}>} relations -
- * 可能的 relation 列表。每個 relation 應包含一個 ID 和它連結到的 eventsorting embedding。
- * @param {number} threshold - 判斷相似度的門檻值 (預設為 0.9)。
- * @returns {string|number|null} 匹配的 relation_id，如果沒有找到則返回 null。
+ * 根據新的新聞 Embedding，與現有 *Eventsorting* 資料表中的 Embedding 進行相似度比較。
+ * @param {number[]} newNewsEmbedding - 新聞標題/內容的 Embedding 向量。
+ * @param {Array<{relation_id: number, eventsorting_embedding: number[]}>} existingEvents - 現有的 EventSorting 列表。
+ * @param {number} threshold - 相似度門檻值 (預設 0.85)。
+ * @returns {number|null} 找到的 bestMatchId (即 eventsorting_id) 或 null。
  */
-function findRelationId(newsEmbedding, relations, threshold = 0.85) {
-    if (!newsEmbedding || newsEmbedding.length === 0) {
-        console.warn('News embedding is invalid.');
-        return null;
-    }
-
-    let bestMatchId = null;
+function findNewsRelationId(newNewsEmbedding, existingEvents, threshold = 0.85) {
     let maxSimilarity = -1;
+    let bestMatchId = null;
 
-    for (const relation of relations) {
-        const eventEmbedding = relation.eventsorting_embedding;
-        if (eventEmbedding && eventEmbedding.length > 0) {
+    if (!newNewsEmbedding || newNewsEmbedding.length === 0) return null;
 
-            const similarity = calculateSimilarity(newsEmbedding, eventEmbedding);
+    for (const event of existingEvents) {
+        let existingEmbedding = event.eventsorting_embedding; // ⭐ 參考 eventsorting_embedding ⭐
+        const relationId = event.relation_id; // 假設這裡的 relation_id 是 eventsorting_id
 
-            // 檢查是否超過門檻值
+        if (existingEmbedding && existingEmbedding.length > 0 && relationId !== null) {
+            const similarity = calculateSimilarity(newNewsEmbedding, existingEmbedding);
+
             if (similarity > threshold) {
-                // 如果有多個 relation 都超過門檻，則選取相似度最高的
                 if (similarity > maxSimilarity) {
                     maxSimilarity = similarity;
-                    bestMatchId = relation.relation_id;
+                    bestMatchId = relationId;
                 }
             }
         }
@@ -114,6 +109,54 @@ function findKeywordRelationId(newKeywordEmbedding, existingKeywords, threshold 
     return bestMatchId;
 }
 
+/**
+ * [Events Sorting 判斷]
+ * 根據新事件的 Embedding 尋找資料庫中相似度高的舊事件（用於 Horizontal 連結）。
+ * @param {number[]} newEmbedding - 待搜尋事件的 embedding 向量。
+ * @param {number} currentEventId - 當前事件 ID (用於排除自己)。
+ * @param {number} threshold - 相似度門檻值 (e.g., 0.75)。
+ * @returns {Promise<number[]>} 相似事件的 eventsorting_id 陣列。
+ */
+async function findSimilarEvents(newEmbedding, currentEventId, threshold = 0.8) {
+    // [!!! 確保這個路徑正確指向您的 connect_db.js !!!]
+    const dbPool = require('../connect_db');
+
+    // 查詢所有現有事件的 ID 和 Embedding
+    const sql = `
+        SELECT eventsorting_id, embedding_json
+        FROM eventsorting_data
+        WHERE eventsorting_id != ?
+        AND embedding_json IS NOT NULL
+        AND CHAR_LENGTH(embedding_json) > 10
+    `;
+
+    const [existingEvents] = await dbPool.query(sql, [currentEventId]);
+
+    let relatedIds = [];
+
+    for (const event of existingEvents) {
+        try {
+            const existingEmbedding = JSON.parse(event.embedding_json);
+            // 呼叫 calculateSimilarity (假設已存在於此檔案)
+            const similarity = calculateSimilarity(newEmbedding, existingEmbedding);
+
+            if (similarity >= threshold) {
+                relatedIds.push({
+                    related_eventsorting_id: event.eventsorting_id,
+                    similarity: similarity
+                });
+            }
+        } catch (e) {
+            // 忽略無效的 Embedding 資料
+        }
+    }
+
+    relatedIds.sort((a, b) => b.similarity - a.similarity);
+
+    // 返回前 10 個最相關的事件 ID
+    return relatedIds.slice(0, 10).map(r => r.related_eventsorting_id);
+}
+
 async function getEmbedding(text) {
 
     const cleaned = (text || '').replace(/\s+/g, ' ').trim();
@@ -143,5 +186,6 @@ module.exports = {
     getEmbedding,
     calculateSimilarity,
     findRelationId,
-    findKeywordRelationId
+    findKeywordRelationId,
+    findSimilarEvents
 };
