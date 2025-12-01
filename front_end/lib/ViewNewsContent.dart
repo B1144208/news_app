@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'ChannelDetailPage.dart';
 import 'LoginPage.dart';
@@ -93,11 +94,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
 
     try {
       final uri = Uri.parse('http://localhost:3000/api/news/search').replace(
-        queryParameters: {
-          'mode': 'complex',
-          'order': 'general',
-          'limit': '1',
-        },
+        queryParameters: {'mode': 'complex', 'order': 'general', 'limit': '1'},
       );
 
       final response = await http.post(
@@ -282,9 +279,9 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
     } else if (mode == '對話模式') {
       // 對話模式先不做
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('對話模式開發中')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('對話模式開發中')));
       }
       _closePlayer();
     }
@@ -294,9 +291,9 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
   Future<void> _playGeneralMode() async {
     if (generalPlaymodeTexts.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('沒有可朗讀的內容')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('沒有可朗讀的內容')));
       }
       _closePlayer();
       return;
@@ -311,9 +308,9 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
   Future<void> _playReporterMode() async {
     if (reporterPlaymode.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('播報稿為空')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('播報稿為空')));
       }
       _closePlayer();
       return;
@@ -325,7 +322,9 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
   // ========== 新增：使用 TTS API 將文本轉換成語音並播放 ==========
   Future<void> _playTextWithTTS(String text) async {
     try {
-      print('🎵 準備播放文本: ${text.substring(0, text.length > 50 ? 50 : text.length)}...');
+      print(
+        '🎵 準備播放文本: ${text.substring(0, text.length > 50 ? 50 : text.length)}...',
+      );
 
       // 呼叫 TTS API
       final response = await http.post(
@@ -377,9 +376,9 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
     } catch (e) {
       print('❌ 播放錯誤: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('播放錯誤: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('播放錯誤: $e')));
       }
       _closePlayer();
     }
@@ -435,7 +434,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE8E3FF),
+      backgroundColor: const Color(0xFF0a1428),
       body: SafeArea(
         child: Stack(
           children: [
@@ -475,12 +474,20 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
   // 自定義AppBar
   Widget _buildCustomAppBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: Color(0xFFC9BDFF),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1a2a4e),
+        border: Border(
+          bottom: BorderSide(
+            color: const Color(0xFF6366f1).withOpacity(0.2),
+            width: 1,
+          ),
+        ),
+      ),
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black),
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
             onPressed: () => Navigator.of(context).pop(),
           ),
           const SizedBox(width: 8),
@@ -489,32 +496,42 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => ChannelDetailPage(
-                    channelId: widget.newsData['channel_id'] ?? 1,
-                    channelName: _newsDetail?['channel_name'] ?? widget.newsData['channel'] ?? '新聞台',
-                    channelDescription: null,
-                  ),
+                  builder:
+                      (context) => ChannelDetailPage(
+                        channelId: widget.newsData['channel_id'] ?? 1,
+                        channelName:
+                            _newsDetail?['channel_name'] ??
+                            widget.newsData['channel'] ??
+                            '新聞台',
+                        channelDescription: null,
+                      ),
                 ),
               );
             },
             child: Container(
-              width: 32,
-              height: 32,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(4),
+                color: const Color(0xFF6366f1).withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: const Color(0xFF6366f1).withOpacity(0.3),
+                  width: 1,
+                ),
               ),
-              child: const Icon(Icons.tv, size: 20, color: Colors.black54),
+              child: const Icon(Icons.tv, size: 20, color: Color(0xFF60a5fa)),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
-              _newsDetail?['channel_name'] ?? widget.newsData['channel'] ?? '新聞台',
+              _newsDetail?['channel_name'] ??
+                  widget.newsData['channel'] ??
+                  '新聞台',
               style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
               ),
               overflow: TextOverflow.ellipsis,
             ),
@@ -571,12 +588,14 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _newsDetail?['news_title'] ?? widget.newsData['title'] ?? '無標題',
+                  _newsDetail?['news_title'] ??
+                      widget.newsData['title'] ??
+                      '無標題',
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                     height: 1.3,
-                    color: Colors.black,
+                    color: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -584,7 +603,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                   _formatDateTime(_newsDetail?['publish_date']),
                   style: TextStyle(
                     fontSize: 14,
-                    color: Colors.grey[600],
+                    color: const Color(0xFF94a3b8),
                   ),
                 ),
               ],
@@ -603,10 +622,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
       return [
         const Padding(
           padding: EdgeInsets.all(16.0),
-          child: Text(
-            '暫無新聞內容',
-            style: TextStyle(color: Colors.grey),
-          ),
+          child: Text('暫無新聞內容', style: TextStyle(color: Colors.grey)),
         ),
       ];
     }
@@ -620,7 +636,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
             style: const TextStyle(
               fontSize: 16,
               height: 1.6,
-              color: Colors.black87,
+              color: Color.fromARGB(222, 255, 255, 255),
             ),
           ),
         );
@@ -640,19 +656,27 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                       height: 200,
                       color: Colors.grey[300],
                       child: const Center(
-                        child: Icon(Icons.broken_image, size: 50, color: Colors.grey),
+                        child: Icon(
+                          Icons.broken_image,
+                          size: 50,
+                          color: Colors.grey,
+                        ),
                       ),
                     );
                   },
                 ),
-              if (bodyItem['body_text'] != null && bodyItem['body_text'].toString().isNotEmpty)
+              if (bodyItem['body_text'] != null &&
+                  bodyItem['body_text'].toString().isNotEmpty)
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 8.0,
+                  ),
                   child: Text(
                     bodyItem['body_text'],
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.grey[600],
+                      color: const Color(0xFF94a3b8),
                       fontStyle: FontStyle.italic,
                     ),
                   ),
@@ -723,13 +747,20 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
           _buildRightButton(
             icon: Icons.share,
             label: '分享',
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('分享功能開發中'),
-                  duration: Duration(seconds: 1),
-                ),
-              );
+            onTap: () async {
+              try {
+                final newsTitle = widget.newsData['title'] ?? '新聞';
+                final newsUrl = widget.newsData['url'] ?? 'https://example.com';
+                final shareText = '📰 $newsTitle\n\n$newsUrl';
+                await Share.share(shareText, subject: newsTitle);
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('分享失敗: $e'),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              }
             },
           ),
         ],
@@ -753,7 +784,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black,
+              color: Colors.white,
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -762,13 +793,13 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 24, color: Colors.black87),
+            Icon(icon, size: 24, color: Colors.white.withOpacity(0.87)),
             const SizedBox(height: 4),
             Text(
               label,
               style: const TextStyle(
                 fontSize: 10,
-                color: Colors.black87,
+                color: Color.fromARGB(222, 255, 255, 255),
               ),
               textAlign: TextAlign.center,
             ),
@@ -841,11 +872,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                   ),
                 ],
               ),
-              child: const Icon(
-                Icons.smart_toy,
-                color: Colors.white,
-                size: 28,
-              ),
+              child: const Icon(Icons.smart_toy, color: Colors.white, size: 28),
             ),
           ),
         ],
@@ -896,10 +923,12 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    _newsDetail?['news_title'] ?? widget.newsData['title'] ?? '無標題',
+                    _newsDetail?['news_title'] ??
+                        widget.newsData['title'] ??
+                        '無標題',
                     style: const TextStyle(
                       fontSize: 12,
-                      color: Colors.black87,
+                      color: Color.fromARGB(222, 255, 255, 255),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -931,7 +960,10 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                 GestureDetector(
                   onTap: _adjustPlaybackSpeed,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.grey),
                       borderRadius: BorderRadius.circular(4),
@@ -991,7 +1023,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
           });
         },
         child: Container(
-          color: Colors.black,
+          color: Colors.white,
           child: GestureDetector(
             onTap: () {},
             child: Column(
@@ -1027,13 +1059,16 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.black,
+                                color: Colors.white,
                               ),
                             ),
                             const SizedBox(width: 8),
                             Text(
                               '${_comments.length}則',
-                              style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                              style: TextStyle(
+                                color: const Color(0xFF94a3b8),
+                                fontSize: 16,
+                              ),
                             ),
                             const Spacer(),
                             IconButton(
@@ -1051,8 +1086,8 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                         child: ListView.separated(
                           padding: const EdgeInsets.all(16),
                           itemCount: _comments.length,
-                          separatorBuilder: (context, index) =>
-                          const SizedBox(height: 16),
+                          separatorBuilder:
+                              (context, index) => const SizedBox(height: 16),
                           itemBuilder: (context, index) {
                             final comment = _comments[index];
                             return _buildCommentItem(comment);
@@ -1102,7 +1137,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                   'AI 助手',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: Colors.black,
+                    color: Colors.white,
                   ),
                 ),
                 const Spacer(),
@@ -1192,7 +1227,10 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                   const SizedBox(width: 8),
                   Text(
                     comment['time'],
-                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    style: TextStyle(
+                      color: const Color(0xFF94a3b8),
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),
@@ -1204,7 +1242,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                 style: const TextStyle(
                   fontSize: 14,
                   height: 1.4,
-                  color: Colors.black,
+                  color: Colors.white,
                 ),
               ),
             ],

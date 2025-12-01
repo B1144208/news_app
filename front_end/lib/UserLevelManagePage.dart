@@ -35,7 +35,7 @@ class _UserLevelManagePageState extends State<UserLevelManagePage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('權限不足：需要高級管理員權限（Level 7+）'),
-            backgroundColor: Colors.red,
+            backgroundColor: const Color(0xFFef4444),
           ),
         );
       }
@@ -112,6 +112,7 @@ class _UserLevelManagePageState extends State<UserLevelManagePage> {
       context: context,
       builder:
           (context) => AlertDialog(
+            backgroundColor: const Color(0xFF0a0e27),
             title: Text('確認修改權限'),
             content: Column(
               mainAxisSize: MainAxisSize.min,
@@ -127,18 +128,25 @@ class _UserLevelManagePageState extends State<UserLevelManagePage> {
                   Container(
                     padding: EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.red[50],
-                      border: Border.all(color: Colors.red),
+                      color: const Color(0xFFef4444),
+                      border: Border.all(color: const Color(0xFFef4444)),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.warning, color: Colors.red, size: 16),
+                        Icon(
+                          Icons.warning,
+                          color: const Color(0xFFef4444),
+                          size: 16,
+                        ),
                         SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             '警告：授予超級管理員權限後，該用戶將擁有所有系統權限',
-                            style: TextStyle(color: Colors.red, fontSize: 12),
+                            style: TextStyle(
+                              color: const Color(0xFFef4444),
+                              fontSize: 12,
+                            ),
                           ),
                         ),
                       ],
@@ -154,7 +162,10 @@ class _UserLevelManagePageState extends State<UserLevelManagePage> {
               ElevatedButton(
                 onPressed: () => Navigator.pop(context, true),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: newLevel == 10 ? Colors.red : Colors.blue,
+                  backgroundColor:
+                      newLevel == 10
+                          ? const Color(0xFFef4444)
+                          : const Color(0xFF60a5fa),
                 ),
                 child: Text('確認'),
               ),
@@ -197,6 +208,7 @@ class _UserLevelManagePageState extends State<UserLevelManagePage> {
       context: context,
       builder:
           (context) => AlertDialog(
+            backgroundColor: const Color(0xFF0a0e27),
             title: Row(
               children: [
                 Icon(Icons.stars, color: Colors.amber),
@@ -232,7 +244,8 @@ class _UserLevelManagePageState extends State<UserLevelManagePage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError ? Colors.red : Colors.green,
+        backgroundColor:
+            isError ? const Color(0xFFef4444) : const Color(0xFF34d399),
       ),
     );
   }
@@ -243,7 +256,7 @@ class _UserLevelManagePageState extends State<UserLevelManagePage> {
       appBar: AppBar(
         title: Text('用戶等級管理'),
         backgroundColor: PermissionHelper.getLevelColor(_currentUserLevel),
-        foregroundColor: Colors.white,
+        foregroundColor: const Color(0xFF0a1428),
         actions: [
           IconButton(
             icon: Icon(Icons.refresh),
@@ -260,7 +273,7 @@ class _UserLevelManagePageState extends State<UserLevelManagePage> {
                   // 搜尋欄
                   Container(
                     padding: EdgeInsets.all(16),
-                    color: Colors.grey[100],
+                    color: const Color(0xFF0a0e27),
                     child: TextField(
                       controller: _searchController,
                       decoration: InputDecoration(
@@ -270,7 +283,7 @@ class _UserLevelManagePageState extends State<UserLevelManagePage> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         filled: true,
-                        fillColor: Colors.white,
+                        fillColor: const Color(0xFF0a1428),
                       ),
                       onChanged: (value) => setState(() {}),
                     ),
@@ -330,7 +343,7 @@ class _UserLevelManagePageState extends State<UserLevelManagePage> {
                     child: Text(
                       account.isNotEmpty ? account[0].toUpperCase() : '?',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: const Color(0xFF0a0e27),
                         fontWeight: FontWeight.bold,
                         fontSize: 20,
                       ),
@@ -368,7 +381,7 @@ class _UserLevelManagePageState extends State<UserLevelManagePage> {
                             child: Text(
                               PermissionHelper.getLevelName(currentLevel),
                               style: TextStyle(
-                                color: Colors.white,
+                                color: const Color(0xFF0a0e27),
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -379,7 +392,10 @@ class _UserLevelManagePageState extends State<UserLevelManagePage> {
                       SizedBox(height: 4),
                       Text(
                         'ID: $userId | 名稱: $name',
-                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                        style: TextStyle(
+                          color: const Color(0xFF94a3b8),
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ),
@@ -428,7 +444,7 @@ class _UserLevelManagePageState extends State<UserLevelManagePage> {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: level == 10 ? Colors.red : null,
+                    color: level == 10 ? const Color(0xFFef4444) : null,
                   ),
                 ),
               );
