@@ -59,9 +59,13 @@ async function insertNewsGroupsForOneNews(newsId, result) {
         VALUES (?, ?, ?)
     `;
 
+
+    console.log("6. groupName: ")
     for (const rawName of result) {
         // 空值就當成「其他」
         const groupName = rawName || '其他';
+
+        console.log("\t", groupName);
 
         let searchGroupResult;
         try {
@@ -96,30 +100,12 @@ async function insertNewsGroupsForOneNews(newsId, result) {
         } else if (type === 'detail') {
             detailId = id;
         } else {
-            /*console.warn(
-                '[newsGroupWorker] 未知的 group.type =',
-                type,
-                'news_id =',
-                newsId,
-                'name =',
-                groupName
-            );*/
             continue;
         }
 
         try {
             await pool.query(insertSql, [newsId, dataId, detailId]);
         } catch (err) {
-            console.error(
-                '[newsGroupWorker] 寫入 news_group 失敗，news_id =',
-                newsId,
-                'name =',
-                groupName,
-                'err =',
-                err.message
-            );
-            // 這裡依照你需求：要不要整個 throw 讓外層處理？
-            // throw err;
         }
     }
 }
@@ -201,7 +187,7 @@ async function mainLoop() {
 
             newsTextList = await callAndCatchApiSuccessInGeneralFunction(getText, fakeReqForGetText);
 
-            //console.log("0. newsTextList: ", newsTextList, "\n");
+            console.log("0. newsTextList: ", newsTextList, "\n");
 
             // 預期格式：[{ id, title, text }, ...]
             if (!Array.isArray(newsTextList)) {
