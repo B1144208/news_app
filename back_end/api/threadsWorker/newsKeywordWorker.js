@@ -154,12 +154,14 @@ async function handleOneNews(newsItem) {
 
   try {
     const result = await callAndCatchApiSuccessInGeneralFunction(newsKeywordClassifier, fakeReq);
+    console.log("1. result", result);
     if (!result || result.success === false || !result.data) {
       console.warn(`[newsKeywordWorker] news_id=${newsId} newsKeywordClassifier 未正常完成，略過 markTaskDone`);
       return;
     }
 
     const insertResult = await insertNewsKeywordsForOneNews(newsId, result.data);
+    console.log("2. insertResult", insertResult);
     if (!insertResult) {
       console.warn(`[newsKeywordWorker] news_id=${newsId} insertNewsKeywordsForOneNews 失敗或沒有任何 keyword，略過 markTaskDone`);
       return;
@@ -185,6 +187,8 @@ async function runNewsKeywordWorker() {
   try {
     // 1) 抓待處理的 news_id 清單
     const idList = await fetchPendingNewsIds();
+
+    console.log("抓取" , idList, " 資料")
 
     if (idList.length === 0) {
       console.log('[newsKeywordWorker] 目前沒有待處理的 news_keyword 任務');
@@ -218,6 +222,9 @@ async function runNewsKeywordWorker() {
 
     // 3) 逐筆處理
     for (const newsItem of newsTextList) {
+
+      console.log(` =============== news_id = ${newsItem.id} =============== `);
+
       if (!newsItem || typeof newsItem.id === 'undefined') {
         console.warn(
           '[newsKeywordWorker] newsItem 格式不正確，略過：',

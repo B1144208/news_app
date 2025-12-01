@@ -154,12 +154,14 @@ async function handleOneNews (newsItem) {
 
   try {
     const result = await callAndCatchApiSuccessInGeneralFunction(newsLocationClassifier, fakeReq);
+    console.log("1. result", result);
     if (!result || result.success === false || !result.data) {
         console.warn( `[newsLocationWorker] news_id=${newsId} newsLocationClassifier 未正常完成，略過 markTaskDone`);
         return; // 直接跳過這筆，讓外層去跑下一個 newsId
     }
 
     const insertResult = await insertNewsLocationsForOneNews(newsId, result.data);
+    console.log("2. insertResult", insertResult);
     if (insertResult === false) {
         console.warn(`[newsLocationWorker] news_id=${newsId} insertNewsLocationForOneNews 回傳失敗，略過 markTaskDone`);
         return;
@@ -183,6 +185,8 @@ async function runLocationWorker() {
 
     try {
         const idList = await fetchPendingNewsIds();
+
+        console.log("抓取" , idList, " 資料")
 
         if (idList.length === 0) {
             console.log('[newsLocationWorker] 目前沒有待處理的 news_location 任務');
@@ -213,6 +217,9 @@ async function runLocationWorker() {
 
         // 2) 對這批文字逐筆做 location 分類
         for (const newsItem of newsTextList) {
+
+            console.log(` =============== news_id = ${newsItem.id} =============== `);
+
             if (!newsItem || typeof newsItem.id === 'undefined') {
                 console.warn('[newsLocationWorker] newsItem 格式不正確，略過：', newsItem);
                 continue;

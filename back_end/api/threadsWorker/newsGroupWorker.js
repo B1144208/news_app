@@ -164,12 +164,14 @@ async function handleOneNews(newsItem) {
 
     try {
         const result = await callAndCatchApiSuccessInGeneralFunction(newsGroupClassifier, fakeReq);
+        console.log("1. result", result);
         if (!result || result.success === false || !result.data) {
             console.warn( `[newsGroupWorker] news_id=${newsId} newsGroupClassifier 未正常完成，略過 markTaskDone`);
             return; // 直接跳過這筆，讓外層去跑下一個 newsId
         }
         
         const insertResult = await insertNewsGroupsForOneNews(newsId, result.data);
+        console.log("2. insertResult", insertResult);
         if (insertResult === false) {
             console.warn(`[newsGroupWorker] news_id=${newsId} insertNewsGroupsForOneNews 回傳失敗，略過 markTaskDone`);
             return;
@@ -194,6 +196,8 @@ async function runNewsGroupWorker() {
     try {
         // 1) 先從 DB 抓待處理的 news_id 清單
         const idList = await fetchPendingNewsIds();
+
+        console.log("抓取" , idList, " 資料")
 
         if (idList.length === 0) {
             console.log('[newsGroupWorker] 目前沒有待處理的 news_group 任務');
@@ -223,6 +227,9 @@ async function runNewsGroupWorker() {
 
         // 3) 對這批文字逐筆做 group 分類
         for (const newsItem of newsTextList) {
+
+            console.log(` =============== news_id = ${newsItem.id} =============== `);
+
             if (!newsItem || typeof newsItem.id === 'undefined') {
                 console.warn('[newsGroupWorker] newsItem 格式不正確，略過：', newsItem);
                 continue;

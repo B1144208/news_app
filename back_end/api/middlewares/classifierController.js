@@ -96,7 +96,7 @@ ${newsText}`
     try {
       result = JSON.parse(raw);
     } catch (e) {
-      console.warn(modelName, 'parse JSON 失敗，原始內容：', raw);
+      //console.warn(modelName, 'parse JSON 失敗，原始內容：', raw);
 
       if (/^\[.*\]$/.test(raw)) {
         const inner = raw.slice(1, -1);
