@@ -87,7 +87,7 @@ async function insertNewsKeywordsForOneNews(newsId, keywords) {
     let insertKeywordResult;
     try {
       // 依照你原本的 insertKeyword 介面調整，這裡假設用 body.keyword
-      const fakeReq = { body: { keyword } };
+      const fakeReq = { body: { text: keyword } };
 
       insertKeywordResult = await callAndCatchApiSuccessInGeneralFunction(insertKeyword, fakeReq);
     } catch (err) {
