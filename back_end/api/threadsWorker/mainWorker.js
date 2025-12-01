@@ -19,15 +19,15 @@ async function mainLoop() {
 
         // 1. ) newsGroup ( 100 筆 )
         try { await runGroupWorker(); } 
-        catch (err) { console.warn('[newsMainWorker] group error, news_id =', newsId, err.message); }
+        catch (err) { console.warn('[newsMainWorker] group error, news_id =', err.message); }
 
         // 2. ) newsLocation ( 100 筆 )
         try { await runLocationWorker(); }
-        catch (err) { console.warn('[newsMainWorker] location error, news_id =', newsId, err.message); }
+        catch (err) { console.warn('[newsMainWorker] location error, news_id =', err.message); }
 
         // 3. ) newsKeyword ( 100 筆 )
         try { await runKeywordWorker(); }
-        catch (err) { console.warn('[newsMainWorker] keyword error, news_id =', newsId, err.message); }
+        catch (err) { console.warn('[newsMainWorker] keyword error, news_id =', err.message); }
 
         // 4. )
         // 5. )
