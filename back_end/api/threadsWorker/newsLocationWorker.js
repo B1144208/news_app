@@ -229,10 +229,11 @@ async function runLocationWorker() {
                 console.error('[newsLocationWorker] 處理 news_id =', newsItem.id, '時發生錯誤：', err);
             }
         }
+        return;
 
     } catch (err) {
         console.error('[newsLocationWorker] 主迴圈發生錯誤：', err);
-        await sleep(30 * 1000);
+        return;
     }
 
 }

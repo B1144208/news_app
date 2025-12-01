@@ -196,54 +196,55 @@ async function runNewsGroupWorker() {
     console.log('[newsGroupWorker] 啟動');
 
     try {
-    // 1) 先從 DB 抓待處理的 news_id 清單
-    const idList = await fetchPendingNewsIds();
+        // 1) 先從 DB 抓待處理的 news_id 清單
+        const idList = await fetchPendingNewsIds();
 
-    if (idList.length === 0) {
-        console.log('[newsGroupWorker] 目前沒有待處理的 news_group 任務');
-        return;
-    }
-
-    // 2) 呼叫 getText，把這批 id 換成 {id, title, text} 陣列
-    let newsTextList;
-    try {
-        const fakeReqForGetText = {
-            query: { idList }
-        };
-
-        newsTextList = await callAndCatchApiSuccessInGeneralFunction(getText, fakeReqForGetText);
-
-        // 預期格式：[{ id, title, text }, ...]
-        if (!Array.isArray(newsTextList)) {
-            console.warn('[newsGroupWorker] getText 回傳不是陣列，實際：', newsTextList);
-            newsTextList = [];
-        }
-    } catch (err) {
-        console.error('[newsGroupWorker] 呼叫 getText 發生錯誤：', err);
-        // 避免死循環，先睡一下再重新跑 while
-        await sleep(30 * 1000);
-        return;
-    }
-
-    // 3) 對這批文字逐筆做 group 分類
-    for (const newsItem of newsTextList) {
-        if (!newsItem || typeof newsItem.id === 'undefined') {
-            console.warn('[newsGroupWorker] newsItem 格式不正確，略過：', newsItem);
-            continue;
+        if (idList.length === 0) {
+            console.log('[newsGroupWorker] 目前沒有待處理的 news_group 任務');
+            return;
         }
 
+        // 2) 呼叫 getText，把這批 id 換成 {id, title, text} 陣列
+        let newsTextList;
         try {
-            await handleOneNews(newsItem); // 傳整個 {id, title, text}
+            const fakeReqForGetText = {
+                query: { idList }
+            };
+
+            newsTextList = await callAndCatchApiSuccessInGeneralFunction(getText, fakeReqForGetText);
+
+            // 預期格式：[{ id, title, text }, ...]
+            if (!Array.isArray(newsTextList)) {
+                console.warn('[newsGroupWorker] getText 回傳不是陣列，實際：', newsTextList);
+                newsTextList = [];
+            }
         } catch (err) {
-            console.error('[newsGroupWorker] 處理 news_id =', newsItem.id, '時發生錯誤：', err);
+            console.error('[newsGroupWorker] 呼叫 getText 發生錯誤：', err);
+            // 避免死循環，先睡一下再重新跑 while
+            await sleep(30 * 1000);
+            return;
         }
-    }
+
+        // 3) 對這批文字逐筆做 group 分類
+        for (const newsItem of newsTextList) {
+            if (!newsItem || typeof newsItem.id === 'undefined') {
+                console.warn('[newsGroupWorker] newsItem 格式不正確，略過：', newsItem);
+                continue;
+            }
+
+            try {
+                await handleOneNews(newsItem); // 傳整個 {id, title, text}
+            } catch (err) {
+                console.error('[newsGroupWorker] 處理 news_id =', newsItem.id, '時發生錯誤：', err);
+            }
+        }
+
+        return;
 
     // 一輪跑完，立刻再去 DB 抓新的一輪
     } catch (err) {
         console.error('[newsGroupWorker] 主迴圈發生錯誤：', err);
-        // 發生非預期錯誤時，避免死循環瘋狂重試，先睡一下再繼續
-        await sleep(30 * 1000);
+        return;
     }
     //}
 }
