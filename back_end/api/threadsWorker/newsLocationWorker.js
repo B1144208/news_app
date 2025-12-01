@@ -240,17 +240,17 @@ async function runLocationWorker() {
 
 // 直接啟動主程式
 runLocationWorker().catch(err => {
-  console.error('[newsLocationWorker] 無法啟動：', err);
-  process.exit(1);
+    console.error('[newsLocationWorker] 無法啟動：', err);
+    process.exit(1);
 });
 
 // 優雅關閉
 process.on('SIGINT', () => {
-  console.log('\n[newsLocationWorker] 收到 SIGINT，準備結束');
-  process.exit(0);
+    console.log('\n[newsLocationWorker] 收到 SIGINT，準備結束');
+    process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-  console.log('\n[newsLocationWorker] 收到 SIGTERM，準備結束');
-  process.exit(0);
+    console.log('\n[newsLocationWorker] 收到 SIGTERM，準備結束');
+    process.exit(0);
 });
