@@ -487,8 +487,7 @@ async function insertNews(req, res, next) {
                 // ii. 創建 Event Sorting Data (同步插入 eventsorting_data)
                 // 這裡假設 eventsorting_id = relation_id
                 let eventSql = `
-                    INSERT INTO eventsorting_data
-                    ( eventsorting_id, eventsorting_embedding )
+                    INSERT INTO IGNORE eventsorting_data ( eventsorting_id, eventsorting_embedding )
                     VALUE ( ?, ? )
                 `;
                 let eventParams = [
