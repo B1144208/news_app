@@ -92,24 +92,32 @@ ${newsText}`
 
   // 1) content 是字串的話，先 parse 成 JSON
   if (typeof result === 'string') {
+    const raw = result.trim();
     try {
-      result = JSON.parse(result);
+      result = JSON.parse(raw);
     } catch (e) {
-      console.warn(modelName, 'parse JSON 失敗，原始內容：', result);
-      result = null;
+      console.warn(modelName, 'parse JSON 失敗，原始內容：', raw);
+
+      if (/^\[.*\]$/.test(raw)) {
+        const inner = raw.slice(1, -1);
+        result = inner
+          .split(',')
+          .map(s => s.trim())
+          .filter(Boolean)
+          .map(s => s.replace(/^['"]|['"]$/g, ''));
+      } else {
+        result = null;
+      }
     }
   }
 
-  // 2) 如果模型還是輸出 { group:[...] }，幫它轉成陣列
-  if (result && !Array.isArray(result) && Array.isArray(result.group)) {
-    result = result.group;
-  }
-
   console.log("result: ", result);
-  // 3) 最後保險：一定要是陣列，不是就給 ["其他"]
+  
+  // 2) 最後保險：一定要是陣列，不是就給 ["其他"]
   if (!Array.isArray(result)) {
     console.warn(modelName, '輸出不是陣列，fallback -> ["其他"]，實際輸出：', result);
-    result = ['其他'];
+    if(modelName="news-group") result = ['其他'];
+    else result = [];
   }
 
   return result;   // 這裡保證是 string[]
