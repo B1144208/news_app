@@ -5,6 +5,38 @@ const { checkPassword, hashPassword } = require('../utils/passwordHelper');
 const { generateUsername } = require('../utils/randomHelper');
 const { insertGroupcustomize } = require('./groupcustomizeController');
 
+// 郵件和短信發送功能（可選）
+const redis = require('redis');
+const nodemailer = require('nodemailer');
+const twilio = require('twilio');
+
+const redisClient = redis.createClient({
+  host: process.env.REDIS_HOST || 'localhost',
+  port: process.env.REDIS_PORT || 6379,
+});
+
+const emailTransporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER || 'your-email@gmail.com',
+    pass: process.env.EMAIL_PASSWORD || 'your-app-password',
+  },
+});
+
+// Twilio 只在有效配置時初始化
+let twilioClient = null;
+if (
+  process.env.TWILIO_ACCOUNT_SID &&
+  process.env.TWILIO_ACCOUNT_SID.startsWith('AC') &&
+  process.env.TWILIO_AUTH_TOKEN &&
+  process.env.TWILIO_PHONE_NUMBER
+) {
+  twilioClient = twilio(
+    process.env.TWILIO_ACCOUNT_SID,
+    process.env.TWILIO_AUTH_TOKEN
+  );
+}
+
 // ============================================
 // 驗證碼系統配置（全局）
 // ============================================
@@ -73,6 +105,20 @@ async function sendPhoneCode(phone, code) {
   console.log(`Code: ${code}`);
   console.log(`Valid for: ${VERIFICATION_CONFIG.codeExpiry / 1000} seconds`);
   console.log(`=============================================\n`);
+  
+  if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER) {
+    try {
+      await twilioClient.messages.create({
+        body: `您的驗證碼是: ${code}，有效期 5 分鐘`,
+        from: process.env.TWILIO_PHONE_NUMBER,
+        to: phone,
+      });
+      console.log(`✅ 短信已發送至 ${phone}`);
+    } catch (error) {
+      console.error('發送短信錯誤:', error);
+    }
+  }
+  
   return true;
 }
 
@@ -82,6 +128,22 @@ async function sendEmailCode(email, code) {
   console.log(`Code: ${code}`);
   console.log(`Valid for: ${VERIFICATION_CONFIG.codeExpiry / 1000} seconds`);
   console.log(`=============================================\n`);
+  
+  if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
+    try {
+      await emailTransporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: '您的郵箱驗證碼',
+        html: `<h2>郵箱驗證</h2><p>您的驗證碼是: <strong>${code}</strong></p><p>此驗證碼有效期為 5 分鐘</p>`,
+        text: `您的驗證碼是: ${code}，有效期 5 分鐘`,
+      });
+      console.log(`✅ 郵件已發送至 ${email}`);
+    } catch (error) {
+      console.error('發送郵件錯誤:', error);
+    }
+  }
+  
   return true;
 }
 
@@ -573,12 +635,13 @@ async function verifyEmailCode(req, res) {
 
     if (record.code !== code) {
       record.attempts++;
-      // ✅ 改為 res.apiError()
-      return res.apiError(
-        `驗證碼錯誤（剩餘 ${
+      // ✅ 改為返回 success: false 格式
+      return res.json({
+        success: false,
+        message: `驗證碼錯誤（剩餘 ${
           VERIFICATION_CONFIG.maxAttempts - record.attempts
         } 次機會）`
-      );
+      });
     }
 
     await pool.query(
@@ -605,13 +668,16 @@ async function sendPhoneVerificationCode(req, res) {
   try {
     const { user_id, phone } = req.body;
 
-    if (!phone || !phone.match(/^\d{10,15}$/)) {
+    // 支持多種格式：0912345678, +886912345678, 886912345678
+    const cleanPhone = phone.replace(/[^\d]/g, '');
+    
+    if (!cleanPhone || cleanPhone.length < 10) {
       // ✅ 改為 res.apiError()
-      return res.apiError('請提供有效的手機號碼');
+      return res.apiError('請提供有效的手機號碼（至少 10 位數字）');
     }
 
-    const verifyKey = getVerificationKey(phone, 'phone');
-    const recordKey = getVerificationRecordKey(phone, 'phone');
+    const verifyKey = getVerificationKey(cleanPhone, 'phone');
+    const recordKey = getVerificationRecordKey(cleanPhone, 'phone');
 
     const lastSent = verificationCodes.get(recordKey);
     if (
@@ -630,7 +696,7 @@ async function sendPhoneVerificationCode(req, res) {
     verificationCodes.set(verifyKey, {
       code,
       user_id,
-      phone,
+      phone: cleanPhone,
       expiresAt: Date.now() + VERIFICATION_CONFIG.codeExpiry,
       attempts: 0,
     });
@@ -639,7 +705,7 @@ async function sendPhoneVerificationCode(req, res) {
       timestamp: Date.now(),
     });
 
-    await sendPhoneCode(phone, code);
+    await sendPhoneCode(cleanPhone, code);
 
     // ✅ 改為 res.apiSuccess()，並添加 return
     res.apiSuccess('驗證碼已發送，請檢查簡訊（開發環境：驗證碼已打印到控制台）');
@@ -684,12 +750,13 @@ async function verifyPhoneCode(req, res) {
 
     if (record.code !== code) {
       record.attempts++;
-      // ✅ 改為 res.apiError()
-      return res.apiError(
-        `驗證碼錯誤（剩餘 ${
+      // ✅ 改為返回 success: false 格式
+      return res.json({
+        success: false,
+        message: `驗證碼錯誤（剩餘 ${
           VERIFICATION_CONFIG.maxAttempts - record.attempts
         } 次機會）`
-      );
+      });
     }
 
     await pool.query(
