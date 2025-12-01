@@ -22,7 +22,7 @@ async function fetchPendingNewsIds() {
       (
         nt.news_group +
         nt.news_location +
-        nt.news_keyword +
+        nt.news_keyword
       ) AS score
     FROM news_task AS nt
     JOIN news_data AS nd
