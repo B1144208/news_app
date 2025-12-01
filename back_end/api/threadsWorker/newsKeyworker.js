@@ -79,6 +79,8 @@ async function insertNewsKeywordsForOneNews(newsId, keywords) {
     return false;
   }
 
+  const rowsToInsert = [];
+
   // 1) 逐一呼叫 insertKeyword，整理出 keyword_id 陣列
   for (const rawName of keywords) {
     const keyword = (rawName || '').trim();
