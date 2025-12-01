@@ -24,28 +24,27 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
   @override
   void initState() {
     super.initState();
-    _loadSavedPhone();
+    _loadSavedEmail();
   }
 
-  Future<void> _loadSavedPhone() async {
+  Future<void> _loadSavedEmail() async {
     final prefs = await SharedPreferences.getInstance();
-    final savedPhone = prefs.getString('UserPhone');
-    if (savedPhone != null) {
+    final savedEmail = prefs.getString('UserPhone');
+    if (savedEmail != null) {
       setState(() {
-        _phoneController.text = savedPhone;
+        _phoneController.text = savedEmail;
       });
     }
   }
 
   Future<void> _sendVerificationCode() async {
     if (_phoneController.text.isEmpty) {
-      setState(() => _errorMessage = '請輸入手機號碼');
+      setState(() => _errorMessage = '請輸入手機地址');
       return;
     }
 
-    final phoneDigits = _phoneController.text.replaceAll(RegExp(r'[^\d]'), '');
-    if (!phoneDigits.contains(RegExp(r'^\d{10,15}$'))) {
-      setState(() => _errorMessage = '請輸入有效的手機號碼（10-15位數字）');
+    if (!_phoneController.text.contains('@')) {
+      setState(() => _errorMessage = '請輸入有效的手機地址');
       return;
     }
 
@@ -70,29 +69,39 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
         body: jsonEncode({
           'user_id': userId,
           'action': 'send-phone-code',
-          'phone': _phoneController.text,
+          'email': _phoneController.text,
         }),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true) {
-          setState(() {
-            _codeSent = true;
-            _successMessage = data['message'] ?? '驗證碼已發送';
-            _resendCountdown = 60;
-            _startCountdown();
-          });
+          if (mounted) {
+            setState(() {
+              _codeSent = true;
+              _successMessage = data['message'] ?? '驗證碼已發送';
+              _resendCountdown = 60;
+              _startCountdown();
+            });
+          }
         } else {
-          setState(() => _errorMessage = data['message'] ?? '發送失敗');
+          if (mounted) {
+            setState(() => _errorMessage = data['message'] ?? '發送失敗');
+          }
         }
       } else {
-        setState(() => _errorMessage = '伺服器錯誤');
+        if (mounted) {
+          setState(() => _errorMessage = '伺服器錯誤');
+        }
       }
     } catch (e) {
-      setState(() => _errorMessage = '網路錯誤: $e');
+      if (mounted) {
+        setState(() => _errorMessage = '網路錯誤: $e');
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -110,22 +119,19 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
 
   Future<void> _verifyCode() async {
     if (_codeController.text.isEmpty) {
-      setState(() => _errorMessage = '請輸入驗證碼');
+      _showError('請輸入驗證碼');
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-      _successMessage = null;
-    });
+    _clearMessages();
+    _setLoading(true);
 
     try {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getInt('UserID');
 
       if (userId == null) {
-        setState(() => _errorMessage = '未登錄');
+        _showError('未登錄');
         return;
       }
 
@@ -135,35 +141,91 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
         body: jsonEncode({
           'user_id': userId,
           'action': 'verify-phone-code',
-          'phone': _phoneController.text,
+          'email': _phoneController.text,
           'code': _codeController.text,
         }),
       );
 
+      print('【驗證碼驗證】');
+      print('狀態碼: ${response.statusCode}');
+      print('響應: ${response.body}');
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        print('success: ${data['success']}');
+        print('message: ${data['message']}');
+
         if (data['success'] == true) {
           await prefs.setString('UserPhone', _phoneController.text);
           await prefs.setBool('PhoneVerified', true);
-
-          setState(() {
-            _successMessage = '手機驗證成功！';
-          });
+          _showSuccess('手機驗證成功！');
 
           await Future.delayed(const Duration(seconds: 2));
           if (mounted) {
             Navigator.pop(context);
           }
         } else {
-          setState(() => _errorMessage = data['message'] ?? '驗證失敗');
+          // ❌ 驗證失敗 - 立即顯示錯誤
+          String message = data['message'] ?? '驗證失敗';
+          print('【錯誤訊息】: $message');
+
+          if (message.contains('不正確') ||
+              message.contains('錯誤') ||
+              message.contains('次數')) {
+            _showError('❌ 驗證碼錯誤！請重新輸入');
+          } else {
+            _showError(message);
+          }
         }
       } else {
-        setState(() => _errorMessage = '伺服器錯誤');
+        _showError('伺服器錯誤 (${response.statusCode})');
       }
     } catch (e) {
-      setState(() => _errorMessage = '網路錯誤: $e');
+      print('【異常】: $e');
+      _showError('網路錯誤: $e');
     } finally {
-      setState(() => _isLoading = false);
+      _setLoading(false);
+    }
+  }
+
+  // 輔助方法：立即顯示錯誤（強制刷新）
+  void _showError(String message) {
+    if (mounted) {
+      setState(() {
+        _errorMessage = message;
+        _successMessage = null;
+      });
+      print('【UI 更新】顯示錯誤: $message');
+    }
+  }
+
+  // 輔助方法：立即顯示成功
+  void _showSuccess(String message) {
+    if (mounted) {
+      setState(() {
+        _successMessage = message;
+        _errorMessage = null;
+      });
+      print('【UI 更新】顯示成功: $message');
+    }
+  }
+
+  // 輔助方法：清除所有訊息
+  void _clearMessages() {
+    if (mounted) {
+      setState(() {
+        _errorMessage = null;
+        _successMessage = null;
+      });
+    }
+  }
+
+  // 輔助方法：設置加載狀態
+  void _setLoading(bool isLoading) {
+    if (mounted) {
+      setState(() {
+        _isLoading = isLoading;
+      });
     }
   }
 
@@ -177,10 +239,10 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE8E3FF),
+      backgroundColor: const Color(0xFF0a1428),
       appBar: AppBar(
         title: const Text('手機驗證'),
-        backgroundColor: Colors.blue,
+        backgroundColor: const Color(0xFF1a2a4e),
         foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
@@ -191,13 +253,13 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.blue[50],
+                color: const Color(0xFF1a2a4e),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.blue[200]!),
+                border: Border.all(color: const Color(0xFF3b82f6)),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline, color: Colors.blue[700]),
+                  Icon(Icons.info_outline, color: Colors.white),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -207,14 +269,14 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
                           '驗證您的手機',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: Colors.blue[700],
+                            color: Colors.white,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '驗證手機號碼以加強帳號安全性，並接收重要訊息提醒',
+                          '驗證手機以加強帳號安全性，並接收重要通知',
                           style: TextStyle(
-                            color: Colors.blue[600],
+                            color: Colors.grey[400],
                             fontSize: 13,
                           ),
                         ),
@@ -244,7 +306,7 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    '手機號碼',
+                    '手機地址',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
@@ -253,7 +315,7 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
                     enabled: !_codeSent,
                     keyboardType: TextInputType.phone,
                     decoration: InputDecoration(
-                      hintText: '請輸入您的手機號碼',
+                      hintText: '請輸入您的手機地址',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -275,7 +337,7 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
                         ? null
                         : _sendVerificationCode,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
+                  backgroundColor: const Color(0xFF1a2a4e),
                   foregroundColor: Colors.white,
                 ),
                 child: Text(
@@ -295,15 +357,11 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: const Color(0xFF1a2a4e),
                   borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.3),
-                      spreadRadius: 1,
-                      blurRadius: 3,
-                    ),
-                  ],
+                  border: Border.all(
+                    color: const Color(0xFF6366f1).withOpacity(0.3),
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -313,6 +371,7 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -320,19 +379,49 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
                       controller: _codeController,
                       keyboardType: TextInputType.number,
                       maxLength: 6,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
                       decoration: InputDecoration(
                         hintText: '請輸入6位驗證碼',
+                        hintStyle: TextStyle(
+                          color: Colors.grey[400],
+                          fontSize: 14,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(
+                            color: Color(0xFF6366f1).withOpacity(0.3),
+                          ),
                         ),
-                        prefixIcon: Icon(Icons.vpn_key, color: Colors.blue),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(
+                            color: Color(0xFF6366f1).withOpacity(0.3),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF3b82f6),
+                            width: 2,
+                          ),
+                        ),
+                        filled: true,
+                        fillColor: const Color(0xFF0a1428),
+                        prefixIcon: Icon(
+                          Icons.vpn_key,
+                          color: Color(0xFF60a5fa),
+                        ),
                         counterText: '',
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       '驗證碼已發送到 ${_phoneController.text}',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                      style: TextStyle(color: Colors.grey[400], fontSize: 12),
                     ),
                   ],
                 ),
@@ -347,11 +436,11 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _verifyCode,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
+                    backgroundColor: const Color(0xFF10b981),
                     foregroundColor: Colors.white,
                   ),
                   child: Text(
-                    _isLoading ? '驗證中...' : '驗證',
+                    _isLoading ? '驗證中...' : '確認驗證',
                     style: const TextStyle(fontSize: 16),
                   ),
                 ),
@@ -359,39 +448,44 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
 
             const SizedBox(height: 16),
 
+            // ✅ 錯誤提示 - 立即顯示
             if (_errorMessage != null)
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.red[50],
+                  color: const Color(0xFF1a2a4e),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.red[300]!),
+                  border: Border.all(color: const Color(0xFFef4444)),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.error_outline, color: Colors.red),
+                    Icon(Icons.error_outline, color: Color(0xFFef4444)),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         _errorMessage!,
-                        style: TextStyle(color: Colors.red[700], fontSize: 13),
+                        style: TextStyle(
+                          color: Color(0xFFef4444),
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
 
+            // ✅ 成功提示 - 立即顯示
             if (_successMessage != null)
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.green[50],
+                  color: const Color(0xFF1a2a4e),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.green[300]!),
+                  border: Border.all(color: const Color(0xFF10b981)),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.check_circle_outline, color: Colors.green),
+                    Icon(Icons.check_circle_outline, color: Color(0xFF10b981)),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'universal_template.dart';
-
 
 class PhotoPage extends StatefulWidget {
   const PhotoPage({super.key});
@@ -69,10 +67,7 @@ class _PhotoPageState extends State<PhotoPage> {
         Uri.parse(apiUrl),
         headers: {"Content-Type": "application/json"},
         body: json.encode({
-          "img": {
-            "src": imageUrl,
-            "alt": _altController.text
-          }
+          "img": {"src": imageUrl, "alt": _altController.text},
         }),
       );
 
@@ -121,7 +116,7 @@ class _PhotoPageState extends State<PhotoPage> {
             children: [
               CircularProgressIndicator(),
               SizedBox(height: 16),
-              Text('載入中...', style: TextStyle(color: Colors.grey)),
+              Text('載入中...', style: TextStyle(color: Color(0xFF9ca3af))),
             ],
           ),
         ),
@@ -135,13 +130,13 @@ class _PhotoPageState extends State<PhotoPage> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.orange[50],
+            color: const Color(0xFF1a2a4e),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.orange[200]!),
+            border: Border.all(color: const Color(0xFF3b82f6).withOpacity(0.3)),
           ),
           child: Row(
             children: [
-              Icon(Icons.info_outline, color: Colors.orange[600]),
+              Icon(Icons.info_outline, color: const Color(0xFF60a5fa)),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
@@ -152,16 +147,13 @@ class _PhotoPageState extends State<PhotoPage> {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Colors.orange[800],
+                        color: const Color(0xFF60a5fa),
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       '支援 URL 上傳、圖片說明編輯、預覽和刪除功能',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.orange[700],
-                      ),
+                      style: TextStyle(fontSize: 14, color: Colors.orange[700]),
                     ),
                   ],
                 ),
@@ -186,24 +178,21 @@ class _PhotoPageState extends State<PhotoPage> {
           Icon(
             Icons.photo_library_outlined,
             size: 64,
-            color: Colors.grey[400],
+            color: const Color(0xFF9ca3af),
           ),
           const SizedBox(height: 16),
           Text(
             '目前沒有照片',
             style: TextStyle(
               fontSize: 18,
-              color: Colors.grey[600],
+              color: const Color(0xFF9ca3af),
               fontWeight: FontWeight.w500,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             '點擊右下角的新增按鈕來添加第一張照片',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[500],
-            ),
+            style: TextStyle(fontSize: 14, color: const Color(0xFF9ca3af)),
           ),
         ],
       ),
@@ -220,7 +209,7 @@ class _PhotoPageState extends State<PhotoPage> {
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: Colors.orange[800],
+            color: const Color(0xFF60a5fa),
           ),
         ),
         const SizedBox(height: 16),
@@ -248,9 +237,7 @@ class _PhotoPageState extends State<PhotoPage> {
   Widget _buildImageCard(dynamic img) {
     return Card(
       elevation: 3,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -259,7 +246,7 @@ class _PhotoPageState extends State<PhotoPage> {
           Expanded(
             flex: 3,
             child: Container(
-              color: Colors.grey[100],
+              color: const Color(0xFF1a2a4e),
               child: Image.network(
                 img['image_origin_url'] ?? '',
                 fit: BoxFit.cover,
@@ -267,31 +254,32 @@ class _PhotoPageState extends State<PhotoPage> {
                   if (loadingProgress == null) return child;
                   return Center(
                     child: CircularProgressIndicator(
-                      value: loadingProgress.expectedTotalBytes != null
-                          ? loadingProgress.cumulativeBytesLoaded /
-                          loadingProgress.expectedTotalBytes!
-                          : null,
-                      color: Colors.orange,
+                      value:
+                          loadingProgress.expectedTotalBytes != null
+                              ? loadingProgress.cumulativeBytesLoaded /
+                                  loadingProgress.expectedTotalBytes!
+                              : null,
+                      color: const Color(0xFF60a5fa),
                     ),
                   );
                 },
                 errorBuilder: (context, error, stackTrace) {
                   return Container(
-                    color: Colors.grey[200],
+                    color: const Color(0xFF3b82f6).withOpacity(0.2),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
                           Icons.broken_image,
                           size: 40,
-                          color: Colors.grey[400],
+                          color: const Color(0xFF9ca3af),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           '載入失敗',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey[600],
+                            color: const Color(0xFF9ca3af),
                           ),
                         ),
                       ],
@@ -327,7 +315,7 @@ class _PhotoPageState extends State<PhotoPage> {
                     'ID: ${img['image_id'] ?? 'N/A'}',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey[600],
+                      color: const Color(0xFF9ca3af),
                     ),
                   ),
 
@@ -342,7 +330,7 @@ class _PhotoPageState extends State<PhotoPage> {
                         icon: const Icon(Icons.info_outline, size: 16),
                         label: const Text('詳情'),
                         style: TextButton.styleFrom(
-                          foregroundColor: Colors.blue[600],
+                          foregroundColor: const Color(0xFF3b82f6),
                           padding: const EdgeInsets.symmetric(horizontal: 8),
                         ),
                       ),
@@ -368,190 +356,196 @@ class _PhotoPageState extends State<PhotoPage> {
   void _showAddPhotoDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.add_photo_alternate, color: Colors.orange),
-            const SizedBox(width: 8),
-            const Text('新增照片'),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _urlController,
-                decoration: const InputDecoration(
-                  labelText: "圖片 URL",
-                  hintText: "請輸入圖片網址",
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.link),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _altController,
-                decoration: const InputDecoration(
-                  labelText: "圖片說明",
-                  hintText: "為圖片添加描述",
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.description),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.orange[50],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline, color: Colors.orange[600]),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        '請確保 URL 指向有效的圖片檔案',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.orange[700],
-                        ),
-                      ),
+      builder:
+          (context) => AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.add_photo_alternate, color: Colors.orange),
+                const SizedBox(width: 8),
+                const Text('新增照片'),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: _urlController,
+                    decoration: const InputDecoration(
+                      labelText: "圖片 URL",
+                      hintText: "請輸入圖片網址",
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.link),
                     ),
-                  ],
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _altController,
+                    decoration: const InputDecoration(
+                      labelText: "圖片說明",
+                      hintText: "為圖片添加描述",
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.description),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1a2a4e),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          color: const Color(0xFF60a5fa),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '請確保 URL 指向有效的圖片檔案',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.orange[700],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('取消'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _uploadImageUrl(_urlController.text.trim());
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF60a5fa),
+                  foregroundColor: Colors.white,
                 ),
+                child: const Text('新增'),
               ),
             ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _uploadImageUrl(_urlController.text.trim());
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('新增'),
-          ),
-        ],
-      ),
     );
   }
 
   void _showImageDetails(dynamic img) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.info, color: Colors.blue[600]),
-            const SizedBox(width: 8),
-            const Text('圖片詳情'),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  img['image_origin_url'] ?? '',
-                  height: 200,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
+      builder:
+          (context) => AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.info, color: Colors.blue[600]),
+                const SizedBox(width: 8),
+                const Text('圖片詳情'),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      img['image_origin_url'] ?? '',
                       height: 200,
-                      color: Colors.grey[200],
-                      child: const Center(
-                        child: Icon(Icons.broken_image, size: 50),
-                      ),
-                    );
-                  },
-                ),
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          height: 200,
+                          color: const Color(0xFF3b82f6).withOpacity(0.2),
+                          child: const Center(
+                            child: Icon(Icons.broken_image, size: 50),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildDetailRow('圖片 ID', '${img['image_id'] ?? 'N/A'}'),
+                  _buildDetailRow('說明', img['image_text'] ?? '無說明'),
+                  _buildDetailRow('原始 URL', img['image_origin_url'] ?? 'N/A'),
+                ],
               ),
-              const SizedBox(height: 16),
-              _buildDetailRow('圖片 ID', '${img['image_id'] ?? 'N/A'}'),
-              _buildDetailRow('說明', img['image_text'] ?? '無說明'),
-              _buildDetailRow('原始 URL', img['image_origin_url'] ?? 'N/A'),
+            ),
+            actions: [
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('關閉'),
+              ),
             ],
           ),
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('關閉'),
-          ),
-        ],
-      ),
     );
   }
 
   void _showDeleteConfirmDialog(dynamic img) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.warning, color: Colors.red[600]),
-            const SizedBox(width: 8),
-            const Text('確認刪除'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                img['image_origin_url'] ?? '',
-                height: 100,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
+      builder:
+          (context) => AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.warning, color: Colors.red[600]),
+                const SizedBox(width: 8),
+                const Text('確認刪除'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    img['image_origin_url'] ?? '',
                     height: 100,
-                    color: Colors.grey[200],
-                    child: const Icon(Icons.broken_image),
-                  );
-                },
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        height: 100,
+                        color: const Color(0xFF3b82f6).withOpacity(0.2),
+                        child: const Icon(Icons.broken_image),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  '確定要刪除這張圖片嗎？\n\n"${img['image_text'] ?? '無說明'}"\n\n此操作無法復原。',
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('取消'),
               ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '確定要刪除這張圖片嗎？\n\n"${img['image_text'] ?? '無說明'}"\n\n此操作無法復原。',
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _deleteImage(img['image_id']);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFef4444),
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('刪除'),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _deleteImage(img['image_id']);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('刪除'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -567,7 +561,7 @@ class _PhotoPageState extends State<PhotoPage> {
               '$label:',
               style: TextStyle(
                 fontWeight: FontWeight.w500,
-                color: Colors.grey[700],
+                color: const Color(0xFF9ca3af),
               ),
             ),
           ),
@@ -596,10 +590,11 @@ class _PhotoPageState extends State<PhotoPage> {
     // 基本的本地搜尋過濾 (可以擴展為 API 搜尋)
     setState(() {
       // 這裡可以實作 API 搜尋，目前使用本地過濾
-      _images = _images.where((img) {
-        final text = (img['image_text'] ?? '').toString().toLowerCase();
-        return text.contains(query.toLowerCase());
-      }).toList();
+      _images =
+          _images.where((img) {
+            final text = (img['image_text'] ?? '').toString().toLowerCase();
+            return text.contains(query.toLowerCase());
+          }).toList();
     });
   }
 
@@ -614,7 +609,7 @@ class _PhotoPageState extends State<PhotoPage> {
             Text(message),
           ],
         ),
-        backgroundColor: Colors.green[600],
+        backgroundColor: const Color(0xFF10b981),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -630,7 +625,7 @@ class _PhotoPageState extends State<PhotoPage> {
             Text(message),
           ],
         ),
-        backgroundColor: Colors.red[600],
+        backgroundColor: const Color(0xFFef4444),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -639,24 +634,28 @@ class _PhotoPageState extends State<PhotoPage> {
   // 主 Widget
   @override
   Widget build(BuildContext context) {
-    return UniversalManagePage(
-      // 頁面基本資訊
-      pageTitle: '圖片管理',
-      pageDescription: '管理圖片上傳和媒體檔案',
-      pageIcon: Icons.image,
-      themeColor: Colors.orange, // 保持原有的橘色主題
-
-      // 搜尋功能配置
-      searchHint: '搜尋圖片說明...',
-      onSearch: (query) {
-        _performSearch(query.trim());
-      },
-
-      // 新增按鈕配置
-      onAddPressed: _showAddPhotoDialog,
-
-      // 主要內容區域
-      contentWidget: _buildPhotoContent(),
+    return Scaffold(
+      backgroundColor: const Color(0xFF0a1428),
+      appBar: AppBar(
+        title: const Text('圖片管理'),
+        backgroundColor: const Color(0xFF0a1428),
+        foregroundColor: Colors.white,
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [_buildPhotoContent(), const SizedBox(height: 80)],
+          ),
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showAddPhotoDialog,
+        backgroundColor: const Color(0xFF60a5fa),
+        child: const Icon(Icons.add, color: Colors.white),
+        tooltip: '新增圖片',
+      ),
     );
+    ;
   }
 }

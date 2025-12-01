@@ -51,7 +51,6 @@ class _SearchPageState extends State<SearchPage> {
     {'label': '多方觀點', 'type': 'multiplePerspectives'},
   ];
 
-
   @override
   void initState() {
     super.initState();
@@ -78,7 +77,6 @@ class _SearchPageState extends State<SearchPage> {
     }
   }
 
-
   // MARK: - 歷史記錄與熱門搜尋 API 載入
 
   Future<void> _loadHistoryAndPopularData() async {
@@ -87,9 +85,7 @@ class _SearchPageState extends State<SearchPage> {
     });
 
     try {
-      final futures = [
-        _loadPopularSearches(),
-      ];
+      final futures = [_loadPopularSearches()];
 
       // 只有登入狀態才載入歷史紀錄
       if (_currentUserId != null) {
@@ -143,7 +139,12 @@ class _SearchPageState extends State<SearchPage> {
         final data = json.decode(utf8.decode(response.bodyBytes));
         if (data['success'] == true && data['data'] is List) {
           setState(() {
-            _popularSearches = List<String>.from(data['data'].map((item) => item['keyword'] ?? item['keyword_text'] ?? item.toString()));
+            _popularSearches = List<String>.from(
+              data['data'].map(
+                (item) =>
+                    item['keyword'] ?? item['keyword_text'] ?? item.toString(),
+              ),
+            );
           });
         }
       } else {
@@ -160,7 +161,6 @@ class _SearchPageState extends State<SearchPage> {
     });
     // TODO: 應呼叫刪除歷史記錄 API
   }
-
 
   // MARK: - 搜索及點擊記錄邏輯
 
@@ -197,10 +197,8 @@ class _SearchPageState extends State<SearchPage> {
     }
   }
 
-
   // 階段 1: 執行 general_search 並獲取 record_id
   Future<void> _performSearchCall(String keyword) async {
-
     setState(() {
       _isLoading = true;
     });
@@ -213,19 +211,21 @@ class _SearchPageState extends State<SearchPage> {
     });
 
     try {
-      final response = await http.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: bodyData,
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: bodyData,
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = json.decode(utf8.decode(response.bodyBytes));
 
         if (data['success'] == true && data['data'] != null) {
-
           final Map<String, dynamic> resultData = data['data'];
-          final int? recordId = resultData['record_id'] ?? resultData['insertId'];
+          final int? recordId =
+              resultData['record_id'] ?? resultData['insertId'];
 
           setState(() {
             _currentRecordId = recordId;
@@ -237,46 +237,78 @@ class _SearchPageState extends State<SearchPage> {
 
           // newsList
           if (_currentFilter == 'all' || _currentFilter == 'news') {
-            final newsList = List<Map<String, dynamic>>.from(resultData['newsList'] ?? []);
-            results.addAll(newsList.map((item) => {
-              'type': 'news',
-              'id': item['newsId'] ?? item['news_id'] ?? item['id'],
-              'title': item['newsTitle'] ?? item['title'] ?? '無標題',
-              'data': item,
-            }));
+            final newsList = List<Map<String, dynamic>>.from(
+              resultData['newsList'] ?? [],
+            );
+            results.addAll(
+              newsList.map(
+                (item) => {
+                  'type': 'news',
+                  'id': item['newsId'] ?? item['news_id'] ?? item['id'],
+                  'title': item['newsTitle'] ?? item['title'] ?? '無標題',
+                  'data': item,
+                },
+              ),
+            );
           }
 
           // channelList
           if (_currentFilter == 'all' || _currentFilter == 'channel') {
-            final channelList = List<Map<String, dynamic>>.from(resultData['channelList'] ?? []);
-            results.addAll(channelList.map((item) => {
-              'type': 'channel',
-              'id': item['channel_id'] ?? item['id'],
-              'title': item['channel_name'] ?? item['channelName'] ?? item['title'] ?? '無標題',
-              'data': item
-            }));
+            final channelList = List<Map<String, dynamic>>.from(
+              resultData['channelList'] ?? [],
+            );
+            results.addAll(
+              channelList.map(
+                (item) => {
+                  'type': 'channel',
+                  'id': item['channel_id'] ?? item['id'],
+                  'title':
+                      item['channel_name'] ??
+                      item['channelName'] ??
+                      item['title'] ??
+                      '無標題',
+                  'data': item,
+                },
+              ),
+            );
           }
 
           // eventsortingList
           if (_currentFilter == 'all' || _currentFilter == 'eventSorting') {
-            final eventList = List<Map<String, dynamic>>.from(resultData['eventsortingList'] ?? []);
-            results.addAll(eventList.map((item) => {
-              'type': 'eventSorting',
-              'id': item['eventsorting_id'] ?? item['id'],
-              'title': item['eventsorting_title'] ?? item['title'] ?? '無標題',
-              'data': item
-            }));
+            final eventList = List<Map<String, dynamic>>.from(
+              resultData['eventsortingList'] ?? [],
+            );
+            results.addAll(
+              eventList.map(
+                (item) => {
+                  'type': 'eventSorting',
+                  'id': item['eventsorting_id'] ?? item['id'],
+                  'title': item['eventsorting_title'] ?? item['title'] ?? '無標題',
+                  'data': item,
+                },
+              ),
+            );
           }
 
           // multipleperspectivesList
-          if (_currentFilter == 'all' || _currentFilter == 'multiplePerspectives') {
-            final multipleList = List<Map<String, dynamic>>.from(resultData['multipleperspectivesList'] ?? []);
-            results.addAll(multipleList.map((item) => {
-              'type': 'multiplePerspectives',
-              'id': item['multipleperspectives_id'] ?? item['id'],
-              'title': item['multipleperspectives_title'] ?? item['title'] ?? '無標題',
-              'data': item
-            }));
+          if (_currentFilter == 'all' ||
+              _currentFilter == 'multiplePerspectives') {
+            final multipleList = List<Map<String, dynamic>>.from(
+              resultData['multipleperspectivesList'] ?? [],
+            );
+            results.addAll(
+              multipleList.map(
+                (item) => {
+                  'type': 'multiplePerspectives',
+                  'id': item['multipleperspectives_id'] ?? item['id'],
+                  'title':
+                      item['multipleperspectives_title'] ??
+                      item['title'] ??
+                      '無標題',
+                  'data': item,
+                },
+              ),
+            );
           }
 
           // -----------------------------------------------------------------
@@ -284,25 +316,31 @@ class _SearchPageState extends State<SearchPage> {
           setState(() {
             _searchResults = results;
           });
-
         } else {
-          setState(() { _searchResults = []; });
+          setState(() {
+            _searchResults = [];
+          });
         }
       } else {
-        setState(() { _searchResults = []; });
+        setState(() {
+          _searchResults = [];
+        });
       }
     } on TimeoutException {
-      setState(() { _searchResults = []; });
+      setState(() {
+        _searchResults = [];
+      });
     } catch (e) {
       print('!!! General Search Error: $e');
-      setState(() { _searchResults = []; });
+      setState(() {
+        _searchResults = [];
+      });
     } finally {
       setState(() {
         _isLoading = false;
       });
     }
   }
-
 
   Future<void> _recordClickAction(String dataType, int dataId) async {
     if (_currentRecordId == null || _currentUserId == null) {
@@ -316,11 +354,13 @@ class _SearchPageState extends State<SearchPage> {
       'dataId': dataId,
     });
     try {
-      await http.post(
-        clickUrl,
-        headers: {'Content-Type': 'application/json'},
-        body: bodyData,
-      ).timeout(const Duration(seconds: 5));
+      await http
+          .post(
+            clickUrl,
+            headers: {'Content-Type': 'application/json'},
+            body: bodyData,
+          )
+          .timeout(const Duration(seconds: 5));
     } catch (e) {
       print('Error recording click: $e');
     }
@@ -328,14 +368,15 @@ class _SearchPageState extends State<SearchPage> {
 
   void _navigateToDetail(Map<String, dynamic> item) {
     final type = item['type'] as String;
-    final id = item['id'] is int ? item['id'] : int.tryParse(item['id'].toString());
+    final id =
+        item['id'] is int ? item['id'] : int.tryParse(item['id'].toString());
     final title = item['title'];
     final data = item['data'] as Map<String, dynamic>;
 
     if (id == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('錯誤：找不到資料ID無法導航')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('錯誤：找不到資料ID無法導航')));
       return;
     }
 
@@ -361,9 +402,9 @@ class _SearchPageState extends State<SearchPage> {
         destinationPage = MultiplePerspectivesDetailPage(id: id);
         break;
       default:
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('未知的內容類型: $type')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('未知的內容類型: $type')));
         return;
     }
 
@@ -377,12 +418,13 @@ class _SearchPageState extends State<SearchPage> {
 
   @override
   Widget build(BuildContext context) {
-    final bool showHistoryAndHot = _searchController.text.isEmpty && _searchResults.isEmpty;
+    final bool showHistoryAndHot =
+        _searchController.text.isEmpty && _searchResults.isEmpty;
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F0FF),
+      backgroundColor: const Color(0xFF0a1428),
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        backgroundColor: const Color(0xFFF0F0FF),
+        backgroundColor: const Color(0xFF0a1428),
         elevation: 0,
         toolbarHeight: 80,
         title: _buildSearchBar(),
@@ -397,9 +439,10 @@ class _SearchPageState extends State<SearchPage> {
               ? const LinearProgressIndicator()
               : const SizedBox.shrink(),
           Expanded(
-            child: showHistoryAndHot
-                ? _buildHistoryAndHotSearch(context)
-                : _buildResultsList(),
+            child:
+                showHistoryAndHot
+                    ? _buildHistoryAndHotSearch(context)
+                    : _buildResultsList(),
           ),
         ],
       ),
@@ -413,27 +456,37 @@ class _SearchPageState extends State<SearchPage> {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
-          children: _filters.map((filter) {
-            final type = filter['type']!;
-            final isSelected = type == _currentFilter;
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4.0),
-              child: ActionChip(
-                label: Text(filter['label']!),
-                labelStyle: TextStyle(
-                  color: isSelected ? Colors.white : Colors.blue.shade800,
-                  fontWeight: FontWeight.w600,
-                ),
-                backgroundColor: isSelected ? Colors.blue.shade800 : Colors.white,
-                shape: StadiumBorder(
-                  side: BorderSide(
-                    color: isSelected ? Colors.blue.shade800! : Colors.grey.shade300,
+          children:
+              _filters.map((filter) {
+                final type = filter['type']!;
+                final isSelected = type == _currentFilter;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                  child: ActionChip(
+                    label: Text(filter['label']!),
+                    labelStyle: TextStyle(
+                      color:
+                          isSelected
+                              ? const Color(0xFF0a1428)
+                              : const Color(0xFF60a5fa),
+                      fontWeight: FontWeight.w600,
+                    ),
+                    backgroundColor:
+                        isSelected
+                            ? const Color(0xFF1e40af)
+                            : const Color(0xFF0a1428),
+                    shape: StadiumBorder(
+                      side: BorderSide(
+                        color:
+                            isSelected
+                                ? const Color(0xFF1e40af)!
+                                : Colors.grey.shade300,
+                      ),
+                    ),
+                    onPressed: () => _updateFilterAndSearch(type),
                   ),
-                ),
-                onPressed: () => _updateFilterAndSearch(type),
-              ),
-            );
-          }).toList(),
+                );
+              }).toList(),
         ),
       ),
     );
@@ -443,14 +496,14 @@ class _SearchPageState extends State<SearchPage> {
     return Row(
       children: [
         IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black, size: 24),
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 24),
           onPressed: () => Navigator.of(context).pop(),
         ),
         Expanded(
           child: Container(
             height: 40,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: const Color(0xFF0a0e27),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: Colors.grey.shade300),
             ),
@@ -459,17 +512,21 @@ class _SearchPageState extends State<SearchPage> {
               decoration: InputDecoration(
                 hintText: '搜尋',
                 border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
                 prefixIcon: Icon(Icons.search, color: Colors.grey.shade600),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                  icon: const Icon(Icons.clear, size: 20),
-                  onPressed: () {
-                    _searchController.clear();
-                    _performSearch('');
-                  },
-                )
-                    : null,
+                suffixIcon:
+                    _searchController.text.isNotEmpty
+                        ? IconButton(
+                          icon: const Icon(Icons.clear, size: 20),
+                          onPressed: () {
+                            _searchController.clear();
+                            _performSearch('');
+                          },
+                        )
+                        : null,
               ),
               onChanged: (value) {
                 // 確保 UI 更新
@@ -489,9 +546,12 @@ class _SearchPageState extends State<SearchPage> {
   Widget _buildHistoryAndHotSearch(BuildContext context) {
     // 只有 _currentUserId 不為 null (登入) 時才顯示歷史紀錄
     final bool showHistory = _currentUserId != null;
-    final historyKeywords = showHistory
-        ? _currentHistory.map((item) => item['keyword_text'] as String).toList()
-        : <String>[];
+    final historyKeywords =
+        showHistory
+            ? _currentHistory
+                .map((item) => item['keyword_text'] as String)
+                .toList()
+            : <String>[];
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
@@ -505,7 +565,10 @@ class _SearchPageState extends State<SearchPage> {
             Wrap(
               spacing: 12.0,
               runSpacing: 12.0,
-              children: historyKeywords.map((keyword) => _buildSearchTag(keyword)).toList(),
+              children:
+                  historyKeywords
+                      .map((keyword) => _buildSearchTag(keyword))
+                      .toList(),
             ),
             const SizedBox(height: 32),
           ],
@@ -513,13 +576,20 @@ class _SearchPageState extends State<SearchPage> {
           // 熱門搜尋區塊 (始終顯示)
           const Text(
             '熱門搜尋',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black),
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
           ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 12.0,
             runSpacing: 12.0,
-            children: _popularSearches.map((keyword) => _buildSearchTag(keyword)).toList(),
+            children:
+                _popularSearches
+                    .map((keyword) => _buildSearchTag(keyword))
+                    .toList(),
           ),
         ],
       ),
@@ -532,7 +602,11 @@ class _SearchPageState extends State<SearchPage> {
       children: [
         const Text(
           '歷史記錄',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black),
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
         ),
         TextButton(
           onPressed: isEmpty ? null : _clearAllSearchHistory,
@@ -561,27 +635,25 @@ class _SearchPageState extends State<SearchPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: const Color(0xFF0a0e27),
           borderRadius: BorderRadius.circular(10),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              spreadRadius: 1,
-              blurRadius: 3,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          border: Border.all(color: const Color(0xFF6366f1).withOpacity(0.2)),
         ),
         child: Text(
           keyword,
-          style: const TextStyle(fontSize: 16, color: Colors.black87),
+          style: const TextStyle(
+            fontSize: 16,
+            color: Color.fromARGB(222, 255, 255, 255),
+          ),
         ),
       ),
     );
   }
 
   Widget _buildResultsList() {
-    if (!_isLoading && _searchResults.isEmpty && _searchController.text.isNotEmpty) {
+    if (!_isLoading &&
+        _searchResults.isEmpty &&
+        _searchController.text.isNotEmpty) {
       return const Center(child: Text('找不到相關內容'));
     }
 
@@ -590,10 +662,16 @@ class _SearchPageState extends State<SearchPage> {
       itemBuilder: (context, index) {
         final item = _searchResults[index];
         final type = item['type'];
-        final typeText = type == 'channel' ? '頻道'
-            : type == 'eventSorting' ? '事件整理'
-            : type == 'multiplePerspectives' ? '多重觀點'
-            : type == 'news' ? '新聞' : '其他';
+        final typeText =
+            type == 'channel'
+                ? '頻道'
+                : type == 'eventSorting'
+                ? '事件整理'
+                : type == 'multiplePerspectives'
+                ? '多重觀點'
+                : type == 'news'
+                ? '新聞'
+                : '其他';
 
         return ListTile(
           title: Text(item['title']),

@@ -227,7 +227,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('郵箱驗證成功'),
-              backgroundColor: Colors.green,
+              backgroundColor: const Color(0xFF34d399),
             ),
           );
         }
@@ -328,7 +328,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('手機驗證成功'),
-              backgroundColor: Colors.green,
+              backgroundColor: const Color(0xFF34d399),
             ),
           );
         }
@@ -356,6 +356,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
           (dialogContext) => StatefulBuilder(
             builder:
                 (context, dialogSetState) => AlertDialog(
+                  backgroundColor: const Color(0xFF0a0e27),
                   title: const Text('郵箱驗證'),
                   content: SingleChildScrollView(
                     child: Column(
@@ -367,13 +368,13 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                             padding: const EdgeInsets.all(8),
                             margin: const EdgeInsets.only(bottom: 8),
                             decoration: BoxDecoration(
-                              color: Colors.red[100],
+                              color: const Color(0xFFef4444),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
                               _emailErrorMessage!,
                               style: TextStyle(
-                                color: Colors.red[700],
+                                color: const Color(0xFFef4444),
                                 fontSize: 12,
                               ),
                             ),
@@ -383,13 +384,13 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                             padding: const EdgeInsets.all(8),
                             margin: const EdgeInsets.only(bottom: 8),
                             decoration: BoxDecoration(
-                              color: Colors.green[100],
+                              color: const Color(0xFF34d399),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
                               _emailSuccessMessage!,
                               style: TextStyle(
-                                color: Colors.green[700],
+                                color: const Color(0xFF34d399),
                                 fontSize: 12,
                               ),
                             ),
@@ -420,7 +421,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                                 : '',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey[600],
+                              color: const Color(0xFF94a3b8),
                             ),
                           ),
                         ),
@@ -454,7 +455,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                                   await _verifyEmail();
                                 },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
+                          backgroundColor: const Color(0xFF34d399),
                         ),
                         child: Text(_emailVerifying ? '驗證中...' : '確認驗證'),
                       ),
@@ -477,6 +478,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
           (dialogContext) => StatefulBuilder(
             builder:
                 (context, dialogSetState) => AlertDialog(
+                  backgroundColor: const Color(0xFF0a0e27),
                   title: const Text('手機驗證'),
                   content: SingleChildScrollView(
                     child: Column(
@@ -488,13 +490,13 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                             padding: const EdgeInsets.all(8),
                             margin: const EdgeInsets.only(bottom: 8),
                             decoration: BoxDecoration(
-                              color: Colors.red[100],
+                              color: const Color(0xFFef4444),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
                               _phoneErrorMessage!,
                               style: TextStyle(
-                                color: Colors.red[700],
+                                color: const Color(0xFFef4444),
                                 fontSize: 12,
                               ),
                             ),
@@ -504,13 +506,13 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                             padding: const EdgeInsets.all(8),
                             margin: const EdgeInsets.only(bottom: 8),
                             decoration: BoxDecoration(
-                              color: Colors.green[100],
+                              color: const Color(0xFF34d399),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
                               _phoneSuccessMessage!,
                               style: TextStyle(
-                                color: Colors.green[700],
+                                color: const Color(0xFF34d399),
                                 fontSize: 12,
                               ),
                             ),
@@ -541,7 +543,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                                 : '',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey[600],
+                              color: const Color(0xFF94a3b8),
                             ),
                           ),
                         ),
@@ -575,7 +577,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                                   await _verifyPhone();
                                 },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
+                          backgroundColor: const Color(0xFF34d399),
                         ),
                         child: Text(_phoneVerifying ? '驗證中...' : '確認驗證'),
                       ),
@@ -613,7 +615,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('個人資料更新成功'),
-              backgroundColor: Colors.green,
+              backgroundColor: const Color(0xFF34d399),
             ),
           );
           Navigator.pop(context, true);
@@ -623,7 +625,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(result['message'] ?? '更新失敗'),
-              backgroundColor: Colors.red,
+              backgroundColor: const Color(0xFFef4444),
             ),
           );
         }
@@ -632,7 +634,10 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
       print('❌ 更新資料異常: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('更新時發生錯誤: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('更新時發生錯誤: $e'),
+            backgroundColor: const Color(0xFFef4444),
+          ),
         );
       }
     } finally {
@@ -645,22 +650,47 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE8E3FF),
+      backgroundColor: const Color(0xFF0a1428),
       appBar: AppBar(
         title: const Text('編輯個人資料'),
-        backgroundColor: Colors.blue,
+        backgroundColor: const Color(0xFF1a2a4e),
         foregroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        titleTextStyle: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          color: Colors.white,
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(
+            color: const Color(0xFF6366f1).withOpacity(0.1),
+            height: 1,
+          ),
+        ),
         actions: [
           if (!_isLoading && !_isSaving)
-            TextButton(
-              onPressed: _saveProfile,
-              child: const Text('儲存', style: TextStyle(color: Colors.white)),
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: TextButton(
+                onPressed: _saveProfile,
+                child: const Text(
+                  '儲存',
+                  style: TextStyle(
+                    color: Color(0xFF60a5fa),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             ),
         ],
       ),
       body:
           _isLoading
-              ? const Center(child: CircularProgressIndicator())
+              ? const Center(
+                child: CircularProgressIndicator(color: Color(0xFF6366f1)),
+              )
               : SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
                 child: Form(
@@ -670,17 +700,14 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                       // 用戶頭像
                       Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.all(20),
+                        padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.withOpacity(0.3),
-                              spreadRadius: 1,
-                              blurRadius: 3,
-                            ),
-                          ],
+                          color: const Color(0xFF1a2a4e),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: const Color(0xFF6366f1).withOpacity(0.3),
+                            width: 1,
+                          ),
                         ),
                         child: Column(
                           children: [
@@ -689,7 +716,12 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                               height: 80,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: Colors.blue,
+                                gradient: LinearGradient(
+                                  colors: [
+                                    const Color(0xFF6366f1),
+                                    const Color(0xFF60a5fa),
+                                  ],
+                                ),
                               ),
                               child: Center(
                                 child: Text(
@@ -697,25 +729,34 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                                       ? _userAccount[0].toUpperCase()
                                       : 'U',
                                   style: const TextStyle(
-                                    fontSize: 32,
+                                    fontSize: 36,
                                     fontWeight: FontWeight.bold,
                                     color: Colors.white,
                                   ),
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 16),
+                            Text(
+                              _userAccount,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
                             Text(
                               'ID: $_userId',
                               style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[600],
+                                fontSize: 13,
+                                color: const Color(0xFF94a3b8),
                               ),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 24),
 
                       // 帳號
                       _buildTextField('帳號', _accountController, false),
@@ -734,7 +775,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                         title: '電子郵件',
                         controller: _emailController,
                         onVerifyPressed: _showEmailVerificationDialog,
-                        isVerified: _emailVerified, // ✅ 改為使用驗證完成標記
+                        isVerified: _emailVerified,
                       ),
                       const SizedBox(height: 16),
 
@@ -743,7 +784,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                         title: '手機號碼',
                         controller: _phoneController,
                         onVerifyPressed: _showPhoneVerificationDialog,
-                        isVerified: _phoneVerified, // ✅ 改為使用驗證完成標記
+                        isVerified: _phoneVerified,
                       ),
                       const SizedBox(height: 32),
 
@@ -754,8 +795,8 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                         child: ElevatedButton(
                           onPressed: _isSaving ? null : _saveProfile,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                            foregroundColor: Colors.white,
+                            backgroundColor: const Color(0xFF60a5fa),
+                            foregroundColor: const Color(0xFF0a1428),
                           ),
                           child:
                               _isSaving
@@ -769,7 +810,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                                           strokeWidth: 2,
                                           valueColor:
                                               AlwaysStoppedAnimation<Color>(
-                                                Colors.white,
+                                                const Color(0xFF0a1428),
                                               ),
                                         ),
                                       ),
@@ -799,31 +840,62 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF0a0e27),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
-            spreadRadius: 1,
-            blurRadius: 3,
-          ),
-        ],
+        border: Border.all(color: const Color(0xFF6366f1).withOpacity(0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+              letterSpacing: 0.3,
+            ),
           ),
           const SizedBox(height: 8),
           TextFormField(
             controller: controller,
             enabled: enabled,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w500,
+            ),
             decoration: InputDecoration(
-              border: const OutlineInputBorder(),
-              filled: !enabled,
-              fillColor: !enabled ? Colors.grey[100] : Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(
+                  color: const Color(0xFF6366f1).withOpacity(0.3),
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(
+                  color: const Color(0xFF6366f1).withOpacity(0.3),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(
+                  color: Color(0xFF60a5fa),
+                  width: 2,
+                ),
+              ),
+              disabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(
+                  color: const Color(0xFF6366f1).withOpacity(0.2),
+                ),
+              ),
+              filled: true,
+              fillColor: const Color(0xFF0a1428),
+              hintStyle: TextStyle(
+                color: Colors.grey[400],
+                fontWeight: FontWeight.w500,
+              ),
             ),
             validator: (value) {
               if (enabled && (value == null || value.trim().isEmpty)) {
@@ -842,32 +914,65 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF1a2a4e),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
-            spreadRadius: 1,
-            blurRadius: 3,
-          ),
-        ],
+        border: Border.all(
+          color: const Color(0xFF6366f1).withOpacity(0.2),
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
             '生日',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+              letterSpacing: 0.3,
+            ),
           ),
           const SizedBox(height: 8),
           TextFormField(
             controller: _birthdayController,
             readOnly: true,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w500,
+            ),
             decoration: InputDecoration(
-              border: const OutlineInputBorder(),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(
+                  color: const Color(0xFF6366f1).withOpacity(0.3),
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(
+                  color: const Color(0xFF6366f1).withOpacity(0.3),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(
+                  color: Color(0xFF60a5fa),
+                  width: 2,
+                ),
+              ),
+              filled: true,
+              fillColor: const Color(0xFF0a1428),
               hintText: '請選擇生日',
+              hintStyle: TextStyle(
+                color: Colors.grey[400],
+                fontWeight: FontWeight.w500,
+              ),
               suffixIcon: IconButton(
-                icon: const Icon(Icons.calendar_today),
+                icon: const Icon(
+                  Icons.calendar_today,
+                  color: Color(0xFF60a5fa),
+                ),
                 onPressed: _selectBirthday,
               ),
             ),
@@ -925,15 +1030,12 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
           width: double.infinity,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: const Color(0xFF1a2a4e),
             borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.3),
-                spreadRadius: 1,
-                blurRadius: 3,
-              ),
-            ],
+            border: Border.all(
+              color: const Color(0xFF6366f1).withOpacity(0.2),
+              width: 1,
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -944,7 +1046,9 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                     title,
                     style: const TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      letterSpacing: 0.3,
                     ),
                   ),
                   if (isVerified)
@@ -956,16 +1060,18 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.green[100],
+                          color: const Color(0xFF34d399).withOpacity(0.15),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.green[300]!),
+                          border: Border.all(
+                            color: const Color(0xFF34d399).withOpacity(0.3),
+                          ),
                         ),
-                        child: Text(
+                        child: const Text(
                           '已認證',
                           style: TextStyle(
                             fontSize: 11,
-                            color: Colors.green[700],
-                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF34d399),
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
@@ -979,16 +1085,18 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.orange[100],
+                          color: const Color(0xFFf59e0b).withOpacity(0.15),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.orange[300]!),
+                          border: Border.all(
+                            color: const Color(0xFFf59e0b).withOpacity(0.3),
+                          ),
                         ),
-                        child: Text(
+                        child: const Text(
                           '未認證',
                           style: TextStyle(
                             fontSize: 11,
-                            color: Colors.orange[700],
-                            fontWeight: FontWeight.bold,
+                            color: Color(0xFFf59e0b),
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
@@ -1002,12 +1110,40 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                     child: TextFormField(
                       controller: controller,
                       enabled: true,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w500,
+                      ),
                       onChanged: (value) {
                         setState(() {}); // ✅ 實時檢查格式
                       },
                       decoration: InputDecoration(
-                        border: const OutlineInputBorder(),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(
+                            color: const Color(0xFF6366f1).withOpacity(0.3),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(
+                            color: const Color(0xFF6366f1).withOpacity(0.3),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF60a5fa),
+                            width: 2,
+                          ),
+                        ),
+                        filled: true,
+                        fillColor: const Color(0xFF0a1428),
                         hintText: '請輸入',
+                        hintStyle: TextStyle(
+                          color: Colors.grey[400],
+                          fontWeight: FontWeight.w500,
+                        ),
                         // ✅ 只為郵箱添加格式錯誤提示
                         errorText:
                             isEmailField &&
@@ -1019,6 +1155,10 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                                         !phoneValid
                                     ? _getPhoneErrorMessage(controller.text)
                                     : null),
+                        errorStyle: const TextStyle(
+                          color: Color(0xFFef4444),
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                   ),
@@ -1032,13 +1172,17 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor:
                           controller.text.isEmpty || !hasValidFormat
-                              ? Colors.grey
-                              : Colors.blue,
+                              ? Colors.grey[600]
+                              : const Color(0xFF60a5fa),
                       foregroundColor: Colors.white,
+                      elevation: 0,
                     ),
-                    child: Text(
-                      isVerified ? '已認證' : '認證',
-                      style: const TextStyle(fontSize: 12),
+                    child: const Text(
+                      '認證',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ],

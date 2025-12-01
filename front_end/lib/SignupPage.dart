@@ -251,7 +251,7 @@ class _SignupPageState extends State<SignupPage> {
                 '註冊成功！請使用新帳號登入',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
-              backgroundColor: Colors.green,
+              backgroundColor: const Color(0xFF34d399),
               duration: Duration(seconds: 3),
             ),
           );
@@ -287,7 +287,7 @@ class _SignupPageState extends State<SignupPage> {
         padding: EdgeInsets.only(top: 8),
         child: Text(
           '此為系統保留帳號格式',
-          style: TextStyle(color: Colors.orange, fontSize: 12),
+          style: TextStyle(color: const Color(0xFFf59e0b), fontSize: 12),
         ),
       );
     }
@@ -303,7 +303,7 @@ class _SignupPageState extends State<SignupPage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.blue),
+          icon: Icon(Icons.arrow_back, color: const Color(0xFF60a5fa)),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -312,61 +312,92 @@ class _SignupPageState extends State<SignupPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.blue.withOpacity(0.05), Colors.white],
+            colors: [
+              const Color(0xFF0a1428),
+              const Color(0xFF0a1428).withOpacity(0.95),
+              const Color(0xFF0f1e3d),
+            ],
           ),
         ),
         child: Center(
           child: SingleChildScrollView(
-            padding: EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 // Logo or Header
                 Container(
-                  width: 80,
-                  height: 80,
+                  width: 90,
+                  height: 90,
                   decoration: BoxDecoration(
-                    color: Colors.blue,
-                    borderRadius: BorderRadius.circular(20),
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFF6366f1),
+                        const Color(0xFF60a5fa),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF6366f1).withOpacity(0.3),
+                        blurRadius: 20,
+                        spreadRadius: 0,
+                      ),
+                    ],
                   ),
-                  child: Icon(Icons.person_add, color: Colors.white, size: 40),
+                  child: const Icon(
+                    Icons.person_add,
+                    color: Colors.white,
+                    size: 48,
+                  ),
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 32),
 
                 // 標題
                 Text(
-                  '註冊新帳號',
-                  style: TextStyle(
-                    fontSize: 28,
+                  '建立帳號',
+                  style: const TextStyle(
+                    fontSize: 32,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    color: Colors.white,
+                    letterSpacing: 0.8,
                   ),
                 ),
 
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
 
                 // 副標題
                 Text(
-                  '只需帳號和密碼即可開始',
-                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  '加入我們，享受更多新聞資訊',
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Colors.grey[400],
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.3,
+                  ),
                 ),
 
-                const SizedBox(height: 40),
+                const SizedBox(height: 48),
 
                 // 表單
                 Form(
                   key: _formKey,
                   child: Container(
-                    padding: EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(28),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
+                      color: const Color(0xFF0a0e27),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: const Color(0xFF6366f1).withOpacity(0.2),
+                        width: 1,
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
+                          color: const Color(0xFF6366f1).withOpacity(0.1),
+                          blurRadius: 20,
                           spreadRadius: 0,
+                          offset: const Offset(0, 10),
                         ),
                       ],
                     ),
@@ -395,10 +426,10 @@ class _SignupPageState extends State<SignupPage> {
                               Container(
                                 padding: EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: Colors.orange[50],
+                                  color: const Color(0xFFf59e0b),
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
-                                    color: Colors.orange[200]!,
+                                    color: const Color(0xFFf59e0b)!,
                                   ),
                                 ),
                                 child: Row(
@@ -406,7 +437,7 @@ class _SignupPageState extends State<SignupPage> {
                                     Icon(
                                       Icons.info_outline,
                                       size: 16,
-                                      color: Colors.orange[700],
+                                      color: const Color(0xFF6366f1),
                                     ),
                                     SizedBox(width: 8),
                                     Expanded(
@@ -414,7 +445,7 @@ class _SignupPageState extends State<SignupPage> {
                                         '帳號一旦設定，之後無法更改',
                                         style: TextStyle(
                                           fontSize: 12,
-                                          color: Colors.orange[700],
+                                          color: const Color(0xFF6366f1),
                                           fontWeight: FontWeight.w500,
                                         ),
                                       ),
@@ -427,7 +458,7 @@ class _SignupPageState extends State<SignupPage> {
                           ),
                         ),
 
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 24),
 
                         // 密碼輸入框
                         _buildFormField(
@@ -441,7 +472,7 @@ class _SignupPageState extends State<SignupPage> {
                               _obscureText
                                   ? Icons.visibility_off
                                   : Icons.visibility,
-                              color: Colors.grey[600],
+                              color: const Color(0xFF94a3b8),
                             ),
                             onPressed: () {
                               setState(() {
@@ -460,7 +491,7 @@ class _SignupPageState extends State<SignupPage> {
                           },
                         ),
 
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 24),
 
                         // 確認密碼輸入框
                         _buildFormField(
@@ -474,7 +505,7 @@ class _SignupPageState extends State<SignupPage> {
                               _obscureText2
                                   ? Icons.visibility_off
                                   : Icons.visibility,
-                              color: Colors.grey[600],
+                              color: const Color(0xFF94a3b8),
                             ),
                             onPressed: () {
                               setState(() {
@@ -497,29 +528,30 @@ class _SignupPageState extends State<SignupPage> {
                   ),
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
 
                 // 顯示訊息
                 if (promptMessage.isNotEmpty)
                   Container(
                     width: double.infinity,
-                    padding: EdgeInsets.all(16),
-                    margin: EdgeInsets.only(bottom: 20),
+                    padding: const EdgeInsets.all(16),
+                    margin: const EdgeInsets.only(bottom: 24),
                     decoration: BoxDecoration(
                       color:
                           promptMessage == "成功註冊!"
-                              ? Colors.green[50]
+                              ? const Color(0xFF34d399).withOpacity(0.15)
                               : promptMessage == "註冊中..."
-                              ? Colors.blue[50]
-                              : Colors.red[50],
+                              ? const Color(0xFF60a5fa).withOpacity(0.15)
+                              : const Color(0xFFef4444).withOpacity(0.15),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color:
                             promptMessage == "成功註冊!"
-                                ? Colors.green
+                                ? const Color(0xFF34d399)
                                 : promptMessage == "註冊中..."
-                                ? Colors.blue
-                                : Colors.red,
+                                ? const Color(0xFF60a5fa)
+                                : const Color(0xFFef4444),
+                        width: 1,
                       ),
                     ),
                     child: Row(
@@ -532,23 +564,26 @@ class _SignupPageState extends State<SignupPage> {
                               : Icons.error,
                           color:
                               promptMessage == "成功註冊!"
-                                  ? Colors.green[700]
+                                  ? const Color(0xFF34d399)
                                   : promptMessage == "註冊中..."
-                                  ? Colors.blue[700]
-                                  : Colors.red[700],
+                                  ? const Color(0xFF60a5fa)
+                                  : const Color(0xFFef4444),
+                          size: 20,
                         ),
-                        SizedBox(width: 12),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             promptMessage,
                             style: TextStyle(
                               color:
                                   promptMessage == "成功註冊!"
-                                      ? Colors.green[700]
+                                      ? const Color(0xFF34d399)
                                       : promptMessage == "註冊中..."
-                                      ? Colors.blue[700]
-                                      : Colors.red[700],
-                              fontWeight: FontWeight.w500,
+                                      ? const Color(0xFF60a5fa)
+                                      : const Color(0xFFef4444),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              letterSpacing: 0.3,
                             ),
                           ),
                         ),
@@ -560,58 +595,82 @@ class _SignupPageState extends State<SignupPage> {
                 Container(
                   width: double.infinity,
                   height: 56,
-                  child: ElevatedButton(
-                    onPressed: _isRegistering ? null : _performSignup,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      elevation: 3,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFF6366f1),
+                        const Color(0xFF60a5fa),
+                      ],
                     ),
-                    child:
-                        _isRegistering
-                            ? Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF6366f1).withOpacity(0.3),
+                        blurRadius: 12,
+                        spreadRadius: 0,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _isRegistering ? null : _performSignup,
+                      borderRadius: BorderRadius.circular(14),
+                      child: Container(
+                        alignment: Alignment.center,
+                        child:
+                            _isRegistering
+                                ? Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            const AlwaysStoppedAnimation<Color>(
+                                              Colors.white,
+                                            ),
+                                      ),
                                     ),
-                                  ),
-                                ),
-                                SizedBox(width: 12),
-                                Text(
-                                  '註冊中...',
+                                    const SizedBox(width: 12),
+                                    const Text(
+                                      '正在註冊...',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 0.5,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                )
+                                : const Text(
+                                  '建立帳號',
                                   style: TextStyle(
                                     fontSize: 16,
-                                    fontWeight: FontWeight.bold,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.5,
+                                    color: Colors.white,
                                   ),
                                 ),
-                              ],
-                            )
-                            : Text(
-                              '註冊',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                      ),
+                    ),
                   ),
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
 
                 // 登入連結
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text('已經有帳號了？', style: TextStyle(color: Colors.grey[600])),
+                    Text(
+                      '已經有帳號了？',
+                      style: TextStyle(color: const Color(0xFF94a3b8)),
+                    ),
                     TextButton(
                       onPressed: () {
                         Navigator.pushReplacement(
@@ -623,7 +682,7 @@ class _SignupPageState extends State<SignupPage> {
                         '立即登入',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: Colors.blue,
+                          color: const Color(0xFF60a5fa),
                         ),
                       ),
                     ),
@@ -653,43 +712,67 @@ class _SignupPageState extends State<SignupPage> {
       children: [
         Text(
           label,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.grey[700],
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+            letterSpacing: 0.5,
           ),
         ),
-        SizedBox(height: 8),
+        const SizedBox(height: 10),
         TextFormField(
           controller: controller,
           obscureText: obscureText,
           keyboardType: keyboardType,
           validator: validator,
+          style: const TextStyle(color: Colors.white, fontSize: 15),
           decoration: InputDecoration(
             hintText: hintText,
+            hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[300]!),
+              borderSide: BorderSide(
+                color: const Color(0xFF6366f1).withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: const Color(0xFF6366f1).withOpacity(0.3),
+                width: 1,
+              ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.blue, width: 2),
+              borderSide: const BorderSide(color: Color(0xFF6366f1), width: 2),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFFef4444), width: 1),
             ),
             prefixIcon: Container(
-              margin: EdgeInsets.all(8),
-              padding: EdgeInsets.all(8),
+              margin: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.1),
+                color: const Color(0xFF6366f1).withOpacity(0.15),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(icon, color: Colors.blue, size: 20),
+              child: Icon(icon, color: const Color(0xFF60a5fa), size: 20),
             ),
             suffixIcon: suffixIcon,
             filled: true,
-            fillColor: Colors.grey[50],
+            fillColor: const Color(0xFF1a2a4e),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
           ),
         ),
-        if (additionalWidget != null) additionalWidget,
+        if (additionalWidget != null) ...[
+          const SizedBox(height: 10),
+          additionalWidget,
+        ],
       ],
     );
   }

@@ -128,66 +128,103 @@ class _NewsManagePageState extends State<NewsManagePage> {
   */
 
   @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF0a1428),
       appBar: AppBar(
-        title: const Text('新聞管理'),
-        backgroundColor: Colors.blue[700],
-        foregroundColor: Colors.white,
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.blue[50]!, Colors.blue[100]!],
+        title: const Text(
+          '新聞管理',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
           ),
         ),
+        backgroundColor: const Color(0xFF1a2a4e),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(
+            color: const Color(0xFF6366f1).withOpacity(0.1),
+            height: 1,
+          ),
+        ),
+      ),
+      body: Container(
+        color: const Color(0xFF0a1428),
         child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.all(20.0),
+            padding: const EdgeInsets.all(24.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // 標題區域
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(28),
                   margin: const EdgeInsets.only(bottom: 30),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(15),
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFF1a2a4e),
+                        const Color(0xFF0f1e3d),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: const Color(0xFF6366f1).withOpacity(0.3),
+                      width: 1,
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.grey.withOpacity(0.3),
-                        spreadRadius: 2,
-                        blurRadius: 5,
-                        offset: const Offset(0, 3),
+                        color: const Color(0xFF6366f1).withOpacity(0.1),
+                        blurRadius: 20,
+                        spreadRadius: 0,
+                        offset: const Offset(0, 10),
                       ),
                     ],
                   ),
                   child: Column(
                     children: [
-                      Icon(
-                        Icons.newspaper,
-                        size: 50,
-                        color: Colors.blue[700],
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        '新聞管理中心',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue[800],
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              const Color(0xFF6366f1),
+                              const Color(0xFF60a5fa),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(
+                          Icons.newspaper,
+                          size: 44,
+                          color: Colors.white,
                         ),
                       ),
-                      const SizedBox(height: 5),
+                      const SizedBox(height: 16),
+                      const Text(
+                        '新聞管理中心',
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
                       Text(
                         '管理新聞的各種數據類型',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.grey[600],
+                          color: Colors.grey[400],
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
@@ -196,39 +233,47 @@ class _NewsManagePageState extends State<NewsManagePage> {
 
                 // 新聞管理綜合介面
                 Container(
-                  padding: const EdgeInsets.all(20),
-                  margin: const EdgeInsets.only(bottom: 20),
+                  padding: const EdgeInsets.all(24),
+                  margin: const EdgeInsets.only(bottom: 24),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(15),
+                    color: const Color(0xFF1a2a4e),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: const Color(0xFF6366f1).withOpacity(0.2),
+                      width: 1,
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.grey.withOpacity(0.3),
-                        spreadRadius: 2,
-                        blurRadius: 5,
-                        offset: const Offset(0, 3),
+                        color: const Color(0xFF6366f1).withOpacity(0.08),
+                        blurRadius: 12,
+                        spreadRadius: 0,
                       ),
                     ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      const Text(
                         '新聞管理功能',
                         style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue[800],
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          letterSpacing: 0.5,
                         ),
                       ),
                       const SizedBox(height: 20),
 
                       // 功能說明
                       Container(
-                        padding: const EdgeInsets.all(15),
+                        padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.blue[50],
-                          borderRadius: BorderRadius.circular(10),
+                          color: const Color(0xFF6366f1).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: const Color(0xFF6366f1).withOpacity(0.2),
+                            width: 1,
+                          ),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -237,22 +282,39 @@ class _NewsManagePageState extends State<NewsManagePage> {
                               '此頁面包含以下新聞管理功能：',
                               style: TextStyle(
                                 fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.blue[800],
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                                letterSpacing: 0.3,
                               ),
                             ),
                             const SizedBox(height: 15),
-                            _buildFeatureItem('Data', '新聞基本數據和元資料管理',
-                                Icons.article, Colors.green),
+                            _buildFeatureItem(
+                              'Data',
+                              '新聞基本數據和元資料管理',
+                              Icons.article,
+                              Colors.green,
+                            ),
                             const SizedBox(height: 10),
-                            _buildFeatureItem('Body', '新聞內容和文章管理',
-                                Icons.description, Colors.orange),
+                            _buildFeatureItem(
+                              'Body',
+                              '新聞內容和文章管理',
+                              Icons.description,
+                              Colors.orange,
+                            ),
                             const SizedBox(height: 10),
-                            _buildFeatureItem('Group', '新聞分類和群組管理',
-                                Icons.group_work, Colors.purple),
+                            _buildFeatureItem(
+                              'Group',
+                              '新聞分類和群組管理',
+                              Icons.group_work,
+                              Colors.purple,
+                            ),
                             const SizedBox(height: 10),
-                            _buildFeatureItem('Location', '新聞地理位置管理',
-                                Icons.place, Colors.red),
+                            _buildFeatureItem(
+                              'Location',
+                              '新聞地理位置管理',
+                              Icons.place,
+                              Colors.red,
+                            ),
                           ],
                         ),
                       ),
@@ -263,35 +325,79 @@ class _NewsManagePageState extends State<NewsManagePage> {
                       Row(
                         children: [
                           Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () {
-                                // TODO: 後續實現新聞列表功能
-                                _showComingSoon('新聞列表查看');
-                              },
-                              icon: Icon(Icons.list),
-                              label: Text('查看新聞'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue[600],
-                                foregroundColor: Colors.white,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 12),
+                            child: Container(
+                              height: 48,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    const Color(0xFF6366f1),
+                                    const Color(0xFF60a5fa),
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () {
+                                    _showComingSoon('新聞列表查看');
+                                  },
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: const [
+                                      Icon(Icons.list, color: Colors.white),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        '查看新聞',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: 0.3,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
                           ),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 12),
                           Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () {
-                                // TODO: 後續實現新聞編輯功能
-                                _showComingSoon('新聞編輯');
-                              },
-                              icon: Icon(Icons.edit),
-                              label: Text('編輯新聞'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green[600],
-                                foregroundColor: Colors.white,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 12),
+                            child: Container(
+                              height: 48,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    const Color(0xFF34d399),
+                                    const Color(0xFF10b981),
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () {
+                                    _showComingSoon('新聞編輯');
+                                  },
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: const [
+                                      Icon(Icons.edit, color: Colors.white),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        '編輯新聞',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: 0.3,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
                           ),
@@ -304,35 +410,42 @@ class _NewsManagePageState extends State<NewsManagePage> {
                 // 統計信息
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  margin: const EdgeInsets.only(bottom: 80), // 底部留更多空間給浮動按鈕
+                  padding: const EdgeInsets.all(24),
+                  margin: const EdgeInsets.only(bottom: 80),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(15),
+                    color: const Color(0xFF1a2a4e),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: const Color(0xFF6366f1).withOpacity(0.2),
+                      width: 1,
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.grey.withOpacity(0.3),
-                        spreadRadius: 2,
-                        blurRadius: 5,
-                        offset: const Offset(0, 3),
+                        color: const Color(0xFF6366f1).withOpacity(0.08),
+                        blurRadius: 12,
+                        spreadRadius: 0,
                       ),
                     ],
                   ),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
                       _buildStatItem(
-                          '總新聞數',
-                          '0' /* TODO: 後續改為 '${newsStats['total']}' */,
-                          Icons.article),
+                        '總新聞數',
+                        '0' /* TODO: 後續改為 '${newsStats['total']}' */,
+                        Icons.article,
+                      ),
+                      const SizedBox(width: 12),
                       _buildStatItem(
-                          '今日新增',
-                          '0' /* TODO: 後續改為 '${newsStats['today']}' */,
-                          Icons.today),
+                        '今日新增',
+                        '0' /* TODO: 後續改為 '${newsStats['today']}' */,
+                        Icons.today,
+                      ),
+                      const SizedBox(width: 12),
                       _buildStatItem(
-                          '待審核',
-                          '0' /* TODO: 後續改為 '${newsStats['pending']}' */,
-                          Icons.pending),
+                        '待審核',
+                        '0' /* TODO: 後續改為 '${newsStats['pending']}' */,
+                        Icons.pending,
+                      ),
                     ],
                   ),
                 ),
@@ -341,53 +454,74 @@ class _NewsManagePageState extends State<NewsManagePage> {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // TODO: 後續實現添加新聞功能
-          // _showAddNewsDialog();
-          _showComingSoon('添加新聞');
-        },
-        backgroundColor: Colors.blue[700],
-        child: const Icon(Icons.add, color: Colors.white),
-        tooltip: '添加新聞',
+      floatingActionButton: Container(
+        height: 56,
+        width: 56,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [const Color(0xFF6366f1), const Color(0xFF60a5fa)],
+          ),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF6366f1).withOpacity(0.3),
+              blurRadius: 12,
+              spreadRadius: 0,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              _showComingSoon('添加新聞');
+            },
+            borderRadius: BorderRadius.circular(14),
+            child: const Icon(Icons.add, color: Colors.white, size: 28),
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildFeatureItem(
-      String title, String description, IconData icon, Color color) {
+    String title,
+    String description,
+    IconData icon,
+    Color color,
+  ) {
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
+            color: color.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(
-            icon,
-            size: 20,
-            color: color,
-          ),
+          child: Icon(icon, size: 22, color: color),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 14),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 title,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey[800],
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  letterSpacing: 0.3,
                 ),
               ),
+              const SizedBox(height: 2),
               Text(
                 description,
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.grey[600],
+                  color: Colors.grey[400],
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
@@ -398,31 +532,49 @@ class _NewsManagePageState extends State<NewsManagePage> {
   }
 
   Widget _buildStatItem(String title, String count, IconData icon) {
-    return Column(
-      children: [
-        Icon(
-          icon,
-          size: 25,
-          color: Colors.blue[700],
-        ),
-        const SizedBox(height: 8),
-        Text(
-          count,
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.blue[800],
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0f1e3d).withOpacity(0.5),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: const Color(0xFF6366f1).withOpacity(0.1),
+            width: 1,
           ),
         ),
-        const SizedBox(height: 4),
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
-          ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF6366f1).withOpacity(0.2),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, size: 28, color: const Color(0xFF60a5fa)),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              count,
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[400],
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -431,14 +583,31 @@ class _NewsManagePageState extends State<NewsManagePage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('即將推出'),
-          content: Text('$feature 功能正在開發中，敬請期待！'),
+          backgroundColor: const Color(0xFF1a2a4e),
+          title: const Text(
+            '即將推出',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.3,
+            ),
+          ),
+          content: Text(
+            '$feature 功能正在開發中，敬請期待！',
+            style: TextStyle(color: Colors.grey[300], fontSize: 15),
+          ),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
               },
-              child: Text('確定'),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF60a5fa),
+              ),
+              child: const Text(
+                '確定',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
             ),
           ],
         );
