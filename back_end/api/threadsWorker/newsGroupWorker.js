@@ -83,7 +83,7 @@ async function insertNewsGroupsForOneNews(newsId, result) {
             // 這個標籤失敗就跳過，處理下一個
             continue;
         }
-        console.log("7. 77777777 ");
+        console.log("7. searchGroupResult, searchGroupResult.success, searchGroupResult.data: ", searchGroupResult, searchGroupResult.success, searchGroupResult.data);
 
         // 沒找到或 success === false 就略過
         if (!searchGroupResult || searchGroupResult.success === false || !searchGroupResult.data) {
