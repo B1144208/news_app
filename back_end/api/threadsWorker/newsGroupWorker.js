@@ -75,6 +75,8 @@ async function insertNewsGroupsForOneNews(newsId, result) {
             };
 
             searchGroupResult = await callAndCatchApiSuccessInGeneralFunction(searchGroup, fakeReq);
+
+            console.log("6-2. searchGroupResult: ", searchGroupResult);
         } catch (err) {
             console.warn('[newsGroupWorker] 搜尋 group 失敗，news_id =', newsId, 'name =', groupName, 'err =', err.message);
             // 這個標籤失敗就跳過，處理下一個

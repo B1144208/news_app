@@ -7,6 +7,8 @@ async function searchGroup (req, res, next) {
 
     let name = req.query?.name;
 
+    console.log("6-1. name", name);
+
     // 檢查必要欄位 & 格式 - name
     try {
         [ name ] = await checkRequireField ([
