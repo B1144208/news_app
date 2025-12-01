@@ -46,12 +46,93 @@ async function fetchPendingNewsIds () {
  * 把 classifier 回傳的 location 結果寫入 news_location 資料表
  */
 async function insertNewsLocationsForOneNews (newsId, result) {
+    // === 0. 正規化 result：只接受 string[]，其他都當成 [] ===
+    let names = [];
+
+    if (Array.isArray(result)) {
+        names = result
+            .filter(v => typeof v === 'string')   // 只留字串
+            .map(v => v.trim())                  // 去空白
+            .filter(Boolean);                    // 去掉空字串
+    }
+
+    // 去重
+    names = [...new Set(names)];
+
+    // 若最後沒有任何有效地點名稱，就直接結束，不寫入任何東西
+    if (names.length === 0) {
+        // console.log('[newsLocationWorker] news_id =', newsId, '沒有任何 location，略過');
+        return;
+    }
+
+    const insertSql = `
+        INSERT IGNORE INTO news_location (
+            news_id,
+            location_region_id,
+            location_country_id,
+            location_state_id
+        )
+        VALUES ?
+    `;
+
+    const rowsToInsert = []; // [[newsId, regionId, countryId, stateId], ...]
+
+    // === 1. 逐一呼叫 searchLocation，把結果整理成 rowsToInsert ===
+    for (const locationName of names) {
+        let searchLocationResult;
+        try {
+            const fakeReq = { query: { name: locationName } };
+            searchLocationResult = await callAndCatchApiSuccessInGeneralFunction(
+                searchLocation,
+                fakeReq
+            );
+        } catch (err) {
+            console.warn('[newsLocationWorker] searchLocation 失敗，news_id =', newsId, 'name =', locationName, 'err =', err.message);
+            continue;
+        }
+
+        if (!searchLocationResult || !searchLocationResult.type || !searchLocationResult.id) {
+            continue;
+        }
+
+        const { type, id } = searchLocationResult;
+        let regionId  = null;
+        let countryId = null;
+        let stateId   = null;
+
+        if (type === 'region') {
+            regionId = id;
+        } else if (type === 'country') {
+            countryId = id;
+        } else if (type === 'state') {
+            stateId = id;
+        } else {
+            // 不認識的 type 直接略過
+            continue;
+        }
+
+        rowsToInsert.push([newsId, regionId, countryId, stateId]);
+    }
+
+    // === 2. 如果搜尋完沒有任何可以寫入的資料，就結束 ===
+    if (rowsToInsert.length === 0) {
+        return;
+    }
+
+    // === 3. 一次批次 INSERT IGNORE ===
+    try {
+        await pool.query(insertSql, [rowsToInsert]);
+    } catch (err) {
+        console.warn('[newsLocationWorker] 批次寫入 news_location 失敗，news_id =', newsId, 'err =', err.message);
+    }
+}
+/*async function insertNewsLocationsForOneNews (newsId, result) {
     // === 0. 先準備要查的名稱陣列，若原本就是 []，就當作 ['其他'] ===
     let namesToSearch;
     if (Array.isArray(result) && result.length > 0) {
         namesToSearch = result;
     } else {
-        namesToSearch = ['其他'];
+        namesToSearch = [];
     }
 
     const insertSql = `
@@ -135,7 +216,7 @@ async function insertNewsLocationsForOneNews (newsId, result) {
     } catch (err) {
         console.warn('[newsLocationWorker] 批次寫入 news_location 失敗，news_id =', newsId, 'err =', err.message);
     }
-}
+}*/
 
 /**
  * 將單一 news 的 news_task.news_location 設為 1 （表示已完成）
