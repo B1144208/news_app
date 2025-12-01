@@ -3,7 +3,6 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'universal_template.dart';
 
-
 class GroupPage extends StatefulWidget {
   const GroupPage({super.key});
 
@@ -49,7 +48,7 @@ class _GroupPageState extends State<GroupPage> {
           final name = item['group_name'];
           final detail = {
             "id": item['group_detail_id'],
-            "name": item['group_detail_name']
+            "name": item['group_detail_name'],
           };
 
           if (!tempGrouped.containsKey(id)) {
@@ -153,9 +152,7 @@ class _GroupPageState extends State<GroupPage> {
             ),
             const SizedBox(height: 16),
             Text(
-              searchQuery.isEmpty
-                  ? '沒有找到群組'
-                  : '沒有符合搜尋條件的群組',
+              searchQuery.isEmpty ? '沒有找到群組' : '沒有符合搜尋條件的群組',
               style: TextStyle(
                 fontSize: 18,
                 color: Colors.grey[600],
@@ -166,10 +163,7 @@ class _GroupPageState extends State<GroupPage> {
               const SizedBox(height: 8),
               Text(
                 '點擊新增按鈕創建第一個群組',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[500],
-                ),
+                style: TextStyle(fontSize: 14, color: Colors.grey[500]),
               ),
             ],
           ],
@@ -220,7 +214,9 @@ class _GroupPageState extends State<GroupPage> {
   }
 
   // 群組卡片
-  Widget _buildGroupCard(MapEntry<int, Map<String, List<Map<String, dynamic>>>> entry) {
+  Widget _buildGroupCard(
+    MapEntry<int, Map<String, List<Map<String, dynamic>>>> entry,
+  ) {
     final groupId = entry.key;
     final groupName = entry.value.keys.first;
     final details = entry.value[groupName]!;
@@ -228,9 +224,7 @@ class _GroupPageState extends State<GroupPage> {
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () => _navigateToGroupDetail(groupId, groupName, details),
@@ -246,11 +240,7 @@ class _GroupPageState extends State<GroupPage> {
                   color: Colors.teal.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(
-                  Icons.group,
-                  color: Colors.teal,
-                  size: 28,
-                ),
+                child: const Icon(Icons.group, color: Colors.teal, size: 28),
               ),
               const SizedBox(width: 16),
 
@@ -269,10 +259,7 @@ class _GroupPageState extends State<GroupPage> {
                     const SizedBox(height: 4),
                     Text(
                       'ID: $groupId',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                     ),
                     const SizedBox(height: 8),
 
@@ -311,11 +298,7 @@ class _GroupPageState extends State<GroupPage> {
               ),
 
               // 箭頭圖標
-              Icon(
-                Icons.arrow_forward_ios,
-                color: Colors.grey[400],
-                size: 16,
-              ),
+              Icon(Icons.arrow_forward_ios, color: Colors.grey[400], size: 16),
             ],
           ),
         ),
@@ -324,16 +307,21 @@ class _GroupPageState extends State<GroupPage> {
   }
 
   // 導航到詳細頁面
-  void _navigateToGroupDetail(int groupId, String groupName, List<Map<String, dynamic>> details) {
+  void _navigateToGroupDetail(
+    int groupId,
+    String groupName,
+    List<Map<String, dynamic>> details,
+  ) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => GroupDetailPage(
-          groupId: groupId,
-          groupName: groupName,
-          details: details,
-          onRefresh: fetchGroups,
-        ),
+        builder:
+            (context) => GroupDetailPage(
+              groupId: groupId,
+              groupName: groupName,
+              details: details,
+              onRefresh: fetchGroups,
+            ),
       ),
     );
   }
@@ -342,73 +330,74 @@ class _GroupPageState extends State<GroupPage> {
   void _showAddDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.group_add, color: Colors.teal),
-            const SizedBox(width: 8),
-            const Text('新增群組'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _addGroupController,
-              autofocus: true,
-              decoration: const InputDecoration(
-                labelText: '群組名稱',
-                hintText: '請輸入群組名稱',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.group),
-              ),
+      builder:
+          (context) => AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.group_add, color: Colors.teal),
+                const SizedBox(width: 8),
+                const Text('新增群組'),
+              ],
             ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.teal[50],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.info_outline, color: Colors.teal[600]),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      '新增群組後可以點擊進入管理群組項目',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.teal[700],
-                      ),
-                    ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: _addGroupController,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    labelText: '群組名稱',
+                    hintText: '請輸入群組名稱',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.group),
                   ),
-                ],
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.teal[50],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.teal[600]),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '新增群組後可以點擊進入管理群組項目',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.teal[700],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('取消'),
               ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
+              ElevatedButton(
+                onPressed: () {
+                  final name = _addGroupController.text.trim();
+                  if (name.isNotEmpty) {
+                    addGroup(name);
+                    Navigator.pop(context);
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.teal,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('新增'),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () {
-              final name = _addGroupController.text.trim();
-              if (name.isNotEmpty) {
-                addGroup(name);
-                Navigator.pop(context);
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.teal,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('新增'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -515,12 +504,18 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
       final response = await http.post(
         Uri.parse("${_GroupPageState.apiUrl}/detail"),
         headers: {"Content-Type": "application/json"},
-        body: json.encode({"group_id": widget.groupId, "group_detail_name": name}),
+        body: json.encode({
+          "group_id": widget.groupId,
+          "group_detail_name": name,
+        }),
       );
 
       if (response.statusCode == 200) {
         setState(() {
-          details.add({"id": DateTime.now().millisecondsSinceEpoch, "name": name});
+          details.add({
+            "id": DateTime.now().millisecondsSinceEpoch,
+            "name": name,
+          });
         });
         _addDetailController.clear();
         _showSuccessMessage('群組項目新增成功');
@@ -569,13 +564,30 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF0a1428),
       appBar: AppBar(
-        title: Text(widget.groupName),
-        backgroundColor: Colors.teal,
+        title: Text(
+          widget.groupName,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
+          ),
+        ),
+        backgroundColor: const Color(0xFF1a2a4e),
         foregroundColor: Colors.white,
-        elevation: 2,
+        elevation: 0,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(
+            color: const Color(0xFF6366f1).withOpacity(0.1),
+            height: 1,
+          ),
+        ),
       ),
       body: Column(
         children: [
@@ -584,13 +596,17 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
             margin: const EdgeInsets.all(16),
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: const Color(0xFF1a2a4e),
               borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: const Color(0xFF6366f1).withOpacity(0.3),
+                width: 1,
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
-                  spreadRadius: 1,
-                  blurRadius: 4,
+                  color: const Color(0xFF6366f1).withOpacity(0.1),
+                  spreadRadius: 0,
+                  blurRadius: 12,
                   offset: const Offset(0, 2),
                 ),
               ],
@@ -598,17 +614,18 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
             child: Row(
               children: [
                 Container(
-                  width: 48,
-                  height: 48,
+                  width: 56,
+                  height: 56,
                   decoration: BoxDecoration(
-                    color: Colors.teal.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFF6366f1),
+                        const Color(0xFF60a5fa),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  child: const Icon(
-                    Icons.group,
-                    color: Colors.teal,
-                    size: 24,
-                  ),
+                  child: const Icon(Icons.group, color: Colors.white, size: 28),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -619,32 +636,43 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
                         widget.groupName,
                         style: const TextStyle(
                           fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          letterSpacing: 0.3,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 6),
                       Text(
                         '群組 ID: ${widget.groupId}',
                         style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
+                          fontSize: 13,
+                          color: Colors.grey[400],
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
-                    color: Colors.teal,
-                    borderRadius: BorderRadius.circular(16),
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFF6366f1),
+                        const Color(0xFF60a5fa),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     '${details.length} 個項目',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 12,
-                      color: Colors.teal[700],
-                      fontWeight: FontWeight.w500,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
@@ -657,13 +685,17 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
             margin: const EdgeInsets.symmetric(horizontal: 16),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: const Color(0xFF1a2a4e),
               borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: const Color(0xFF6366f1).withOpacity(0.2),
+                width: 1,
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
-                  spreadRadius: 1,
-                  blurRadius: 4,
+                  color: const Color(0xFF6366f1).withOpacity(0.08),
+                  spreadRadius: 0,
+                  blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
               ],
@@ -673,35 +705,108 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
                 Expanded(
                   child: TextField(
                     controller: _addDetailController,
-                    decoration: const InputDecoration(
+                    style: const TextStyle(color: Colors.white, fontSize: 15),
+                    decoration: InputDecoration(
                       hintText: "輸入細項名稱新增",
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.add_circle_outline),
+                      hintStyle: TextStyle(
+                        color: Colors.grey[400],
+                        fontSize: 14,
+                      ),
+                      prefixIcon: Container(
+                        margin: const EdgeInsets.all(10),
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF6366f1).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.add_circle_outline,
+                          color: Color(0xFF60a5fa),
+                          size: 20,
+                        ),
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: const Color(0xFF6366f1).withOpacity(0.3),
+                          width: 1,
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: const Color(0xFF6366f1).withOpacity(0.3),
+                          width: 1,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: Color(0xFF6366f1),
+                          width: 2,
+                        ),
+                      ),
+                      filled: true,
+                      fillColor: const Color(0xFF0a1428),
                     ),
                     enabled: !isLoading,
                   ),
                 ),
                 const SizedBox(width: 12),
-                ElevatedButton(
-                  onPressed: isLoading ? null : () {
-                    final name = _addDetailController.text.trim();
-                    if (name.isNotEmpty) addGroupDetail(name);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  ),
-                  child: isLoading
-                      ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFF6366f1),
+                        const Color(0xFF60a5fa),
+                      ],
                     ),
-                  )
-                      : const Text('新增'),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF6366f1).withOpacity(0.3),
+                        blurRadius: 8,
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap:
+                          isLoading
+                              ? null
+                              : () {
+                                final name = _addDetailController.text.trim();
+                                if (name.isNotEmpty) addGroupDetail(name);
+                              },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                        child:
+                            isLoading
+                                ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
+                                  ),
+                                )
+                                : const Text(
+                                  '新增',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -714,94 +819,132 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: const Color(0xFF1a2a4e),
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: const Color(0xFF6366f1).withOpacity(0.2),
+                  width: 1,
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey,
-                    spreadRadius: 1,
-                    blurRadius: 4,
+                    color: const Color(0xFF6366f1).withOpacity(0.08),
+                    spreadRadius: 0,
+                    blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
                 ],
               ),
-              child: details.isEmpty
-                  ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.list_alt,
-                      size: 64,
-                      color: Colors.grey[400],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      '此群組暫無項目',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '使用上方輸入框新增第一個項目',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[500],
-                      ),
-                    ),
-                  ],
-                ),
-              )
-                  : ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: details.length,
-                itemBuilder: (context, index) {
-                  final detail = details[index];
-                  return Card(
-                    elevation: 1,
-                    margin: const EdgeInsets.only(bottom: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: Colors.teal,
-                        radius: 20,
-                        child: Text(
-                          '${index + 1}',
-                          style: TextStyle(
-                            color: Colors.teal[700],
-                            fontWeight: FontWeight.bold,
-                          ),
+              child:
+                  details.isEmpty
+                      ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF6366f1).withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                Icons.list_alt,
+                                size: 48,
+                                color: Colors.grey[400],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              '此群組暫無項目',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '使用上方輸入框新增第一個項目',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[400],
+                              ),
+                            ),
+                          ],
                         ),
+                      )
+                      : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: details.length,
+                        itemBuilder: (context, index) {
+                          final detail = details[index];
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0a1428),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: const Color(0xFF6366f1).withOpacity(0.2),
+                                width: 1,
+                              ),
+                            ),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              leading: Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      const Color(0xFF6366f1),
+                                      const Color(0xFF60a5fa),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    '${index + 1}',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              title: Text(
+                                detail['name'],
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                ),
+                              ),
+                              subtitle: Text(
+                                'ID: ${detail['id']}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[400],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              onTap: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      "選中 ${detail['name']} (ID=${detail['id']})",
+                                    ),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              },
+                            ),
+                          );
+                        },
                       ),
-                      title: Text(
-                        detail['name'],
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      subtitle: Text(
-                        'ID: ${detail['id']}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text("選中 ${detail['name']} (ID=${detail['id']})"),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      },
-                    ),
-                  );
-                },
-              ),
             ),
           ),
 

@@ -102,15 +102,31 @@ class _MemberCenterPageState extends State<MemberCenterPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE8E3FF),
+      backgroundColor: const Color(0xFF0a1428),
       appBar: AppBar(
-        title: const Text('會員中心'),
-        backgroundColor: Colors.blue,
+        title: const Text(
+          '會員中心',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
+          ),
+        ),
+        backgroundColor: const Color(0xFF1a2a4e),
         foregroundColor: Colors.white,
+        elevation: 0,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(
+            color: const Color(0xFF6366f1).withOpacity(0.1),
+            height: 1,
+          ),
+        ),
         actions: [
           if (!_isLoading)
             IconButton(
-              icon: const Icon(Icons.refresh),
+              icon: const Icon(Icons.refresh, color: Color(0xFF60a5fa)),
               onPressed: _loadUserData,
               tooltip: '重新整理',
             ),
@@ -137,15 +153,24 @@ class _MemberCenterPageState extends State<MemberCenterPage> {
   Widget _buildUserInfoCard() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          colors: [const Color(0xFF1a2a4e), const Color(0xFF0f1e3d)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFF6366f1).withOpacity(0.3),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
-            spreadRadius: 1,
-            blurRadius: 3,
+            color: const Color(0xFF6366f1).withOpacity(0.1),
+            blurRadius: 20,
+            spreadRadius: 0,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -153,46 +178,76 @@ class _MemberCenterPageState extends State<MemberCenterPage> {
         children: [
           // 用戶頭像
           Container(
-            width: 80,
-            height: 80,
+            width: 90,
+            height: 90,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: _isAdmin ? Colors.red : Colors.blue,
+              gradient: LinearGradient(
+                colors: [
+                  _isAdmin ? const Color(0xFFef4444) : const Color(0xFF6366f1),
+                  _isAdmin ? const Color(0xFFf87171) : const Color(0xFF60a5fa),
+                ],
+              ),
               border: Border.all(color: Colors.white, width: 3),
             ),
             child: Center(
               child: Text(
                 _userAccount.isNotEmpty ? _userAccount[0].toUpperCase() : 'U',
                 style: const TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 40,
+                  fontWeight: FontWeight.w800,
                   color: Colors.white,
+                  letterSpacing: 0.5,
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
 
           // 用戶名稱
           Text(
             _userAccount,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+              letterSpacing: 0.5,
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
 
           // 用戶ID
           Text(
             'ID: $_userId',
-            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[400],
+              fontWeight: FontWeight.w500,
+            ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
 
           // 用戶類型標籤
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: _isAdmin ? Colors.red : Colors.blue,
-              borderRadius: BorderRadius.circular(15),
+              gradient: LinearGradient(
+                colors:
+                    _isAdmin
+                        ? [const Color(0xFFef4444), const Color(0xFFf87171)]
+                        : [const Color(0xFF6366f1), const Color(0xFF60a5fa)],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: (_isAdmin
+                          ? const Color(0xFFef4444)
+                          : const Color(0xFF6366f1))
+                      .withOpacity(0.3),
+                  blurRadius: 8,
+                  spreadRadius: 0,
+                ),
+              ],
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -200,15 +255,16 @@ class _MemberCenterPageState extends State<MemberCenterPage> {
                 Icon(
                   _isAdmin ? Icons.admin_panel_settings : Icons.person,
                   color: Colors.white,
-                  size: 16,
+                  size: 18,
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 8),
                 Text(
                   _isAdmin ? '管理員' : '一般會員',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 14,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.3,
                   ),
                 ),
               ],
@@ -225,15 +281,19 @@ class _MemberCenterPageState extends State<MemberCenterPage> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        color: const Color(0xFF1a2a4e),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFF6366f1).withOpacity(0.2),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
-            spreadRadius: 1,
-            blurRadius: 3,
+            color: const Color(0xFF6366f1).withOpacity(0.08),
+            blurRadius: 12,
+            spreadRadius: 0,
           ),
         ],
       ),
@@ -242,15 +302,20 @@ class _MemberCenterPageState extends State<MemberCenterPage> {
         children: [
           Row(
             children: [
-              Icon(Icons.security, color: Colors.green[600]),
-              const SizedBox(width: 8),
+              Icon(Icons.security, color: Colors.green[400], size: 22),
+              const SizedBox(width: 12),
               const Text(
                 '您的權限',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  letterSpacing: 0.5,
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Wrap(
             spacing: 8,
             runSpacing: 8,

@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:share_plus/share_plus.dart'; // ✅ 新增：分享插件
 // 確保此路徑正確指向您的 API 設定
 import 'config.dart';
 import 'EventSortingDetailPage.dart';
@@ -14,10 +15,12 @@ class MultiplePerspectivesDetailPage extends StatefulWidget {
   const MultiplePerspectivesDetailPage({super.key, required this.id});
 
   @override
-  State<MultiplePerspectivesDetailPage> createState() => _MultiplePerspectivesDetailPageState();
+  State<MultiplePerspectivesDetailPage> createState() =>
+      _MultiplePerspectivesDetailPageState();
 }
 
-class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDetailPage> {
+class _MultiplePerspectivesDetailPageState
+    extends State<MultiplePerspectivesDetailPage> {
   int? _currentUserId;
   bool _isEventSortingMode = false;
 
@@ -30,7 +33,8 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
   bool isFavorite = false;
 
   // 計算平均分數 (四捨五入到小數點後一位)
-  double get _averageScore => _totalRater > 0 ? (_totalScore / _totalRater) : 0.0;
+  double get _averageScore =>
+      _totalRater > 0 ? (_totalScore / _totalRater) : 0.0;
 
   // 修正：只保留 $baseUrl。
   final String _userActionBaseUrl = '$baseUrl';
@@ -65,7 +69,9 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
   }
 
   Future<dynamic> _fetchViewDetails() async {
-    final uri = Uri.parse('$baseUrl/MultiplePerspectives').replace(queryParameters: {'id': widget.id.toString()});
+    final uri = Uri.parse(
+      '$baseUrl/MultiplePerspectives',
+    ).replace(queryParameters: {'id': widget.id.toString()});
 
     try {
       final response = await http.get(uri);
@@ -84,7 +90,9 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
               // 獲取並保存留言數量
               _commentCount = view['total_comment'] as int? ?? 0;
 
-              print('Fetched Score: Total Score $_totalScore, Total Rater $_totalRater');
+              print(
+                'Fetched Score: Total Score $_totalScore, Total Rater $_totalRater',
+              );
               print('Fetched Comment Count: $_commentCount');
             });
           }
@@ -103,25 +111,20 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
 
   // 💥 MODIFIED: 通用用戶行為 API 函式 (已新增 anonymous 參數和處理)
   Future<void> _insertUserAction(
-      String actionType,
-      String dataType,
-      {
-        String? text,
-        int? score,
-        String? anonymous, // 💥 修正點：新增匿名名稱參數
-      }
-      ) async {
+    String actionType,
+    String dataType, {
+    String? text,
+    int? score,
+    String? anonymous, // 💥 修正點：新增匿名名稱參數
+  }) async {
     // 假設您的後端路由是 $baseUrl/user/:actionType/:dataType
     final url = '$_userActionBaseUrl/user/$actionType/$dataType';
 
-    final body = <String, dynamic>{
-      'dataId': widget.id,
-    };
+    final body = <String, dynamic>{'dataId': widget.id};
     // 確保 currentUserId 不為 null 才傳入 body
     if (_currentUserId != null) {
       body['userId'] = _currentUserId;
     }
-
 
     // 處理特例 actionType
     if (actionType == 'view' || actionType == 'share') {
@@ -132,7 +135,9 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
       if (text != null && int.tryParse(text) != null) {
         body['commentId'] = int.parse(text);
       } else {
-        print('Error: deleteComment action missing valid commentId in text parameter.');
+        print(
+          'Error: deleteComment action missing valid commentId in text parameter.',
+        );
         return;
       }
       body.remove('text'); // 移除 text
@@ -157,7 +162,8 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
       if (score != null) body['score'] = score;
 
       // 🌟 新增：如果存在匿名名稱，則傳遞給後端 🌟
-      if (anonymous != null && anonymous.isNotEmpty) body['anonymous'] = anonymous;
+      if (anonymous != null)
+        body['anonymous'] = anonymous; // ✅ 修正：int型不能調用isNotEmpty
 
       // 如果是非 view/share 操作，但沒有 currentUserId，則阻止操作
       if (_currentUserId == null) {
@@ -165,7 +171,6 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
         return;
       }
     }
-
 
     // 收藏/取消收藏操作
     if (actionType == 'bookmark') {
@@ -197,23 +202,34 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
       if (response.statusCode == 200) {
         print('Action $actionType recorded successfully!');
         // 如果是 score, comment, deleteComment, editComment 成功，重新載入數據以更新分數和留言數
-        if (['score', 'comment', 'deleteComment', 'editComment'].contains(actionType)) {
+        if ([
+          'score',
+          'comment',
+          'deleteComment',
+          'editComment',
+        ].contains(actionType)) {
           _refreshViewDetails();
         }
       } else {
-        print('Failed to record action $actionType. Status: ${response.statusCode}');
+        print(
+          'Failed to record action $actionType. Status: ${response.statusCode}',
+        );
         if (actionType != 'view' && actionType != 'bookmark') {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('操作失敗: ${response.statusCode} - ${json.decode(response.body)['message'] ?? '伺服器錯誤'}')),
+            SnackBar(
+              content: Text(
+                '操作失敗: ${response.statusCode} - ${json.decode(response.body)['message'] ?? '伺服器錯誤'}',
+              ),
+            ),
           );
         }
       }
     } catch (e) {
       print('Error recording action: $e');
       if (actionType != 'view' && actionType != 'bookmark') {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('連線錯誤: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('連線錯誤: $e')));
       }
     }
   }
@@ -222,9 +238,9 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
   void _navigateToCommentsPage() {
     // 步驟 1: 檢查 currentUserId 是否為 null
     if (_currentUserId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('請先登入以使用評分/留言功能')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('請先登入以使用評分/留言功能')));
       return;
     }
 
@@ -232,37 +248,78 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => CommentsPage(
-          dataId: widget.id,
-          currentUserId: _currentUserId!, // 💥 使用 ! 確保傳遞 int
-          dataType: 'multipleperspectives',
-          insertUserAction: _insertUserAction,
-          // 傳遞目前的分數數據和更新回調
-          totalScore: _totalScore,
-          totalRater: _totalRater,
-          onParentDataUpdated: _refreshViewDetails, // 傳遞回調函式
-        ),
+        builder:
+            (context) => CommentsPage(
+              dataId: widget.id,
+              currentUserId: _currentUserId!, // 💥 使用 ! 確保傳遞 int
+              dataType: 'multipleperspectives',
+              insertUserAction: _insertUserAction,
+              // 傳遞目前的分數數據和更新回調
+              totalScore: _totalScore,
+              totalRater: _totalRater,
+              onParentDataUpdated: _refreshViewDetails, // 傳遞回調函式
+            ),
       ),
     );
   }
 
+  // ✅ 新增：分享功能 - 使用share_plus
+  Future<void> _handleShareTap() async {
+    try {
+      // 構建分享文本
+      final shareText =
+          '多方看法分析 - ID: ${widget.id}\n\n'
+          '平均評分: ${_averageScore.toStringAsFixed(1)}/10 (${_totalRater}人評分)\n'
+          '留言數量: $_commentCount\n\n'
+          '分享自新聞聚合平台';
 
+      // 深鏈接
+      final shareUrl = 'multipleperspectives://details/${widget.id}';
+
+      final fullShareText = '$shareText\n$shareUrl';
+
+      await Share.share(fullShareText, subject: '多方看法分析');
+
+      print('✅ 分享成功: ID ${widget.id}');
+    } catch (e) {
+      print('❌ 分享失敗: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('分享失敗: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  @override
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
+      backgroundColor: const Color(0xFF0a1428),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFF1a2a4e),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF60a5fa)),
           onPressed: () {
             Navigator.pop(context);
           },
         ),
-        title: const Text('多方看法', style: TextStyle(color: Colors.black)),
+        title: const Text(
+          '多方看法',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
+          ),
+        ),
         actions: [
-          // Switch for navigation (original logic retained)
+          // 模式切換開關
           Switch(
             value: !_isEventSortingMode,
             onChanged: (bool value) {
@@ -270,30 +327,49 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
                 // 切換到事件整理頁面
                 Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(builder: (context) => EventSortingDetailPage(id: widget.id)),
+                  MaterialPageRoute(
+                    builder: (context) => EventSortingDetailPage(id: widget.id),
+                  ),
                 );
               }
             },
-            activeColor: Colors.blue,
-            inactiveTrackColor: Colors.grey.shade300,
-            inactiveThumbColor: Colors.white,
+            activeColor: const Color(0xFF60a5fa),
+            inactiveTrackColor: const Color(0xFF6366f1).withOpacity(0.2),
+            inactiveThumbColor: const Color(0xFF1a2a4e),
           ),
           const SizedBox(width: 16),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(
+            color: const Color(0xFF6366f1).withOpacity(0.1),
+            height: 1,
+          ),
+        ),
       ),
       body: FutureBuilder(
         future: _viewDetailsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF60a5fa)),
+              ),
+            );
           } else if (snapshot.hasError) {
-            return Center(child: Text('載入失敗: ${snapshot.error}'));
+            return Center(
+              child: Text(
+                '載入失敗: ${snapshot.error}',
+                style: const TextStyle(color: Colors.white),
+              ),
+            );
           } else if (!snapshot.hasData) {
-            return const Center(child: Text('找不到多方看法資料。'));
+            return const Center(
+              child: Text('找不到多方看法資料。', style: TextStyle(color: Colors.white)),
+            );
           } else {
             final view = snapshot.data;
             final List<dynamic> viewpoints = view['viewpoints'] ?? [];
-            // discussions 欄位似乎在您的範例中是空的，但我們保留其結構
             final List<dynamic> discussions = view['discussions'] ?? [];
 
             return SingleChildScrollView(
@@ -302,13 +378,21 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
                 children: [
                   _buildDisclaimer(),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 16,
+                    ),
                     child: Row(
                       children: [
                         Expanded(
                           child: Text(
                             view['multipleperspectives_title'] ?? '無標題',
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                              letterSpacing: 0.5,
+                            ),
                           ),
                         ),
                         const Spacer(),
@@ -335,38 +419,119 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
   // 顯示分數的 Widget (保持不變)
   Widget _buildScoreCard() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.star, color: Colors.amber, size: 24),
-          const SizedBox(width: 8),
-          Text(
-            // 格式化分數，保留一位小數
-            '${_averageScore.toStringAsFixed(1)} / 5.0',
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1a2a4e),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: const Color(0xFF6366f1).withOpacity(0.2),
+            width: 1,
           ),
-          const SizedBox(width: 16),
-          Text(
-            '來自 $_totalRater 位使用者評分',
-            style: const TextStyle(fontSize: 14, color: Colors.grey),
-          ),
-        ],
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF6366f1).withOpacity(0.08),
+              blurRadius: 12,
+              spreadRadius: 0,
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFf59e0b).withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.star,
+                    color: Color(0xFFf59e0b),
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${_averageScore.toStringAsFixed(1)} / 5.0',
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '來自 $_totalRater 位使用者評分',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[400],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildDisclaimer() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Row(
-        children: [
-          const Text("使用AI技術協助", style: TextStyle(color: Colors.grey, fontSize: 12)),
-          const SizedBox(width: 4),
-          const Icon(Icons.info_outline, size: 14, color: Colors.grey),
-          const Spacer(),
-          const Text("資訊若有失真狀況，一概不負法律責任", style: TextStyle(color: Colors.red, fontSize: 10)),
-        ],
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1a2a4e),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: const Color(0xFFec4899).withOpacity(0.2),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.info_outline, size: 16, color: Colors.grey[400]),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "使用AI技術協助",
+                    style: TextStyle(
+                      color: Colors.grey[400],
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "資訊若有失真狀況，一概不負法律責任",
+                    style: TextStyle(
+                      color: const Color(0xFFef4444).withOpacity(0.8),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -376,21 +541,40 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           child: Row(
             children: [
-              const Text('看法統整', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text(
+                '看法統整',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  letterSpacing: 0.5,
+                ),
+              ),
               const Spacer(),
-              const Text('統整使用AI技術協助', style: TextStyle(color: Colors.grey, fontSize: 12)),
-              const SizedBox(width: 4),
-              const Icon(Icons.info_outline, size: 14, color: Colors.grey),
+              Row(
+                children: [
+                  Text(
+                    '統整使用AI技術協助',
+                    style: TextStyle(
+                      color: Colors.grey[400],
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(Icons.info_outline, size: 14, color: Colors.grey[400]),
+                ],
+              ),
             ],
           ),
         ),
         if (viewpoints.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Text('沒有觀點資料。', style: TextStyle(color: Colors.grey)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Text('沒有觀點資料。', style: TextStyle(color: Colors.grey[400])),
           )
         else
           ...viewpoints.map((point) {
@@ -415,15 +599,48 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
   }
 
   Widget _buildExpansionCard(String title, List<String> details) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1a2a4e),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFF6366f1).withOpacity(0.2),
+          width: 1,
+        ),
+      ),
       child: ExpansionTile(
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        children: details.map((item) => Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          child: Text(item),
-        )).toList(),
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+            fontSize: 15,
+            letterSpacing: 0.3,
+          ),
+        ),
+        iconColor: const Color(0xFF60a5fa),
+        collapsedIconColor: const Color(0xFF60a5fa),
+        children:
+            details
+                .map(
+                  (item) => Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    child: Text(
+                      item,
+                      style: TextStyle(
+                        color: Colors.grey[300],
+                        fontSize: 14,
+                        height: 1.6,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
       ),
     );
   }
@@ -431,14 +648,14 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
   Widget _buildChartSection(List<dynamic> viewpoints) {
     List<PieChartSectionData> sections = [];
     final List<Color> colors = [
-      Colors.blue.shade300,
-      Colors.green.shade300,
-      Colors.red.shade300,
-      Colors.purple.shade300,
-      Colors.orange.shade300,
-      Colors.teal.shade300,
-      Colors.indigo.shade300,
-      Colors.pink.shade300,
+      const Color(0xFF6366f1),
+      const Color(0xFF60a5fa),
+      const Color(0xFF34d399),
+      const Color(0xFFf59e0b),
+      const Color(0xFFef4444),
+      const Color(0xFFec4899),
+      const Color(0xFF8b5cf6),
+      const Color(0xFF06b6d4),
     ];
 
     if (viewpoints.isNotEmpty) {
@@ -484,37 +701,54 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Text('圖表分析', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: const Text(
+            '圖表分析',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+              letterSpacing: 0.5,
+            ),
+          ),
         ),
         Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
           child: Container(
-            height: 250,
-            padding: const EdgeInsets.all(16),
+            height: 280,
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
+              color: const Color(0xFF1a2a4e),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: const Color(0xFF6366f1).withOpacity(0.2),
+                width: 1,
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.2),
-                  spreadRadius: 2,
-                  blurRadius: 5,
-                  offset: const Offset(0, 3),
+                  color: const Color(0xFF6366f1).withOpacity(0.08),
+                  blurRadius: 12,
+                  spreadRadius: 0,
                 ),
               ],
             ),
-            child: viewpoints.isEmpty
-                ? const Center(child: Text('沒有足夠資料來生成圖表。'))
-                : PieChart(
-              PieChartData(
-                sections: sections,
-                sectionsSpace: 2,
-                centerSpaceRadius: 40,
-                borderData: FlBorderData(show: false),
-              ),
-            ),
+            child:
+                viewpoints.isEmpty
+                    ? Center(
+                      child: Text(
+                        '沒有足夠資料來生成圖表。',
+                        style: TextStyle(color: Colors.grey[400]),
+                      ),
+                    )
+                    : PieChart(
+                      PieChartData(
+                        sections: sections,
+                        sectionsSpace: 2,
+                        centerSpaceRadius: 40,
+                        borderData: FlBorderData(show: false),
+                      ),
+                    ),
           ),
         ),
       ],
@@ -537,9 +771,7 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
             ...discussions.map((d) {
               return Card(
                 margin: const EdgeInsets.symmetric(vertical: 4.0),
-                child: ListTile(
-                  title: Text(d['content'] ?? '無內容'),
-                ),
+                child: ListTile(title: Text(d['content'] ?? '無內容')),
               );
             }).toList(),
         ],
@@ -583,13 +815,13 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
     return InkWell(
       onTap: () {
         if (_currentUserId != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('點擊了聊天機器人，待實作導航')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('點擊了聊天機器人，待實作導航')));
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('請先登入以使用聊天機器人')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('請先登入以使用聊天機器人')));
         }
       },
       child: Container(
@@ -615,15 +847,10 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(12), // 模仿原版右側按鈕的 padding
-        child: Icon(
-          icon,
-          color: iconColor,
-          size: 24,
-        ),
+        child: Icon(icon, color: iconColor, size: 24),
       ),
     );
   }
-
 
   // 復刻 EventSortingDetailPage 的底部操作欄
   Widget _buildBottomActions() {
@@ -647,19 +874,20 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
           _buildCommentAndRatingButton(),
 
           const Spacer(), // 分隔留言按鈕和聊天機器人按鈕
-
           // 2. 機器人圖示 (圓形藍色樣式)
           _buildFloatingActionRobotButton(),
 
           const Spacer(), // 分隔機器人按鈕和右側按鈕組
-
           // 3. 右側按鈕組 (收藏與分享)
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               // 收藏按鈕
               _buildActionIcon(
-                icon: isFavorite ? Icons.bookmark : Icons.bookmark_outline, // 根據狀態切換圖標
+                icon:
+                    isFavorite
+                        ? Icons.bookmark
+                        : Icons.bookmark_outline, // 根據狀態切換圖標
                 label: '收藏',
                 iconColor: isFavorite ? Colors.blue : Colors.grey.shade600!,
                 onTap: () {
@@ -674,16 +902,14 @@ class _MultiplePerspectivesDetailPageState extends State<MultiplePerspectivesDet
                 },
               ),
 
-              // 分享按鈕
+              // ✅ 修改：分享按鈕 - 調用實際分享功能
               _buildActionIcon(
                 icon: Icons.share_outlined,
                 label: '分享',
                 iconColor: Colors.grey.shade600!,
                 onTap: () {
                   _insertUserAction('share', 'multipleperspectives');
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('分享功能已啟用')),
-                  );
+                  _handleShareTap(); // ✅ 調用實際分享功能
                 },
               ),
             ],

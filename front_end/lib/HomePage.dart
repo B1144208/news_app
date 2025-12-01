@@ -1503,9 +1503,19 @@ class _HomePageState extends State<HomePage> {
   Widget _buildBottomNavigationBar() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF1a2a4e),
+        border: Border(
+          top: BorderSide(
+            color: const Color(0xFF6366f1).withOpacity(0.3),
+            width: 1,
+          ),
+        ),
         boxShadow: [
-          BoxShadow(color: Colors.grey, spreadRadius: 1, blurRadius: 3),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            spreadRadius: 1,
+            blurRadius: 3,
+          ),
         ],
       ),
       child: BottomNavigationBar(
@@ -1513,8 +1523,8 @@ class _HomePageState extends State<HomePage> {
         type: BottomNavigationBarType.fixed,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        selectedItemColor: Colors.blue,
-        unselectedItemColor: Colors.grey,
+        selectedItemColor: const Color(0xFF60a5fa),
+        unselectedItemColor: Colors.grey[400],
         onTap: (index) {
           setState(() {
             _selectedIndex = index;
