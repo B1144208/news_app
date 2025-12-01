@@ -108,7 +108,7 @@ async function insertNewsGroupsForOneNews(newsId, result) {
         let params = [newsId, dataId, detailId];
         console.log("10. params: ", params);
         try {
-            let [result] = await pool.query(insertSql, parmas);
+            let [result] = await pool.query(insertSql, params);
             console.log("11. insertSql result: ", result);
         } catch (err) {
             console.warn("err for insertSql: ", err.message);
