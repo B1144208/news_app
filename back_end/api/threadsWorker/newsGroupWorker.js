@@ -170,6 +170,8 @@ async function mainLoop() {
         // 1) 先從 DB 抓待處理的 news_id 清單
         const idList = await fetchPendingNewsIds();
 
+        console.log(idList);
+
         if (idList.length === 0) {
             console.log('[newsGroupWorker] 目前沒有待處理的 news_group 任務，睡一小時再檢查');
             await sleep(SLEEP_WHEN_EMPTY_MS);
