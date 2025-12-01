@@ -73,7 +73,8 @@ async function insertNewsKeywordsForOneNews(newsId, keywords) {
   const relationParams = [newsId];
   let relationId;
   try {
-    relationId = await pool.query(relationSql, [relationParams]);
+    let [rows] = await pool.query(relationSql, [relationParams]);
+    const relationId = rows[0]?.relation_id;
   } catch (err) {
     console.error("[newsKeywordWorker] relation_id search error");
     return false;
