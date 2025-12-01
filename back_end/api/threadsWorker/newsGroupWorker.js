@@ -227,6 +227,7 @@ async function handleOneNews(newsItem) {
 
     try {
         const result = await callAndCatchApiSuccessInGeneralFunction(newsGroupClassifier, fakeReq);
+        console.log("group: ", result.data);
         await insertNewsGroupsForOneNews(newsId, result.data);
         await markTaskDone(newsId);
     } catch (err) {
@@ -255,11 +256,13 @@ async function mainLoop() {
             continue;
         }
 
+        console.log("抓取", idList.length, "筆資料: ", idList);
+
         // 2) 呼叫 getText，把這批 id 換成 {id, title, text} 陣列
         let newsTextList;
         try {
             const fakeReqForGetText = {
-            query: { idList }
+                query: { idList }
             };
 
             newsTextList = await callAndCatchApiSuccessInGeneralFunction(getText, fakeReqForGetText);
@@ -286,12 +289,8 @@ async function mainLoop() {
             try {
                 await handleOneNews(newsItem); // 傳整個 {id, title, text}
             } catch (err) {
-            console.error('[newsGroupWorker] 處理 news_id =', newsItem.id, '時發生錯誤：', err);
-            // 單筆錯就寫 log，繼續處理下一筆
+                console.error('[newsGroupWorker] 處理 news_id =', newsItem.id, '時發生錯誤：', err);
             }
-
-            // 稍微休息一下，避免瞬間打太多 DB / 模型請求
-            // await sleep(SHORT_SLEEP_MS);
         }
 
         // 一輪跑完，立刻再去 DB 抓新的一輪
