@@ -126,11 +126,11 @@ async function insertNewsGroupsForOneNews(newsId, result) {
     // === 4. 一次批次 INSERT IGNORE ===
     try {
         await pool.query(insertSql, [rowsToInsert]);
+        return true;
     } catch (err) {
         console.warn('[newsGroupWorker] 批次寫入 news_group 失敗，news_id =', newsId, 'err =', err.message);
         return false;
     }
-    return true;
 }
 
 

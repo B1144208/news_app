@@ -117,8 +117,7 @@ async function insertNewsKeywordsForOneNews(newsId, keywords) {
 
   try {
     const [result] = await pool.query(insertSql, [rowsToInsert]);
-    // 有成功影響到任何列就回 true
-    return result.affectedRows > 0;
+    return true;
   } catch (err) {
     console.warn('[keywordWorker] 批次寫入 relation_keyword 失敗，relation_id =', relationId, 'err =', err.message);
     return false;
