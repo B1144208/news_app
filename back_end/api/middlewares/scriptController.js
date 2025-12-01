@@ -21,7 +21,7 @@ const OLLAMA_MODEL = 'qwen2.5:1.5b';
 */
 
 async function getText (req, res, next) {
-    let { idList } = req.query ?? {}
+    let { id, idList } = req.query ?? {}
 
     console.log("0-1. idList: ", idList);
 
