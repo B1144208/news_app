@@ -86,11 +86,6 @@ async function insertNewsGroupsForOneNews(newsId, result) {
 
         // 沒找到或 success === false 就略過
         if (!searchGroupResult || searchGroupResult.success === false || !searchGroupResult.data) {
-        /*console.warn('[newsGroupWorker] 找不到 group，news_id =',
-            newsId,
-            'name =',
-            groupName
-        );*/
             continue;
         }
 
@@ -109,6 +104,7 @@ async function insertNewsGroupsForOneNews(newsId, result) {
         try {
             await pool.query(insertSql, [newsId, dataId, detailId]);
         } catch (err) {
+            console.warn("err for insertSql: ", err.message);
         }
     }
 }
