@@ -190,7 +190,7 @@ async function handleOneNews(newsItem) {
  * - 若有資料，逐筆處理
  * - 若沒有資料，sleep 一小時後再試
  */
-async function runNewsGroupWorker() {
+async function runGroupWorker() {
     console.log('[newsGroupWorker] 啟動');
 
     try {
@@ -249,7 +249,7 @@ async function runNewsGroupWorker() {
 }
 
 // 直接啟動主程式
-/*runNewsGroupWorker().catch(err => {
+/*runGroupWorker().catch(err => {
     console.error('[newsGroupWorker] 無法啟動：', err);
     process.exit(1);
 });
@@ -266,5 +266,5 @@ process.on('SIGTERM', () => {
 });*/
 
 module.exports = {
-    runNewsGroupWorker
+    runGroupWorker
 }
