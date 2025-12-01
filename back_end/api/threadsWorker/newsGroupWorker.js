@@ -139,7 +139,7 @@ async function handleOneNews(newsItem) {
     const title  = newsItem.title || '';
     const body   = newsItem.text  || '';
 
-    console.log('[newsGroupWorker] 開始處理 news_id =', newsId);
+    console.log('\n\n[newsGroupWorker] 開始處理 news_id =', newsId);
 
     // 組成送進模型的文字：標題 + 內文
     const newsText = `${title}\n${body}`.trim();
