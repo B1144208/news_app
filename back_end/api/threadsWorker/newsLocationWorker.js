@@ -58,7 +58,7 @@ async function insertNewsLocationsForOneNews (newsId, result) {
 
     // 若最後沒有任何有效地點名稱，就直接結束，不寫入任何東西
     if (names.length === 0) {
-        return;
+        return true;
     }
 
     const insertSql = `
@@ -111,14 +111,16 @@ async function insertNewsLocationsForOneNews (newsId, result) {
 
     // === 2. 如果搜尋完沒有任何可以寫入的資料，就結束 ===
     if (rowsToInsert.length === 0) {
-        return;
+        return true;
     }
 
     // === 3. 一次批次 INSERT IGNORE ===
     try {
         await pool.query(insertSql, [rowsToInsert]);
+        return true;
     } catch (err) {
         console.warn('[newsLocationWorker] 批次寫入 news_location 失敗，news_id =', newsId, 'err =', err.message);
+        return false;
     }
 }
 
