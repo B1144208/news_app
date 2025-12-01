@@ -29,6 +29,9 @@ async function mainLoop() {
         try { await runKeywordWorker(); }
         catch (err) { console.warn('[newsMainWorker] keyword error, news_id =', newsId, err.message); }
 
+        // 4. )
+        // 5. )
+        
         const loopEnd = Date.now();
         const elapsedMs = loopEnd - loopStart;
         const elapsedSec = (elapsedMs / 1000).toFixed(2);

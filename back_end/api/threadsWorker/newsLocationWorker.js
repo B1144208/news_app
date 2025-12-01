@@ -7,9 +7,6 @@ const { searchLocation } = require('../middlewares/locationController');
 const { getText } = require('../middlewares/scriptController');
 const { callAndCatchApiSuccessInGeneralFunction } = require('../utils/fakeHelper');
 
-const SLEEP_WHEN_EMPTY_MS = 60 * 60 * 1000;
-const SHORT_SLEEP_MS = 5 * 1000;
-
 function sleep (ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }

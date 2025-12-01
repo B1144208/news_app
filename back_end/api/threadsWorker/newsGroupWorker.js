@@ -7,9 +7,6 @@ const { searchGroup } = require('../middlewares/groupController');
 const { getText } = require('../middlewares/scriptController');  
 const { callAndCatchApiSuccessInGeneralFunction } = require('../utils/fakeHelper');
 
-const SLEEP_WHEN_EMPTY_MS = 60 * 60 * 1000;
-const SHORT_SLEEP_MS = 5 * 1000;
-
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -123,7 +120,7 @@ async function insertNewsGroupsForOneNews(newsId, result) {
 
     // === 3. 真的完全沒有任何 row 可以寫入就結束 ===
     if (rowsToInsert.length === 0) {
-        return;
+        return true;
     }
 
     // === 4. 一次批次 INSERT IGNORE ===
@@ -131,7 +128,9 @@ async function insertNewsGroupsForOneNews(newsId, result) {
         await pool.query(insertSql, [rowsToInsert]);
     } catch (err) {
         console.warn('[newsGroupWorker] 批次寫入 news_group 失敗，news_id =', newsId, 'err =', err.message);
+        return false;
     }
+    return true;
 }
 
 
