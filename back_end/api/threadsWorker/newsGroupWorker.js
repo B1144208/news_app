@@ -83,17 +83,20 @@ async function insertNewsGroupsForOneNews(newsId, result) {
             // 這個標籤失敗就跳過，處理下一個
             continue;
         }
+        console.log("7. 77777777 ");
 
         // 沒找到或 success === false 就略過
         if (!searchGroupResult || searchGroupResult.success === false || !searchGroupResult.data) {
             continue;
         }
 
+        console.log("8. 888888888 ");
+
         const { type, id } = searchGroupResult.data || {};
         let dataId = null;
         let detailId = null;
 
-        console.log("7. type, id: ", type, id);
+        console.log("9. type, id: ", type, id);
 
         if (type === 'data') {
             dataId = id;
@@ -103,10 +106,10 @@ async function insertNewsGroupsForOneNews(newsId, result) {
             continue;
         }
         let params = [newsId, dataId, detailId];
-        console.log("8. params: ", params);
+        console.log("10. params: ", params);
         try {
             let [result] = await pool.query(insertSql, parmas);
-            console.log("9. insertSql result: ", result);
+            console.log("11. insertSql result: ", result);
         } catch (err) {
             console.warn("err for insertSql: ", err.message);
         }
@@ -190,8 +193,6 @@ async function mainLoop() {
             };
 
             newsTextList = await callAndCatchApiSuccessInGeneralFunction(getText, fakeReqForGetText);
-
-            console.log("0. newsTextList: ", newsTextList, "\n");
 
             // 預期格式：[{ id, title, text }, ...]
             if (!Array.isArray(newsTextList)) {
