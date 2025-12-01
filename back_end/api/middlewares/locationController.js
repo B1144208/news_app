@@ -6,8 +6,7 @@ const { locationSearch } = require('../utils/stringHelper');
 // search
 async function searchLocation (req, res, next) {
 
-    let name = req.query?.name
-    let type = req.query?.type
+    let {name, type} = req.query?? {}
 
     // 檢查必要欄位 & 格式
     try {
