@@ -136,8 +136,6 @@ async function newsGroupClassifier (req, res, next) {
       '請依照 SYSTEM 規則，對以下新聞判斷「group 主題分類」，只輸出 JSON 陣列：'
     );
 
-    console.log("3. result: ", result, "\n");
-
     return res.json({
       ok: true,
       data: result
