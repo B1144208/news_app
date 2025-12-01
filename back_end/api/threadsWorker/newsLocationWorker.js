@@ -239,7 +239,7 @@ async function runLocationWorker() {
 }
 
 // 直接啟動主程式
-runLocationWorker().catch(err => {
+/*runLocationWorker().catch(err => {
     console.error('[newsLocationWorker] 無法啟動：', err);
     process.exit(1);
 });
@@ -253,7 +253,7 @@ process.on('SIGINT', () => {
 process.on('SIGTERM', () => {
     console.log('\n[newsLocationWorker] 收到 SIGTERM，準備結束');
     process.exit(0);
-});
+});*/
 
 module.exports = {
     runLocationWorker

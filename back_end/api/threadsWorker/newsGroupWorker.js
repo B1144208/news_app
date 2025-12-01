@@ -249,7 +249,7 @@ async function runNewsGroupWorker() {
 }
 
 // 直接啟動主程式
-runNewsGroupWorker().catch(err => {
+/*runNewsGroupWorker().catch(err => {
     console.error('[newsGroupWorker] 無法啟動：', err);
     process.exit(1);
 });
@@ -263,7 +263,7 @@ process.on('SIGINT', () => {
 process.on('SIGTERM', () => {
     console.log('\n[newsGroupWorker] 收到 SIGTERM，準備結束');
     process.exit(0);
-});
+});*/
 
 module.exports = {
     runNewsGroupWorker

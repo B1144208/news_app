@@ -252,10 +252,10 @@ async function runNewsKeywordWorker() {
 }
 
 // 啟動 worker
-runNewsKeywordWorker().catch(err => {
+/*runNewsKeywordWorker().catch(err => {
   console.error('[newsKeywordWorker] 無法啟動：', err);
   process.exit(1);
-});
+});*/
 
 // 優雅關閉
 process.on('SIGINT', () => {
