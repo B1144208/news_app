@@ -181,7 +181,7 @@ async function handleOneNews(newsItem) {
  * - 呼叫 getText 取得 {id,title,text}
  * - 逐筆做 keyword 分類
  */
-async function runNewsKeywordWorker() {
+async function runKeywordWorker() {
   console.log('[newsKeywordWorker] 啟動');
 
   try {
@@ -252,10 +252,10 @@ async function runNewsKeywordWorker() {
 }
 
 // 啟動 worker
-/*runNewsKeywordWorker().catch(err => {
+/*runKeywordWorker().catch(err => {
   console.error('[newsKeywordWorker] 無法啟動：', err);
   process.exit(1);
-});*/
+});
 
 // 優雅關閉
 process.on('SIGINT', () => {
@@ -266,8 +266,8 @@ process.on('SIGINT', () => {
 process.on('SIGTERM', () => {
   console.log('\n[newsKeywordWorker] 收到 SIGTERM，準備結束');
   process.exit(0);
-});
+});*/
 
 module.exports = {
-    runNewsKeywordWorker
+    runKeywordWorker
 }
