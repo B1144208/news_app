@@ -26,8 +26,9 @@ async function getText (req, res, next) {
     console.log("0-1. idList: ", idList);
 
     try {
-      [ id, idList, times, limit ] = await checkRequireField ([
-        { field: 'idList' , data: idList  , type: 'array'   , other: ['non-null'], array_filter: 'number' }
+      [ id, idList ] = await checkRequireField ([
+        { field: 'id'     , data: id      , type: 'number'  , other: ['lth'] },
+        { field: 'idList' , data: idList  , type: 'array'   , other: ['lth'], array_filter: 'number' }
       ]);
     } catch (err) {
       err.desc = "middlewares-updateGroupOrder(): Missing or Invalid required fields";
