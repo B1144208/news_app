@@ -156,8 +156,6 @@ async function handleOneNews(newsItem) {
     const newsId = newsItem.id;
     const title  = newsItem.title || '';
     const body   = newsItem.text  || '';
-
-    // 組成送進模型的文字：標題 + 內文
     const newsText = `${title}\n${body}`.trim();
 
     const fakeReq = {
@@ -166,14 +164,12 @@ async function handleOneNews(newsItem) {
 
     try {
         const result = await callAndCatchApiSuccessInGeneralFunction(newsGroupClassifier, fakeReq);
-        console.log("result: ", result);
         if (!result || result.success === false || !result.data) {
             console.warn( `[newsGroupWorker] news_id=${newsId} newsGroupClassifier 未正常完成，略過 markTaskDone`);
             return; // 直接跳過這筆，讓外層去跑下一個 newsId
         }
         
         const insertResult = await insertNewsGroupsForOneNews(newsId, result.data);
-        console.log("insertResult: ", insertResult);
         if (insertResult === false) {
             console.warn(`[newsGroupWorker] news_id=${newsId} insertNewsGroupsForOneNews 回傳失敗，略過 markTaskDone`);
             return;
@@ -238,15 +234,11 @@ async function runNewsGroupWorker() {
                 console.error('[newsGroupWorker] 處理 news_id =', newsItem.id, '時發生錯誤：', err);
             }
         }
-
-        return;
-
-    // 一輪跑完，立刻再去 DB 抓新的一輪
     } catch (err) {
         console.error('[newsGroupWorker] 主迴圈發生錯誤：', err);
         return;
     }
-    //}
+    return;
 }
 
 // 直接啟動主程式

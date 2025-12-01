@@ -110,8 +110,6 @@ ${newsText}`
       }
     }
   }
-
-  console.log("result: ", result);
   
   // 2) 最後保險：一定要是陣列，不是就給 ["其他"]
   if (!Array.isArray(result)) {

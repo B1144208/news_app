@@ -146,9 +146,6 @@ async function handleOneNews (newsItem) {
   const newsId = newsItem.id;
   const title  = newsItem.title || '';
   const body   = newsItem.text  || '';
-
-  console.log("=========== newsId : ", newsId, " ===========\n");
-
   const newsText = `${title}\n${body}`.trim();
 
   const fakeReq = {
@@ -157,14 +154,12 @@ async function handleOneNews (newsItem) {
 
   try {
     const result = await callAndCatchApiSuccessInGeneralFunction(newsLocationClassifier, fakeReq);
-    console.log("result: ", result);
     if (!result || result.success === false || !result.data) {
         console.warn( `[newsLocationWorker] news_id=${newsId} newsLocationClassifier 未正常完成，略過 markTaskDone`);
         return; // 直接跳過這筆，讓外層去跑下一個 newsId
     }
 
     const insertResult = await insertNewsLocationsForOneNews(newsId, result.data);
-    console.log("insertResult: ", insertResult);
     if (insertResult === false) {
         console.warn(`[newsLocationWorker] news_id=${newsId} insertNewsLocationForOneNews 回傳失敗，略過 markTaskDone`);
         return;
@@ -229,13 +224,11 @@ async function runLocationWorker() {
                 console.error('[newsLocationWorker] 處理 news_id =', newsItem.id, '時發生錯誤：', err);
             }
         }
-        return;
-
     } catch (err) {
         console.error('[newsLocationWorker] 主迴圈發生錯誤：', err);
         return;
     }
-
+    return;
 }
 
 // 直接啟動主程式

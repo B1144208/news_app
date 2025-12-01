@@ -80,8 +80,6 @@ async function insertNewsKeywordsForOneNews(newsId, keywords) {
     return false;
   }
 
-  console.log("relation_id", relationId);
-
   const rowsToInsert = [];
 
   // 1) 逐一呼叫 insertKeyword，整理出 keyword_id 陣列
@@ -117,9 +115,6 @@ async function insertNewsKeywordsForOneNews(newsId, keywords) {
     VALUES ?
   `;
 
-  const finalSql = pool.format(insertSql, [rowsToInsert]);
-  console.log('[DEBUG SQL]', finalSql);
-
   try {
     const [result] = await pool.query(insertSql, [rowsToInsert]);
     // 有成功影響到任何列就回 true
@@ -152,8 +147,6 @@ async function handleOneNews(newsItem) {
   const newsId = newsItem.id;
   const title = newsItem.title || '';
   const body = newsItem.text || '';
-
-  // 組成送進模型的文字：標題 + 內文
   const newsText = `${title}\n${body}`.trim();
 
   const fakeReq = {
@@ -162,14 +155,12 @@ async function handleOneNews(newsItem) {
 
   try {
     const result = await callAndCatchApiSuccessInGeneralFunction(newsKeywordClassifier, fakeReq);
-    console.log('[newsKeywordWorker] classifier result:', result);
     if (!result || result.success === false || !result.data) {
       console.warn(`[newsKeywordWorker] news_id=${newsId} newsKeywordClassifier 未正常完成，略過 markTaskDone`);
       return;
     }
 
     const insertResult = await insertNewsKeywordsForOneNews(newsId, result.data);
-    console.log("insertResult: ", insertResult);
     if (!insertResult) {
       console.warn(`[newsKeywordWorker] news_id=${newsId} insertNewsKeywordsForOneNews 失敗或沒有任何 keyword，略過 markTaskDone`);
       return;
@@ -249,8 +240,9 @@ async function runNewsKeywordWorker() {
     }
   } catch (err) {
     console.error('[newsKeywordWorker] 主流程發生錯誤：', err);
-    await sleep(30 * 1000);
+    return;
   }
+  return;
 }
 
 // 啟動 worker
