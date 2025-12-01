@@ -45,7 +45,7 @@ async function fetchPendingNewsIds() {
 /**
  * 把 classifier 回傳的 group 結果寫入 news_group 資料表
  */
-async function insertNewsGroupsForOneNews(newsId, result) {
+/*async function insertNewsGroupsForOneNews(newsId, result) {
 
     // 沒有結果就直接結束
     if (!Array.isArray(result) || result.length === 0) {
@@ -61,8 +61,6 @@ async function insertNewsGroupsForOneNews(newsId, result) {
     for (const rawName of result) {
         // 空值就當成「其他」
         const groupName = rawName || '其他';
-
-        console.log("\t", groupName);
 
         let searchGroupResult;
         try {
@@ -101,7 +99,101 @@ async function insertNewsGroupsForOneNews(newsId, result) {
             console.warn("err for insertSql: ", err.message);
         }
     }
+}*/
+
+async function insertNewsGroupsForOneNews(newsId, result) {
+    // === 0. 先準備要查的名稱陣列，若原本就是 []，就當作 ['其他'] ===
+    let namesToSearch;
+    if (Array.isArray(result) && result.length > 0) {
+        namesToSearch = result;
+    } else {
+        namesToSearch = ['其他'];
+    }
+
+    // 批次 INSERT 用的 SQL（VALUES ? 對應 mysql2 的多筆插入）
+    const insertSql = `
+        INSERT IGNORE INTO news_group (news_id, group_data_id, group_detail_id)
+        VALUES ?
+    `;
+
+    const rowsToInsert = []; // [[newsId, dataId, detailId], ...]
+
+    // === 1. 逐一呼叫 searchGroup，把結果整理成 {type,id} → rowsToInsert ===
+    for (const rawName of namesToSearch) {
+        // 空值一律當作「其他」
+        const groupName = rawName || '其他';
+
+        let searchGroupResult;
+        try {
+            const fakeReq = { query: { name: groupName } };
+            searchGroupResult = await callAndCatchApiSuccessInGeneralFunction(searchGroup, fakeReq);
+        } catch (err) {
+            // 這個標籤失敗就跳過，處理下一個
+            console.warn('[newsGroupWorker] searchGroup 失敗，news_id =', newsId, 'name =', groupName, 'err =', err.message);
+            continue;
+        }
+
+        // 沒找到或格式不對就略過
+        if (!searchGroupResult || !searchGroupResult.type || !searchGroupResult.id) {
+            continue;
+        }
+
+        const { type, id } = searchGroupResult;
+        let dataId = null;
+        let detailId = null;
+
+        if (type === 'data') {
+            dataId = id;
+        } else if (type === 'detail') {
+            detailId = id;
+        } else {
+            // 不認得的 type 直接略過
+            continue;
+        }
+
+        rowsToInsert.push([newsId, dataId, detailId]);
+    }
+
+    // === 2. 若全部 search 完還是沒有任何可用的結果，再保底塞「其他」一次 ===
+    if (rowsToInsert.length === 0) {
+        try {
+            const fakeReq = { query: { name: '其他' } };
+            const fallback = await callAndCatchApiSuccessInGeneralFunction(searchGroup, fakeReq);
+
+            if (fallback && fallback.type && fallback.id) {
+                let dataId = null;
+                let detailId = null;
+
+                if (fallback.type === 'data') {
+                    dataId = fallback.id;
+                } else if (fallback.type === 'detail') {
+                    detailId = fallback.id;
+                }
+
+                if (dataId !== null || detailId !== null) {
+                    rowsToInsert.push([newsId, dataId, detailId]);
+                }
+            }
+        } catch (err) {
+            console.warn('[newsGroupWorker] fallback「其他」搜尋也失敗，news_id =', newsId, 'err =', err.message);
+        }
+    }
+
+    // === 3. 真的完全沒有任何 row 可以寫入就結束 ===
+    if (rowsToInsert.length === 0) {
+        return;
+    }
+
+    // === 4. 一次批次 INSERT IGNORE ===
+    try {
+        // mysql2 多筆 insert 的寫法：VALUES ? + [rowsToInsert]
+        await pool.query(insertSql, [rowsToInsert]);
+        //console.log('[newsGroupWorker] news_id =', newsId, '已批次寫入 group 筆數 =', rowsToInsert.length);
+    } catch (err) {
+        console.warn('[newsGroupWorker] 批次寫入 news_group 失敗，news_id =', newsId, 'err =', err.message);
+    }
 }
+
 
 /**
  * 將單一 news 的 news_task.news_group 設為 1 （表示已完成）
