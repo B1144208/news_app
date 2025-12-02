@@ -3,6 +3,7 @@
 //const fetch = require('node-fetch');
 
 const OLLAMA_URL = 'http://localhost:11434';
+const pool = require('../connect_db');
 
 /**
  * 計算兩個向量之間的餘弦相似度 (Cosine Similarity)。
@@ -118,26 +119,24 @@ function findKeywordRelationId(newKeywordEmbedding, existingKeywords, threshold 
  * @returns {Promise<number[]>} 相似事件的 eventsorting_id 陣列。
  */
 async function findSimilarEvents(newEmbedding, currentEventId, threshold = 0.8) {
-    // [!!! 確保這個路徑正確指向您的 connect_db.js !!!]
-    const dbPool = require('../connect_db');
-
     // 查詢所有現有事件的 ID 和 Embedding
     const sql = `
-        SELECT eventsorting_id, embedding_json
+        SELECT eventsorting_id, eventsorting_embedding -- <<< 修正：欄位名稱從 embedding_json 改為 eventsorting_embedding
         FROM eventsorting_data
         WHERE eventsorting_id != ?
-        AND embedding_json IS NOT NULL
-        AND CHAR_LENGTH(embedding_json) > 10
+        AND eventsorting_embedding IS NOT NULL          -- <<< 修正
+        AND CHAR_LENGTH(eventsorting_embedding) > 10    -- <<< 修正 (確保不是空 JSON [])
     `;
 
-    const [existingEvents] = await dbPool.query(sql, [currentEventId]);
+    const [existingEvents] = await pool.query(sql, [currentEventId]); // 使用 pool
 
     let relatedIds = [];
 
     for (const event of existingEvents) {
         try {
-            const existingEmbedding = JSON.parse(event.embedding_json);
-            // 呼叫 calculateSimilarity (假設已存在於此檔案)
+            // <<< 修正：使用正確的欄位名稱 eventsorting_embedding 進行解析
+            const existingEmbedding = JSON.parse(event.eventsorting_embedding);
+
             const similarity = calculateSimilarity(newEmbedding, existingEmbedding);
 
             if (similarity >= threshold) {
@@ -147,7 +146,8 @@ async function findSimilarEvents(newEmbedding, currentEventId, threshold = 0.8) 
                 });
             }
         } catch (e) {
-            // 忽略無效的 Embedding 資料
+            // 忽略無效的 Embedding 資料，但記錄一下
+            console.warn(`[EmbeddingHelper] 無法解析事件 ID ${event.eventsorting_id} 的 Embedding 資料:`, e.message);
         }
     }
 

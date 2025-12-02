@@ -8,6 +8,7 @@ const { getEmbedding, findSimilarEvents } = require('../utils/embeddingHelper');
 const POLLING_INTERVAL_MS = 10000;
 const TASK_STATUS_COMPLETED = 1;
 const TASK_STATUS_FAILED = 2;
+const MODEL_NAME = 'event_sorting'; // <--- 使用您最近確認的模型名稱
 
 // ========================================================
 // I. 內部定義資料庫輔助函式
@@ -23,7 +24,6 @@ async function getPendingRelationIds() {
 
 /** 取得事件相關的新聞 ID，並依照時間升序排序 */
 async function getNewsIdsByRelationId(relationId) {
-    // *** 修正 A: 直接從 news_data 查找 relation_id ***
     const sql = `
         SELECT news_id
         FROM news_data
@@ -35,7 +35,7 @@ async function getNewsIdsByRelationId(relationId) {
 }
 
 /** 根據新聞 ID 獲取新聞文本 (標題 + 內文) */
-/** * 取得新聞標題和完整內文 (修正版：JOIN news_body 合併內文)
+/** * 取得新聞標題和完整內文
  * @param {number[]} idList - 新聞 ID 陣列
  * @returns {Promise<string[]>} 格式化後的新聞文字陣列
  */
@@ -44,10 +44,6 @@ async function getNewsTextsByIds(idList) {
 
     const placeholders = idList.map(() => '?').join(',');
 
-    // 關鍵修正：
-    // 1. JOIN news_body (t2)
-    // 2. 使用 GROUP_CONCAT 依照 body_order 串連所有 body_text
-    // 3. 將結果欄位命名為 news_text
     const sql = `
         SELECT
             t1.news_title,
@@ -72,41 +68,67 @@ async function getNewsTextsByIds(idList) {
 }
 
 /** 儲存/更新 eventsorting_data (title, summary, embedding) */
-async function upsertEventSortingData({ eventsorting_id, title, summary, embeddingJson }) {
+// 變數名稱從 embeddingJson 更改為 eventsorting_embedding_data
+async function upsertEventSortingData({ eventsorting_id, title, summary, eventsorting_embedding_data }) {
     const sql = `
-        INSERT INTO eventsorting_data (eventsorting_id, title, summary, embedding_json)
+        INSERT INTO eventsorting_data (eventsorting_id, eventsorting_title, eventsorting_summary, eventsorting_embedding)
         VALUES (?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
-            title = VALUES(title),
-            summary = VALUES(summary),
-            embedding_json = VALUES(embedding_json),
+            eventsorting_title = VALUES(eventsorting_title),
+            eventsorting_summary = VALUES(eventsorting_summary),
+            eventsorting_embedding = VALUES(eventsorting_embedding),
             updated_at = NOW()
     `;
-    await pool.query(sql, [eventsorting_id, title, summary, embeddingJson]);
+    // 傳入修正後的變數名稱
+    await pool.query(sql, [eventsorting_id, title, summary, eventsorting_embedding_data]);
 }
 
 /** 儲存 Eventsorting Vertical (新聞時間線) */
 async function saveEventsortingVertical(relationId, sequence) {
     await pool.query(`DELETE FROM eventsorting_vertical WHERE eventsorting_id = ?`, [relationId]);
     if (sequence.length > 0) {
-        const values = sequence.map(item => [relationId, item.news_id, item.sequence_order]);
-        const sql = `INSERT INTO eventsorting_vertical (eventsorting_id, news_id, sequence_order) VALUES ?`;
+        // 根據使用者提供的結構，eventsorting_vertical 只有 eventsorting_id 和 news_id。
+        const values = sequence.map(item => [relationId, item.news_id]); // 移除 sequence_order
+        const sql = `INSERT INTO eventsorting_vertical (eventsorting_id, news_id) VALUES ?`;
         await pool.query(sql, [values]);
     }
 }
 
 /** 儲存 Eventsorting Horizontal (相關事件連結) */
 async function saveEventsortingHorizontal(relationId, relatedEvents) {
+    // 1. 先清空現有資料 (只清空以 relationId 為主要 ID 的紀錄)
     await pool.query(`DELETE FROM eventsorting_horizontal WHERE eventsorting_id = ?`, [relationId]);
-    if (relatedEvents.length > 0) {
-        const values = relatedEvents.map(item => [relationId, item.related_eventsorting_id]);
-        const sql = `INSERT INTO eventsorting_horizontal (eventsorting_id, related_eventsorting_id) VALUES ?`;
+
+    if (relatedEvents.length === 0) return;
+
+    const values = [];
+    const existingPairs = new Set(); // 用來避免重複的 (小ID, 大ID) 配對
+
+    for (const item of relatedEvents) {
+        const relatedId = item.related_eventsorting_id;
+
+        // 核心邏輯：確保 ID 較小的放在 eventsorting_id，較大的放在 horizontal_id
+        const smallerId = Math.min(relationId, relatedId);
+        const largerId = Math.max(relationId, relatedId);
+
+        // 檢查是否已儲存過這對 (smallerId, largerId)
+        const pairKey = `${smallerId}-${largerId}`;
+
+        if (!existingPairs.has(pairKey)) {
+            values.push([smallerId, largerId]);
+            existingPairs.add(pairKey);
+        }
+    }
+
+    // 2. 批量插入資料
+    if (values.length > 0) {
+        // 使用 INSERT IGNORE 來處理潛在的衝突 (如果另一個 worker 已經將這對 ID 存入)
+        const sql = `INSERT IGNORE INTO eventsorting_horizontal (eventsorting_id, horizontal_id) VALUES ?`;
         await pool.query(sql, [values]);
     }
 }
 
 async function updateRelationTaskStatus(relationId, status) {
-    // 修正：移除對 updated_at 的更新
     await pool.query(
         `UPDATE relation_task SET eventsorting_text = ? WHERE relation_id = ?`,
         [status, relationId]
@@ -139,18 +161,29 @@ async function processTask(relationId) {
         const combinedNewsText = newsTexts.join('\n\n--- [新聞分隔線] ---\n\n');
 
         // 呼叫 Ollama 模型
-        const { title, summary } = await ollamaSummarize('event_sorting', combinedNewsText);
+        console.log(`[Ollama] 呼叫模型 ${MODEL_NAME} 進行摘要...`);
+
+        // 使用預設值解構，並處理 ollamaSummarize 返回 null/undefined 的情況
+        const { title = '', summary = '' } = await ollamaSummarize(MODEL_NAME, combinedNewsText) || {};
+
+        // 檢查模型輸出
+        if (title.length < 5 || summary.length < 10) {
+            console.error(`[Ollama Error] 事件 ID ${relationId}: 模型返回摘要內容不足 (Title: ${title.length}, Summary: ${summary.length})，標記為失敗。`);
+            await updateRelationTaskStatus(relationId, TASK_STATUS_FAILED);
+            return;
+        }
 
         // 取得 Embedding 向量
         const embedding = await getEmbedding(title + ' ' + summary);
-        const embeddingJson = JSON.stringify(embedding);
+        // 變數名稱從 embeddingJson 更改為 eventsorting_embedding_data
+        const eventsorting_embedding_data = JSON.stringify(embedding);
 
         // 儲存事件摘要與向量
         await upsertEventSortingData({
             eventsorting_id: relationId,
             title,
             summary,
-            embeddingJson
+            eventsorting_embedding_data
         });
 
         // 儲存 Vertical (時間線)
@@ -158,7 +191,9 @@ async function processTask(relationId) {
         await saveEventsortingVertical(relationId, verticalSequence);
 
         // 儲存 Horizontal (相關事件連結)
+        // 使用原始 embedding 向量進行相似性搜索
         const relatedIds = await findSimilarEvents(embedding, relationId, 0.75);
+        // 映射成 { related_eventsorting_id: id } 格式，以便 saveEventsortingHorizontal 函式取值
         await saveEventsortingHorizontal(relationId, relatedIds.map(id => ({ related_eventsorting_id: id })));
 
         // 完成任務
