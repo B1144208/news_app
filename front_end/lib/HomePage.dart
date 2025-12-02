@@ -76,11 +76,14 @@ class _HomePageState extends State<HomePage> {
 
     // 監聽音訊播放完成事件
     _audioPlayer.onPlayerComplete.listen((event) {
+      if (!mounted) return; // 檢查 widget 是否還在樹中
       _onAudioComplete();
     });
 
     // 監聽音訊播放狀態
     _audioPlayer.onPlayerStateChanged.listen((state) {
+      if (!mounted) return; // 檢查 widget 是否還在樹中
+
       if (state == PlayerState.playing) {
         setState(() {
           _isPlaying = true;
