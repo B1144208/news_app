@@ -207,35 +207,23 @@ const CHAT_SYSTEM_PROMPT = `
 - 你只需要根據這些文字，依照上述規則產生一組對話腳本（JSON 陣列）。
 `;
 
-// === translate（英翻中，單純字串）SYSTEM：英文 → 繁中 ===
-const SIMPLE_TRANSLATE_SYSTEM_PROMPT = `
-你是一個專門負責「英文 → 繁體中文」的翻譯模型。
+// === 模型名稱（之後要換 deepseek 就改這裡） ===
+const MODEL_FOR_GROUP    = 'gpt-4.1-mini';
+const MODEL_FOR_LOCATION = 'gpt-4.1-mini';
+const MODEL_FOR_KEYWORD  = 'gpt-4.1-mini';
+const MODEL_FOR_REPORTER = 'gpt-4.1-mini';
+const MODEL_FOR_CHAT     = 'gpt-4.1-mini';
 
-規則：
-1. 輸入會是一小段句子或一整段文章（可能是標題或內文），主要是英文。
-2. 請翻譯成自然流暢的繁體中文，完整保留原本資訊與語氣，不要省略內容，也不要加入新的說明或註解。
-3. 不要加上任何前綴或後綴文字、不要加引號，只輸出翻譯後的中文內容本身。
-`;
-
-// === 模型名稱 ===
-const MODEL_FOR_GROUP     = 'gpt-4.1-mini';
-const MODEL_FOR_LOCATION  = 'gpt-4.1-mini';
-const MODEL_FOR_KEYWORD   = 'gpt-4.1-mini';
-const MODEL_FOR_REPORTER  = 'gpt-4.1-mini';
-const MODEL_FOR_CHAT      = 'gpt-4.1-mini';
-const MODEL_FOR_TRANSLATE = 'gpt-4.1-mini';
-
-/** 判斷字串是否「主要是中文」 */
-function isMostlyChinese(str) {
-  if (!str) return false;
-  const han   = (str.match(/[\u4E00-\u9FFF]/g) || []).length;
-  const latin = (str.match(/[A-Za-z]/g) || []).length;
-  if (han === 0 && latin === 0) return false;
-  return han >= latin;
-}
-
-/** 共用：呼叫 JSON 陣列模型（group/location/keyword） */
-async function callJsonArrayModel({ systemPrompt, userContent, model, temperature, top_p }) {
+/**
+ * 共用：呼叫模型，拿回「JSON 陣列字串（例如 ["a","b"] ）」並 parse 成 string[]
+ */
+async function callJsonArrayModel({
+  systemPrompt,
+  userContent,
+  model,
+  temperature,
+  top_p
+}) {
   const completion = await client.chat.completions.create({
     model,
     temperature,
@@ -246,7 +234,8 @@ async function callJsonArrayModel({ systemPrompt, userContent, model, temperatur
     ]
   });
 
-  const raw = completion.choices?.[0]?.message?.content?.trim?.() ?? '[]';
+  const raw =
+    completion.choices?.[0]?.message?.content?.trim?.() ?? '[]';
 
   let arr;
   try {
@@ -258,17 +247,27 @@ async function callJsonArrayModel({ systemPrompt, userContent, model, temperatur
 
   if (!Array.isArray(arr)) return [];
 
-  return Array.from(
+  const cleaned = Array.from(
     new Set(
       arr
         .map(x => (x == null ? '' : String(x).trim()))
         .filter(Boolean)
     )
   );
+
+  return cleaned;
 }
 
-/** 共用：回傳一段文字（reporter 用） */
-async function callTextModel({ systemPrompt, userContent, model, temperature, top_p }) {
+/**
+ * 共用：回傳一段文字（reporter 用）
+ */
+async function callTextModel({
+  systemPrompt,
+  userContent,
+  model,
+  temperature,
+  top_p
+}) {
   const completion = await client.chat.completions.create({
     model,
     temperature,
@@ -279,11 +278,23 @@ async function callTextModel({ systemPrompt, userContent, model, temperature, to
     ]
   });
 
-  return completion.choices?.[0]?.message?.content?.trim?.() ?? '';
+  const raw =
+    completion.choices?.[0]?.message?.content?.trim?.() ?? '';
+
+  return raw;
 }
 
-/** 共用：回傳「物件陣列」格式的 JSON（chat 用） */
-async function callJsonObjectArrayModel({ systemPrompt, userContent, model, temperature, top_p }) {
+/**
+ * 共用：回傳「物件陣列」格式的 JSON（chat 用）
+ * 期望結果：[{speaker:"A",text:"..."}, {speaker:"B",text:"..."}...]
+ */
+async function callJsonObjectArrayModel({
+  systemPrompt,
+  userContent,
+  model,
+  temperature,
+  top_p
+}) {
   const completion = await client.chat.completions.create({
     model,
     temperature,
@@ -294,7 +305,7 @@ async function callJsonObjectArrayModel({ systemPrompt, userContent, model, temp
     ]
   });
 
-  const raw = completion.choices?.[0]?.message?.content?.trim?.() ?? '[]';
+  let raw = completion.choices?.[0]?.message?.content?.trim?.() ?? '[]';
 
   let arr;
   try {
@@ -309,86 +320,46 @@ async function callJsonObjectArrayModel({ systemPrompt, userContent, model, temp
     return [];
   }
 
-  return arr
+  // 正規化為 {speaker, text}[]
+  const result = arr
     .filter(x => x && typeof x === 'object')
     .map(x => ({
-      speaker: x.speaker === 'B' ? 'B' : 'A',
+      speaker: x.speaker === 'B' ? 'B' : 'A', // 預設錯就當 A
       text: (x.text ?? '').toString().trim()
     }))
     .filter(x => x.text);
-}
 
-/** 單段翻譯：英文 → 繁中（回傳字串） */
-async function translateOneSegment(text) {
-  const input = (text || '').trim();
-  if (!input) return '';
-
-  const completion = await client.chat.completions.create({
-    model: MODEL_FOR_TRANSLATE,
-    temperature: 0,
-    top_p: 1,
-    messages: [
-      { role: 'system', content: SIMPLE_TRANSLATE_SYSTEM_PROMPT },
-      { role: 'user', content: input }
-    ]
-  });
-
-  return completion.choices?.[0]?.message?.content?.trim?.() ?? '';
-}
-
-/** translate：如果是英文就翻 title、text，回 {title,text}，否則回 null */
-async function translateTitleAndTextIfNeeded(title, text) {
-  const full = `${title}\n${text}`;
-  if (isMostlyChinese(full)) {
-    return null; // 原本就是中文，不翻
-  }
-
-  const [ttitle, ttext] = await Promise.all([
-    translateOneSegment(title),
-    translateOneSegment(text)
-  ]);
-
-  // 至少要有一個有東西才算成功，否則回 null
-  if (!ttitle && !ttext) return null;
-
-  return {
-    title: ttitle || title,
-    text : ttext || text
-  };
+  return result;
 }
 
 /**
- * 對單一新聞做五種處理 + 英翻中
+ * 對單一新聞做五種處理
  * @param {Object} news
- * @param {string} news.title   - 新聞標題（可能是中或英）
- * @param {string} news.text    - 新聞內文字串（可能是中或英）
+ * @param {string} news.title   - 新聞標題
+ * @param {string} news.content - 新聞內文
  * @returns {Promise<{
  *   group: string[],
  *   location: string[],
  *   keyword: string[],
  *   reporter: string,
- *   chat: {speaker:string, text:string}[],
- *   translate: null | {title:string, text:string}
+ *   chat: {speaker:string, text:string}[]
  * }>}
  */
 async function classifyNews(news) {
-  const title = news?.title ?? '';
-  const body  = news?.text ?? news?.content ?? '';
-
-  const textForModel = `標題：${title}\n\n內文：${body}`;
+  const { title = '', content = '' } = news || {};
+  const text = `標題：${title}\n\n內文：${content}`;
 
   const [
     group,
     location,
     keyword,
     reporter,
-    chat,
-    translate
+    chat
   ] = await Promise.all([
     // group
     callJsonArrayModel({
       systemPrompt: GROUP_SYSTEM_PROMPT,
-      userContent: textForModel,
+      userContent: text,
       model: MODEL_FOR_GROUP,
       temperature: 0.15,
       top_p: 0.5
@@ -396,7 +367,7 @@ async function classifyNews(news) {
     // location
     callJsonArrayModel({
       systemPrompt: LOCATION_SYSTEM_PROMPT,
-      userContent: textForModel,
+      userContent: text,
       model: MODEL_FOR_LOCATION,
       temperature: 0.15,
       top_p: 0.5
@@ -404,32 +375,30 @@ async function classifyNews(news) {
     // keyword
     callJsonArrayModel({
       systemPrompt: KEYWORD_SYSTEM_PROMPT,
-      userContent: textForModel,
+      userContent: text,
       model: MODEL_FOR_KEYWORD,
       temperature: 0.2,
       top_p: 0.6
     }),
-    // reporter
+    // reporter：播報稿一段文字
     callTextModel({
       systemPrompt: REPORTER_SYSTEM_PROMPT,
-      userContent: textForModel,
+      userContent: text,
       model: MODEL_FOR_REPORTER,
       temperature: 0.2,
       top_p: 0.6
     }),
-    // chat
+    // chat：對話腳本，物件陣列
     callJsonObjectArrayModel({
       systemPrompt: CHAT_SYSTEM_PROMPT,
-      userContent: textForModel,
+      userContent: text,
       model: MODEL_FOR_CHAT,
       temperature: 0.2,
       top_p: 0.6
-    }),
-    // translate（若為英文才翻）
-    translateTitleAndTextIfNeeded(title, body)
+    })
   ]);
 
-  return { group, location, keyword, reporter, chat, translate };
+  return { group, location, keyword, reporter, chat };
 }
 
 module.exports = {
