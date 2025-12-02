@@ -465,7 +465,7 @@ async function insertNews(req, res, next) {
         if (matchedRelationId !== null) {
             // A. 找到匹配，使用現有的 ID (Eventsorting ID 即為 Relation ID)
             relation_id = matchedRelationId;
-            console.log(`[Relation Match] 覆蓋 relation_id 為: ${matchedRelationId} (相似度 > ${SIMILARITY_THRESHOLD})`);
+            //console.log(`[Relation Match] 覆蓋 relation_id 為: ${matchedRelationId} (相似度 > ${SIMILARITY_THRESHOLD})`);
 
         } else {
             // B. 未找到匹配，創建新的 Relation ID 並同步 Eventsorting Data
@@ -482,7 +482,7 @@ async function insertNews(req, res, next) {
                 }
 
                 relation_id = insertRelationResult.insertId;
-                console.log(`[Relation Creation] 創建新的 relation_id: ${relation_id}`);
+                //console.log(`[Relation Creation] 創建新的 relation_id: ${relation_id}`);
 
                 // ii. 創建 Event Sorting Data (同步插入 eventsorting_data)
                 // 這裡假設 eventsorting_id = relation_id

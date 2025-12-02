@@ -6,7 +6,7 @@ const path = require('path');
 
 const pool = require('../connect_db');
 const { callAndCatchApiSuccessInGeneralFunction } = require('../utils/fakeHelper');
-const { batchChannel } = require('../middlewares/channelController');  // 確定這裡有 export batchChannel
+const { batchChannel } = require('../utils/batchHelper');
 
 async function main() {
   try {
