@@ -45,6 +45,7 @@ class _HomePageState extends State<HomePage> {
   int _currentPage = 0; // 新增:當前頁碼
   final int _newsPerPage = 30; // 新增:每頁新聞數量
   final ScrollController _scrollController = ScrollController(); // 新增:滾動控制器
+  int _displayStartIndex = 0; // 新增:當前顯示資料在_allNewsData中的起始索引
 
   // 快速播放相關變數
   bool _isPlayerVisible = false;
@@ -231,16 +232,23 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // 新增：滾動監聽
+  // 修改：滾動監聽 - 支援雙向載入
   void _onScroll() {
+    // 向下滾動到底部 - 載入更多
     if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent * 0.9) {
       if (!_isLoadingMore && _allNewsData.isNotEmpty) {
         _loadMoreNews();
       }
     }
+    // 向上滾動到頂部 - 載入前面的資料
+    else if (_scrollController.position.pixels <= _scrollController.position.minScrollExtent + 100) {
+      if (!_isLoadingMore && _displayStartIndex > 0) {
+        _loadPreviousNews();
+      }
+    }
   }
 
-  // 新增：載入更多新聞
+  // 修改：載入更多新聞（向下滾動）
   Future<void> _loadMoreNews() async {
     if (_isLoadingMore) return;
 
@@ -248,27 +256,73 @@ class _HomePageState extends State<HomePage> {
       _isLoadingMore = true;
     });
 
-    // 模擬載入延遲
-    await Future.delayed(const Duration(milliseconds: 500));
+    await Future.delayed(const Duration(milliseconds: 300));
 
     setState(() {
-      if (_newsData.length >= 60) {
+      // 計算當前顯示資料的結束索引
+      int currentEndIndex = _displayStartIndex + _newsData.length;
+
+      // 檢查是否還有更多資料可載入
+      if (currentEndIndex < _allNewsData.length) {
         // 如果已有60個新聞，刪除前30個
-        _newsData.removeRange(0, 30);
-        _currentPage++;
-      }
+        if (_newsData.length >= 60) {
+          _newsData.removeRange(0, 30);
+          _displayStartIndex += 30;
+        }
 
-      // 載入接下來的30個新聞
-      int startIndex = (_currentPage + 1) * _newsPerPage;
-      int endIndex = startIndex + _newsPerPage;
+        // 載入接下來的30個新聞
+        int newEndIndex = currentEndIndex + _newsPerPage;
+        if (newEndIndex > _allNewsData.length) {
+          newEndIndex = _allNewsData.length;
+        }
 
-      if (startIndex < _allNewsData.length) {
-        endIndex = endIndex > _allNewsData.length ? _allNewsData.length : endIndex;
-        _newsData.addAll(_allNewsData.sublist(startIndex, endIndex));
-        _currentPage++;
+        _newsData.addAll(_allNewsData.sublist(currentEndIndex, newEndIndex));
       }
 
       _isLoadingMore = false;
+    });
+  }
+
+  // 新增：載入前面的新聞（向上滾動）
+  Future<void> _loadPreviousNews() async {
+    if (_isLoadingMore || _displayStartIndex <= 0) return;
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    // 保存當前滾動位置
+    final currentScrollPosition = _scrollController.position.pixels;
+    final itemHeight = _scrollController.position.maxScrollExtent / _newsData.length;
+
+    setState(() {
+      // 如果已有60個新聞，刪除後30個
+      if (_newsData.length >= 60) {
+        _newsData.removeRange(30, _newsData.length);
+      }
+
+      // 計算要載入的起始索引
+      int newStartIndex = _displayStartIndex - _newsPerPage;
+      if (newStartIndex < 0) {
+        newStartIndex = 0;
+      }
+
+      // 在前面插入資料
+      _newsData.insertAll(0, _allNewsData.sublist(newStartIndex, _displayStartIndex));
+      _displayStartIndex = newStartIndex;
+
+      _isLoadingMore = false;
+    });
+
+    // 延遲調整滾動位置，避免突然跳轉
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        // 計算新增加的項目高度，保持視覺位置
+        final addedItemsCount = _displayStartIndex == 0 ? _newsPerPage : (_allNewsData.length - _displayStartIndex);
+        _scrollController.jumpTo(currentScrollPosition + (itemHeight * 30));
+      }
     });
   }
 
@@ -278,6 +332,7 @@ class _HomePageState extends State<HomePage> {
       _isLoading = true;
       _error = null;
       _currentPage = 0;
+      _displayStartIndex = 0; // 重置顯示起始索引
       _newsData.clear();
       _allNewsData.clear();
     });
@@ -386,6 +441,7 @@ class _HomePageState extends State<HomePage> {
       _isLoading = true;
       _error = null;
       _currentPage = 0;
+      _displayStartIndex = 0; // 重置顯示起始索引
       _newsData.clear();
       _allNewsData.clear();
     });
