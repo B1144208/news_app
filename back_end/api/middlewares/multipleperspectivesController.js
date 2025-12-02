@@ -17,10 +17,18 @@ async function searchMultipleperspectives(req, res, next) {
     }
 
 
-    let sql = `SELECT * FROM multipleperspectives_data`;
+    let sql = `
+            SELECT
+                mp.*,
+                es.eventsorting_title
+            FROM
+                multipleperspectives_data mp
+            JOIN
+                eventsorting_data es ON mp.multipleperspectives_id = es.eventsorting_id
+        `;
     let params = [];
     if (id) {
-        sql += ` WHERE multipleperspectives_id = ?`;
+        sql += ` WHERE mp.multipleperspectives_id = ?`;
         params.push(id);
     }
 
@@ -45,7 +53,7 @@ async function searchMultipleperspectives(req, res, next) {
                 WHERE multipleperspectives_id = ?
             `;
             const sqlDiscussions = `
-                SELECT discuss AS content
+                SELECT discuss_text AS content
                 FROM multipleperspectives_discuss
                 WHERE multipleperspectives_id = ?
             `;

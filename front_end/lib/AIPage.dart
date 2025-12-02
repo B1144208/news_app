@@ -104,20 +104,21 @@ class _AIPageState extends State<AIPage> {
 
     // 篩選事件整理 (Eventsorting)
     final filteredEvents =
-        _eventsortingList.where((event) {
-          final title = event['eventsorting_title']?.toLowerCase() ?? '';
-          final summary = event['eventsorting_summary']?.toLowerCase() ?? '';
-          return title.contains(lowerCaseKeyword) ||
-              summary.contains(lowerCaseKeyword);
-        }).toList();
+    _eventsortingList.where((event) {
+      final title = event['eventsorting_title']?.toLowerCase() ?? '';
+      final summary = event['eventsorting_summary']?.toLowerCase() ?? '';
+      return title.contains(lowerCaseKeyword) ||
+          summary.contains(lowerCaseKeyword);
+    }).toList();
 
     // 篩選多方看法 (MultiplePerspectives)
     final filteredMP =
-        _multiplePerspectivesList.where((view) {
-          final title = view['multipleperspectives_title']?.toLowerCase() ?? '';
-          // 由於多方看法資料沒有 summary，只篩選 title
-          return title.contains(lowerCaseKeyword);
-        }).toList();
+    _multiplePerspectivesList.where((view) {
+      // 💥 修正點 1: multipleperspectives_title 已移除，改用 eventsorting_title 進行篩選
+      final title = view['eventsorting_title']?.toLowerCase() ?? '';
+      // 由於多方看法資料沒有 summary，只篩選 title
+      return title.contains(lowerCaseKeyword);
+    }).toList();
 
     setState(() {
       _filteredEventsortingList = filteredEvents;
@@ -306,9 +307,9 @@ class _AIPageState extends State<AIPage> {
 
     final isEventsorting = dataType == 'eventsorting';
     final statusMap =
-        isEventsorting
-            ? _bookmarkIdStatus
-            : _multiplePerspectivesBookmarkIdStatus;
+    isEventsorting
+        ? _bookmarkIdStatus
+        : _multiplePerspectivesBookmarkIdStatus;
 
     // 檢查是否已收藏，並取出 bookmark_id
     final bookmarkId = statusMap[dataId];
@@ -369,7 +370,7 @@ class _AIPageState extends State<AIPage> {
     return FutureBuilder<bool>(
       // 檢查是否登入
       future: SharedPreferences.getInstance().then(
-        (prefs) => prefs.getBool('IsLogin') ?? false,
+            (prefs) => prefs.getBool('IsLogin') ?? false,
       ),
       builder: (context, snapshot) {
         final isLoggedIn = snapshot.data ?? false;
@@ -379,7 +380,7 @@ class _AIPageState extends State<AIPage> {
           child: Row(
             children: [
               if (!isLoggedIn)
-                // 未登入狀態 - 顯示登入和註冊按鈕
+              // 未登入狀態 - 顯示登入和註冊按鈕
                 Row(
                   children: [
                     ElevatedButton(
@@ -444,7 +445,7 @@ class _AIPageState extends State<AIPage> {
                   ],
                 )
               else
-                // 已登入狀態 - 顯示用戶頭像
+              // 已登入狀態 - 顯示用戶頭像
                 FutureBuilder<Map<String, dynamic>>(
                   future: _getUserInfo(),
                   builder: (context, userSnapshot) {
@@ -533,7 +534,7 @@ class _AIPageState extends State<AIPage> {
                         builder: (context) => const LoginPage(),
                       ),
                     ).then(
-                      (_) => setState(() {
+                          (_) => setState(() {
                         _loadUserId().then((__) => _fetchData());
                       }),
                     );
@@ -604,15 +605,15 @@ class _AIPageState extends State<AIPage> {
           hintText: _isEventSortingMode ? "搜尋事件整理" : "搜尋多方觀點",
           prefixIcon: const Icon(Icons.search, color: Colors.grey),
           suffixIcon:
-              _currentSearchKeyword.isNotEmpty
-                  ? IconButton(
-                    icon: const Icon(Icons.clear, color: Colors.grey, size: 20),
-                    onPressed: () {
-                      _searchController.clear(); // 清空輸入框
-                      // _onSearchChanged 會被觸發，重新顯示完整列表
-                    },
-                  )
-                  : null,
+          _currentSearchKeyword.isNotEmpty
+              ? IconButton(
+            icon: const Icon(Icons.clear, color: Colors.grey, size: 20),
+            onPressed: () {
+              _searchController.clear(); // 清空輸入框
+              // _onSearchChanged 會被觸發，重新顯示完整列表
+            },
+          )
+              : null,
           contentPadding: const EdgeInsets.symmetric(
             vertical: 0,
             horizontal: 16,
@@ -713,45 +714,45 @@ class _AIPageState extends State<AIPage> {
         const Divider(height: 1),
         Expanded(
           child:
-              listToShow.isEmpty
-                  ? Center(child: Text('找不到與 "$_currentSearchKeyword" 相關的事件'))
-                  : ListView.builder(
-                    itemCount: listToShow.length,
-                    itemBuilder: (context, index) {
-                      final event = listToShow[index];
+          listToShow.isEmpty
+              ? Center(child: Text('找不到與 "$_currentSearchKeyword" 相關的事件'))
+              : ListView.builder(
+            itemCount: listToShow.length,
+            itemBuilder: (context, index) {
+              final event = listToShow[index];
 
-                      final String title = event['eventsorting_title'] ?? '';
-                      if (title.isEmpty) {
-                        return const SizedBox.shrink();
-                      }
+              final String title = event['eventsorting_title'] ?? '';
+              if (title.isEmpty) {
+                return const SizedBox.shrink();
+              }
 
-                      final eventId = event['eventsorting_id'];
-                      // 收藏狀態判斷：檢查 _bookmarkIdStatus 中是否有非 null 的 bookmark_id
-                      final isBookmarked =
-                          _bookmarkIdStatus.containsKey(eventId) &&
-                          _bookmarkIdStatus[eventId] != null;
+              final eventId = event['eventsorting_id'];
+              // 收藏狀態判斷：檢查 _bookmarkIdStatus 中是否有非 null 的 bookmark_id
+              final isBookmarked =
+                  _bookmarkIdStatus.containsKey(eventId) &&
+                      _bookmarkIdStatus[eventId] != null;
 
-                      return _buildNewsCard(
-                        title: title,
-                        content: event['eventsorting_summary'] ?? '',
-                        details:
-                            '${event['eventsorting_background_count'] ?? 0}則事件背景',
-                        isBookmarked: isBookmarked,
-                        onBookmarkTap:
-                            () => _toggleBookmark(eventId, 'eventsorting'),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder:
-                                  (context) =>
-                                      EventSortingDetailPage(id: eventId),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
+              return _buildNewsCard(
+                title: title,
+                content: event['eventsorting_summary'] ?? '',
+                details:
+                '${event['eventsorting_background_count'] ?? 0}則事件背景',
+                isBookmarked: isBookmarked,
+                onBookmarkTap:
+                    () => _toggleBookmark(eventId, 'eventsorting'),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) =>
+                          EventSortingDetailPage(id: eventId),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
         ),
       ],
     );
@@ -783,50 +784,51 @@ class _AIPageState extends State<AIPage> {
         const Divider(height: 1),
         Expanded(
           child:
-              listToShow.isEmpty
-                  ? Center(child: Text('找不到與 "$_currentSearchKeyword" 相關的觀點'))
-                  : ListView.builder(
-                    itemCount: listToShow.length,
-                    itemBuilder: (context, index) {
-                      final view = listToShow[index];
+          listToShow.isEmpty
+              ? Center(child: Text('找不到與 "$_currentSearchKeyword" 相關的觀點'))
+              : ListView.builder(
+            itemCount: listToShow.length,
+            itemBuilder: (context, index) {
+              final view = listToShow[index];
 
-                      final String title =
-                          view['multipleperspectives_title'] ?? '';
-                      if (title.isEmpty) {
-                        return const SizedBox.shrink();
-                      }
+              // 💥 修正點 2: multipleperspectives_title 已移除，改用 eventsorting_title
+              final String title =
+                  view['eventsorting_title'] ?? '';
+              if (title.isEmpty) {
+                return const SizedBox.shrink();
+              }
 
-                      final mpId = view['multipleperspectives_id'];
-                      // 收藏狀態判斷：檢查 _multiplePerspectivesBookmarkIdStatus 中是否有非 null 的 bookmark_id
-                      final isBookmarked =
-                          _multiplePerspectivesBookmarkIdStatus.containsKey(
-                            mpId,
-                          ) &&
-                          _multiplePerspectivesBookmarkIdStatus[mpId] != null;
+              final mpId = view['multipleperspectives_id'];
+              // 收藏狀態判斷：檢查 _multiplePerspectivesBookmarkIdStatus 中是否有非 null 的 bookmark_id
+              final isBookmarked =
+                  _multiplePerspectivesBookmarkIdStatus.containsKey(
+                    mpId,
+                  ) &&
+                      _multiplePerspectivesBookmarkIdStatus[mpId] != null;
 
-                      return _buildNewsCard(
-                        title: title,
-                        content: '看法統整',
-                        details:
-                            '${view['multipleperspectives_view_count'] ?? 0}種對立觀點',
-                        isMultiplePerspectives: true,
-                        isBookmarked: isBookmarked,
-                        onBookmarkTap: () {
-                          _toggleBookmark(mpId, 'multipleperspectives');
-                        },
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder:
-                                  (context) =>
-                                      MultiplePerspectivesDetailPage(id: mpId),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
+              return _buildNewsCard(
+                title: title,
+                content: '看法統整',
+                details:
+                '${view['multipleperspectives_view_count'] ?? 0}種對立觀點',
+                isMultiplePerspectives: true,
+                isBookmarked: isBookmarked,
+                onBookmarkTap: () {
+                  _toggleBookmark(mpId, 'multipleperspectives');
+                },
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) =>
+                          MultiplePerspectivesDetailPage(id: mpId),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
         ),
       ],
     );

@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:share_plus/share_plus.dart'; // ✅ 新增：分享插件
+import 'package:share_plus/share_plus.dart';
 // 確保此路徑正確指向您的 API 設定
 import 'config.dart';
 import 'EventSortingDetailPage.dart';
@@ -31,6 +31,9 @@ class _MultiplePerspectivesDetailPageState
   int _commentCount = 0;
   // 模擬收藏狀態 (假設此頁面也需要)
   bool isFavorite = false;
+
+  // 🌟 修正點 1: 新增頁面標題狀態變數
+  String _pageTitle = '載入中...';
 
   // 計算平均分數 (四捨五入到小數點後一位)
   double get _averageScore =>
@@ -90,6 +93,9 @@ class _MultiplePerspectivesDetailPageState
               // 獲取並保存留言數量
               _commentCount = view['total_comment'] as int? ?? 0;
 
+              // 🌟 修正點 2: 從 eventsorting_title 獲取並設定標題
+              _pageTitle = view['eventsorting_title'] as String? ?? '多方看法詳情';
+
               print(
                 'Fetched Score: Total Score $_totalScore, Total Rater $_totalRater',
               );
@@ -111,12 +117,12 @@ class _MultiplePerspectivesDetailPageState
 
   // 💥 MODIFIED: 通用用戶行為 API 函式 (已新增 anonymous 參數和處理)
   Future<void> _insertUserAction(
-    String actionType,
-    String dataType, {
-    String? text,
-    int? score,
-    String? anonymous, // 💥 修正點：新增匿名名稱參數
-  }) async {
+      String actionType,
+      String dataType, {
+        String? text,
+        int? score,
+        String? anonymous, // 💥 修正點：新增匿名名稱參數
+      }) async {
     // 假設您的後端路由是 $baseUrl/user/:actionType/:dataType
     final url = '$_userActionBaseUrl/user/$actionType/$dataType';
 
@@ -163,7 +169,7 @@ class _MultiplePerspectivesDetailPageState
 
       // 🌟 新增：如果存在匿名名稱，則傳遞給後端 🌟
       if (anonymous != null)
-        body['anonymous'] = anonymous; // ✅ 修正：int型不能調用isNotEmpty
+        body['anonymous'] = anonymous;
 
       // 如果是非 view/share 操作，但沒有 currentUserId，則阻止操作
       if (_currentUserId == null) {
@@ -234,7 +240,7 @@ class _MultiplePerspectivesDetailPageState
     }
   }
 
-  // 導航至 CommentsPage 的函式 (保持不變，因為它傳遞了修正後的 _insertUserAction)
+  // 導航至 CommentsPage 的函式
   void _navigateToCommentsPage() {
     // 步驟 1: 檢查 currentUserId 是否為 null
     if (_currentUserId == null) {
@@ -244,21 +250,22 @@ class _MultiplePerspectivesDetailPageState
       return;
     }
 
-    // 步驟 2: 導航時，使用 ! 確保傳遞 int 給 CommentsPage
+    // 步驟 2: 導航時，修正為更安全的參數傳遞 (避免 int? 到 int 的 runtime crash)
     Navigator.push(
       context,
       MaterialPageRoute(
         builder:
             (context) => CommentsPage(
-              dataId: widget.id,
-              currentUserId: _currentUserId!, // 💥 使用 ! 確保傳遞 int
-              dataType: 'multipleperspectives',
-              insertUserAction: _insertUserAction,
-              // 傳遞目前的分數數據和更新回調
-              totalScore: _totalScore,
-              totalRater: _totalRater,
-              onParentDataUpdated: _refreshViewDetails, // 傳遞回調函式
-            ),
+          dataId: widget.id,
+          // 🌟 修正：使用 ?? 0 確保傳遞 int 類型，解決潛在的類型不匹配錯誤
+          currentUserId: _currentUserId ?? 0,
+          dataType: 'multipleperspectives',
+          insertUserAction: _insertUserAction,
+          // 傳遞目前的分數數據和更新回調
+          totalScore: _totalScore,
+          totalRater: _totalRater,
+          onParentDataUpdated: _refreshViewDetails, // 傳遞回調函式
+        ),
       ),
     );
   }
@@ -309,9 +316,10 @@ class _MultiplePerspectivesDetailPageState
             Navigator.pop(context);
           },
         ),
-        title: const Text(
-          '多方看法',
-          style: TextStyle(
+        // 🌟 修正點 3: 使用 _pageTitle 狀態變數顯示標題
+        title: Text(
+          _pageTitle,
+          style: const TextStyle(
             color: Colors.white,
             fontSize: 18,
             fontWeight: FontWeight.w700,
@@ -369,6 +377,10 @@ class _MultiplePerspectivesDetailPageState
             );
           } else {
             final view = snapshot.data;
+            // 這裡假設 multipleperspectives_title 已經被 _pageTitle 取代，
+            // 但為了安全，仍保留讀取邏輯以避免其他地方依賴此欄位
+            // final title = view['multipleperspectives_title'] ?? '無標題';
+
             final List<dynamic> viewpoints = view['viewpoints'] ?? [];
             final List<dynamic> discussions = view['discussions'] ?? [];
 
@@ -386,7 +398,8 @@ class _MultiplePerspectivesDetailPageState
                       children: [
                         Expanded(
                           child: Text(
-                            view['multipleperspectives_title'] ?? '無標題',
+                            // 這裡顯示頁面標題，保持與 AppBar 一致
+                            _pageTitle,
                             style: const TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.w700,
@@ -622,25 +635,25 @@ class _MultiplePerspectivesDetailPageState
         iconColor: const Color(0xFF60a5fa),
         collapsedIconColor: const Color(0xFF60a5fa),
         children:
-            details
-                .map(
-                  (item) => Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
-                    child: Text(
-                      item,
-                      style: TextStyle(
-                        color: Colors.grey[300],
-                        fontSize: 14,
-                        height: 1.6,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                  ),
-                )
-                .toList(),
+        details
+            .map(
+              (item) => Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 12,
+            ),
+            child: Text(
+              item,
+              style: TextStyle(
+                color: Colors.grey[300],
+                fontSize: 14,
+                height: 1.6,
+                letterSpacing: 0.2,
+              ),
+            ),
+          ),
+        )
+            .toList(),
       ),
     );
   }
@@ -734,21 +747,21 @@ class _MultiplePerspectivesDetailPageState
               ],
             ),
             child:
-                viewpoints.isEmpty
-                    ? Center(
-                      child: Text(
-                        '沒有足夠資料來生成圖表。',
-                        style: TextStyle(color: Colors.grey[400]),
-                      ),
-                    )
-                    : PieChart(
-                      PieChartData(
-                        sections: sections,
-                        sectionsSpace: 2,
-                        centerSpaceRadius: 40,
-                        borderData: FlBorderData(show: false),
-                      ),
-                    ),
+            viewpoints.isEmpty
+                ? Center(
+              child: Text(
+                '沒有足夠資料來生成圖表。',
+                style: TextStyle(color: Colors.grey[400]),
+              ),
+            )
+                : PieChart(
+              PieChartData(
+                sections: sections,
+                sectionsSpace: 2,
+                centerSpaceRadius: 40,
+                borderData: FlBorderData(show: false),
+              ),
+            ),
           ),
         ),
       ],
@@ -885,9 +898,9 @@ class _MultiplePerspectivesDetailPageState
               // 收藏按鈕
               _buildActionIcon(
                 icon:
-                    isFavorite
-                        ? Icons.bookmark
-                        : Icons.bookmark_outline, // 根據狀態切換圖標
+                isFavorite
+                    ? Icons.bookmark
+                    : Icons.bookmark_outline, // 根據狀態切換圖標
                 label: '收藏',
                 iconColor: isFavorite ? Colors.blue : Colors.grey.shade600!,
                 onTap: () {
