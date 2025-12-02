@@ -27,7 +27,7 @@ async function fetchPendingNewsIds(LIMIT) {
     JOIN news_data AS nd
       ON nd.news_id = nt.news_id
     ORDER BY
-      nd.created_at   -- 預設 ASC，越舊的越先處理
+      nd.created_at
     LIMIT ?;
   `;
 
