@@ -41,7 +41,6 @@ async function mainLoop() {
 
         // 4. )
 
-
         // 5. )
         
         const loopEnd = Date.now();

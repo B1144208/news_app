@@ -1,19 +1,17 @@
 const express = require('express')
 const router = express.Router()
-const { generalScript, reporterScript, chatScript, quickScript, callAskScript } = require('../middlewares/scriptController')
+const { getText, getScript, reporterMake, chatMake,  callAskScript } = require('../middlewares/scriptController')
 
 // general mode
-router.get('/general', generalScript);
+router.get('/text', getText);
+router.get('/script', getScript);
 
 // reporter mode
 //router.get('/reporter_fast', reporterScriptFast);
-router.get('/reporter', reporterScript);
+router.get('/reporter', reporterMake);
 
 // chat mode
-router.get('/chat/:id', chatScript);
-
-// quick mode
-router.get('/quick', quickScript);
+router.get('/chat/:id', chatMake);
 
 router.post("/ask", callAskScript);
 

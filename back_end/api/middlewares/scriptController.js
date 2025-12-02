@@ -58,9 +58,142 @@ async function getText (req, res, next) {
     }
 }
 
+async function getReporterChatText(idList) {
+  // 若沒有 id，直接回傳空陣列
+  if (!Array.isArray(idList) || idList.length === 0) {
+    return [];
+  }
 
-// ---- general ----
-async function generalScript(req, res, next) {
+  const sql = `
+    SELECT
+      nd.news_id,
+      nd.reporter_script,
+      nc.chat_speaker,
+      nc.chat_text,
+      nc.chat_order
+    FROM news_data AS nd
+    LEFT JOIN news_chat AS nc
+      ON nc.news_id = nd.news_id
+    WHERE nd.news_id IN (?)
+    ORDER BY nd.news_id ASC, nc.chat_order ASC;
+  `;
+  const params = [idList];
+
+  try {
+    const [rows] = await pool.query(sql, params);
+
+    // 用 Map 依 news_id 分組
+    const map = new Map();
+
+    for (const row of rows) {
+      const id = row.news_id;
+
+      if (!map.has(id)) {
+        map.set(id, {
+          id,
+          reporter: row.reporter_script || null,
+          chat: []
+        });
+      }
+
+      // 如果 news_chat 還沒有資料（LEFT JOIN 回來可能是 null），就不要 push
+      if (row.chat_speaker != null || row.chat_text != null) {
+        map.get(id).chat.push({
+          speak: row.chat_speaker,
+          text: row.chat_text
+        });
+      }
+    }
+
+    // 如果某些 id 在 news_chat 完全沒有資料，上面的迴圈不會建立，
+    // 但你可能仍希望它們出現在結果中，所以另外補齊：
+    for (const id of idList) {
+      if (!map.has(id)) {
+        // 重新查 rows 找對應 reporter_script
+        const row = rows.find(r => r.news_id === id);
+        map.set(id, {
+          id,
+          reporter: row ? row.reporter_script : null,
+          chat: []
+        });
+      }
+    }
+
+    return Array.from(map.values());
+  } catch (err) {
+    console.error('[getReporterChatText] database search error:', err);
+    throw err;
+  }
+}
+
+
+async function getIdList() {
+  let sql = `
+    SELECT DISTINCT nd.news_id
+    FROM news_data AS nd
+    LEFT JOIN news_task AS nt ON nt.news_id = nd.news_id
+    WHERE nt.news_id IS NULL OR (nt.reporter_script = 1 AND nt.chat_script = 1)
+    ORDER BY nd.created_at DESC
+    LIMIT 100;
+  `;
+  try {
+    let [row] = await pool.query(sql);
+    return row.map(r => r.news_id);
+  } catch (err) {
+    console.error("[getIdList] database search error")
+  }
+}
+
+
+// 取得 一般朗讀 + 新聞播報 + 聊天對白 腳本
+async function getScript(req, res, next) {
+
+  // 取得播放順序
+  let idList;
+  try {
+    idList = await getIdList();
+  } catch (err) {
+    err.desc = "middlewares-generalScript(): getIdList() Error";
+  }
+
+  let general = await getText(idList);
+  let reporterchat = await getReporterChatText(idList);
+  
+  // 先把兩組資料轉成 Map，方便用 id 找
+  const generalMap = new Map(general.map(g => [g.id, g]));
+  const reporterMap = new Map(reporterchat.map(r => [r.id, r]));
+
+  // 依照 idList 的順序組合結果
+  const result = idList.map(id => {
+    const g = generalMap.get(id) || {};
+    const r = reporterMap.get(id) || {};
+
+    return {
+      id,
+      title:    g.title     || '',
+      general:  g.text      || '',       // 把 text 變成 general
+      reporter: r.reporter  || '',
+      chat:     r.chat      || ''        // 如果你想要陣列可改成 r.chat || []
+    };
+  });
+
+  // 如果需要回傳：
+  return res.apiSuccess(result, "get scripts success");
+}
+
+// 製作 新聞播報 腳本
+async function reporterMake(req, res, next) {
+  
+
+}
+
+// 製作 聊天對白 腳本
+async function chatMake(req, res, next) {
+  
+
+}
+
+/*async function generalScript(req, res, next) {
     let { id, idList, times, limit } = req.query ?? {}
 
     try {
@@ -117,7 +250,61 @@ async function generalScript(req, res, next) {
       err.desc = "middlewares-scriptController(): error";
       return next(err);
     }
-}
+}*/
+
+/*async function reporterScript(req, res, next) {
+    let { id } = req.params ?? {}
+    // 交給 generalScript 生成的一組id及text，用deepseek 產生 reporterScript
+
+    // 1️⃣ 先呼叫 generalScript 拿原始 {id,title,text}
+    let fakeReq = {
+      params: {id: id}
+    }
+    let generalScriptResult;
+    try {
+      generalScriptResult = await callAndCatchApiSuccess(generalScript, fakeReq);
+      //return res.apiSuccess(generalScriptResult);
+    } catch (err) {
+      err.desc = "middlewares-reporterScript(): call generalScript error";
+        return next(err);
+    }
+    
+    try {
+    // 2️⃣ 取得裡面的陣列：可能是 result 或 result.list
+    const items = Array.isArray(generalScriptResult)
+      ? generalScriptResult
+      : generalScriptResult.list ?? [];
+
+    // 3️⃣ 對每一筆丟給 DeepSeek 產生播報稿
+    const reporterItems = await Promise.all(
+      items.map((item) =>
+        callDeepseekReporterScript({
+          id: item.id,
+          title: item.title,
+          text: shortenArticle(item.text)
+        }),
+      ),
+    );
+
+    // 4️⃣ 組回輸出的格式
+    let output;
+    if (Array.isArray(generalScriptResult)) {
+      // 原本就是陣列 → 直接回陣列
+      output = reporterItems;
+    } else {
+      // 原本是物件（例如 { list, total, ... }）→ 保留其它欄位，只把 list 換掉
+      output = {
+        ...generalScriptResult,
+        list: reporterItems,
+      };
+    }
+
+    return res.apiSuccess(output);
+  } catch (err) {
+    err.desc = 'middlewares-reporterScript(): call deepseek error';
+    return next(err);
+  }
+}*/
 
 
 // ---- reporter ----
@@ -175,59 +362,7 @@ async function generalScript(req, res, next) {
   }
 }*/
 
-async function reporterScript(req, res, next) {
-    let { id, times } = req.params ?? {}
-    // 交給 generalScript 生成的一組id及text，用deepseek 產生 reporterScript
 
-    // 1️⃣ 先呼叫 generalScript 拿原始 {id,title,text}
-    let fakeReq = {
-      params: {id: id}
-    }
-    let generalScriptResult;
-    try {
-      generalScriptResult = await callAndCatchApiSuccess(generalScript, fakeReq);
-      //return res.apiSuccess(generalScriptResult);
-    } catch (err) {
-      err.desc = "middlewares-reporterScript(): call generalScript error";
-        return next(err);
-    }
-    
-    try {
-    // 2️⃣ 取得裡面的陣列：可能是 result 或 result.list
-    const items = Array.isArray(generalScriptResult)
-      ? generalScriptResult
-      : generalScriptResult.list ?? [];
-
-    // 3️⃣ 對每一筆丟給 DeepSeek 產生播報稿
-    const reporterItems = await Promise.all(
-      items.map((item) =>
-        callDeepseekReporterScript({
-          id: item.id,
-          title: item.title,
-          text: shortenArticle(item.text)
-        }),
-      ),
-    );
-
-    // 4️⃣ 組回輸出的格式
-    let output;
-    if (Array.isArray(generalScriptResult)) {
-      // 原本就是陣列 → 直接回陣列
-      output = reporterItems;
-    } else {
-      // 原本是物件（例如 { list, total, ... }）→ 保留其它欄位，只把 list 換掉
-      output = {
-        ...generalScriptResult,
-        list: reporterItems,
-      };
-    }
-
-    return res.apiSuccess(output);
-  } catch (err) {
-    err.desc = 'middlewares-reporterScript(): call deepseek error';
-    return next(err);
-  }
-}
 
 
 
@@ -256,7 +391,7 @@ async function reporterScript(req, res, next) {
 
 
 // ---- chat ----
-async function chatScript(req, res, next) {
+/*async function chatScript(req, res, next) {
     let { id } = req.params ?? {}
     // 交給 generalScript 生成的一組id及text，用deepseek 產生 chatScript
     return;
@@ -266,7 +401,7 @@ async function chatScript(req, res, next) {
 async function quickScript(req, res, next) {
     // 用熱度高id直接生成一組id
     return;
-}
+}*/
 
 
 
@@ -421,9 +556,9 @@ async function callAskScript(req, res, next) {
 // ---- 匯出所有函式 ----
 module.exports = {
   getText,
-  generalScript,
-  reporterScript,
-  chatScript,
-  quickScript,
+  getScript,
+  reporterMake,
+  chatMake,
+//quickScript,
   callAskScript
 };

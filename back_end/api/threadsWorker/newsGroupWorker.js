@@ -13,7 +13,7 @@ function sleep(ms) {
 
 /**
  * 從 news_task 抓出「還沒做 group（news_group = 0）」的 news_id
- * 依照五個欄位的加總分數由大到小排序，再依照 created_at 越新越前面
+ * 依照五個欄位的加總分數由大到小排序，再依照 created_at 越舊越前面
  * 一次最多抓 100 筆
  */
 async function fetchPendingNewsIds(LIMIT) {
