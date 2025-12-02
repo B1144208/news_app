@@ -1,4 +1,5 @@
 const pool = require('../connect_db');
+const { classifyNews } = require('../openai/classifierNews');
 const { checkRequireField } = require('../utils/checkHelper');
 const { callAndCatchApiSuccess } = require('../utils/fakeHelper');
 
@@ -209,9 +210,34 @@ async function newsKeywordClassifier (req, res, next) {
   }
 }
 
+
+
+async function newsAllClassfier(req, res, next) {
+
+  const { title, content } = req.body || {};
+
+  const news = {
+    title: title,
+    content: content
+  };
+
+  const result = await classifyNews(news);
+  return res.apiSuccess(result);
+  console.log(result);
+  // 可能輸出：
+  // {
+  //   group:    [ '生活', '天氣', '地方新聞', '氣象預報', ... ],
+  //   location: [ 'taiwan', 'taipei' ],
+  //   keyword:  [ '台北市', '大雨', '通勤', ... ]
+  // }
+}
+
+
+
 // 如果你是用 module.exports
 module.exports = {
   newsClassifier,
+  newsAllClassfier,
   newsGroupClassifier,
   newsLocationClassifier,
   newsKeywordClassifier
