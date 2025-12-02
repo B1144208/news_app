@@ -226,6 +226,74 @@ async function insertNewsKeywordsForOneNews(newsId, keywords) {
   }
 }
 
+/* ---------- reporter：更新 news_data.reporter_script ---------- */
+
+async function updateNewsReporterForOneNews(newsId, reporterText) {
+  if (typeof reporterText !== 'string') return true;
+
+  const text = reporterText.trim();
+  if (!text) return true; // 空字串就當作沒東西，不當錯誤
+
+  const sql = `
+    UPDATE news_data
+    SET reporter_script = ?
+    WHERE news_id = ?;
+  `;
+  try {
+    await pool.query(sql, [text, newsId]);
+    return true;
+  } catch (err) {
+    console.warn('[newsAllWorker] 更新 reporter_script 失敗，news_id =', newsId, 'err =', err.message);
+    return false;
+  }
+}
+
+/* ---------- chat：寫入 news_chat (news_id, chat_speaker, chat_text, chat_order) ---------- */
+
+async function insertNewsChatForOneNews(newsId, chatList) {
+  if (!Array.isArray(chatList) || chatList.length === 0) return true;
+
+  // 先刪掉舊的（確保重新跑時不會重複）
+  try {
+    await pool.query('DELETE FROM news_chat WHERE news_id = ?', [newsId]);
+  } catch (err) {
+    console.warn('[newsAllWorker] 刪除舊 chat 失敗，news_id =', newsId, 'err =', err.message);
+    // 刪不掉就不要再插入，避免狀態亂掉
+    return false;
+  }
+
+  const rowsToInsert = [];
+
+  chatList.forEach((item, idx) => {
+    if (!item || typeof item.text !== 'string') return;
+
+    const text = item.text.trim();
+    if (!text) return;
+
+    // speaker 只接受 A / B，預設錯的就當 A
+    const speaker = item.speaker === 'B' ? 'B' : 'A';
+    const order = idx + 1;
+
+    rowsToInsert.push([newsId, speaker, text, order]);
+  });
+
+  if (rowsToInsert.length === 0) return true;
+
+  const insertSql = `
+    INSERT INTO news_chat (news_id, chat_speaker, chat_text, chat_order)
+    VALUES ?;
+  `;
+
+  try {
+    await pool.query(insertSql, [rowsToInsert]);
+    return true;
+  } catch (err) {
+    console.warn('[newsAllWorker] 寫入 news_chat 失敗，news_id =', newsId, 'err =', err.message);
+    return false;
+  }
+}
+
+
 /* ---------- 將 news_task 三個欄位都設為完成 ---------- */
 /*
 async function markTaskDoneAll(newsId) {
@@ -238,9 +306,7 @@ async function markTaskDoneAll(newsId) {
 async function markTaskDoneAll(newsId) {
   const sql = `
     UPDATE news_task
-    SET news_group = 1,
-        news_location = 1,
-        news_keyword = 1
+    SET news_group = 1
     WHERE news_id = ?;
   `;
   await pool.query(sql, [newsId]);
@@ -250,8 +316,8 @@ async function markTaskDoneAll(newsId) {
 
 async function handleOneNews(newsItem) {
   const newsId = newsItem.id;
-  const title = newsItem.title || '';
-  const body = newsItem.text || '';
+  const title  = newsItem.title || '';
+  const body   = newsItem.text  || '';
   const newsText = `${title}\n${body}`.trim();
 
   const fakeReq = {
@@ -272,26 +338,33 @@ async function handleOneNews(newsItem) {
       return;
     }
 
-    const { group, location, keyword /*, reporter, chat*/ } = result.data;
+    const { group, location, keyword, reporter, chat } = result.data;
 
     let ok = true;
 
-    // 1) group
+    // group
     if (!(await insertNewsGroupsForOneNews(newsId, group))) ok = false;
 
-    // 2) location
+    // location
     if (!(await insertNewsLocationsForOneNews(newsId, location))) ok = false;
 
-    // 3) keyword
+    // keyword
     if (!(await insertNewsKeywordsForOneNews(newsId, keyword))) ok = false;
+
+    // reporter_script
+    if (!(await updateNewsReporterForOneNews(newsId, reporter))) ok = false;
+
+    // chat 對話
+    if (!(await insertNewsChatForOneNews(newsId, chat))) ok = false;
 
     if (!ok) {
       console.warn(
-        `[newsAllWorker] news_id=${newsId} 有部分寫入失敗，暫不標記完成`
+        `[newsAllWorker] news_id=${newsId} 有部分寫入失敗，暫不刪除 news_task`
       );
       return;
     }
 
+    // 全部都成功才刪掉 news_task 這筆
     await markTaskDoneAll(newsId);
   } catch (err) {
     err.desc =

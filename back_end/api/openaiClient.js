@@ -14,10 +14,7 @@ module.exports = client;*/
 
 const OpenAI = require('openai');
 
-const path = require('path');
-require('dotenv').config({
-  path: path.join(__dirname, '.env')  // 讀 api/.env
-});
+
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,  // ⭐ 用環境變數
