@@ -212,7 +212,7 @@ async function newsKeywordClassifier (req, res, next) {
 
 
 
-async function newsAllClassfier(req, res, next) {
+async function newsAllClassifier(req, res, next) {
 
   const { title, content } = req.body || {};
 
@@ -237,7 +237,7 @@ async function newsAllClassfier(req, res, next) {
 // 如果你是用 module.exports
 module.exports = {
   newsClassifier,
-  newsAllClassfier,
+  newsAllClassifier,
   newsGroupClassifier,
   newsLocationClassifier,
   newsKeywordClassifier
