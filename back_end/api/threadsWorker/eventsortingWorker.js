@@ -8,7 +8,7 @@ const { getEmbedding, findSimilarEvents } = require('../utils/embeddingHelper');
 const POLLING_INTERVAL_MS = 10000;
 const TASK_STATUS_COMPLETED = 1;
 const TASK_STATUS_FAILED = 2;
-const MODEL_NAME = 'event_sorting'; // <--- 使用您最近確認的模型名稱
+const MODEL_NAME = 'eventsorting-curation'; // <--- 使用您最近確認的模型名稱
 
 // ========================================================
 // I. 內部定義資料庫輔助函式
