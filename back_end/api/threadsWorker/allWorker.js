@@ -9,7 +9,7 @@ const { insertKeyword } = require('../middlewares/keywordController');
 const { getText } = require('../middlewares/scriptController');
 const { callAndCatchApiSuccessInGeneralFunction } = require('../utils/fakeHelper');
 
-const LIMIT = 50;
+const LIMIT = 5;
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -313,13 +313,12 @@ async function markTaskDoneAll(newsId) {
 /* ---------- 處理單一 news 的完整流程 ---------- */
 
 async function handleOneNews(newsItem) {
-  const newsId = newsItem.id;
-  const title  = newsItem.title || '';
-  const body   = newsItem.text  || '';
-  const newsText = `${title}\n${body}`.trim();
+  const newsId  = newsItem.id;
+  const title   = newsItem.title || '';
+  const newsText = newsItem.text  || '';
 
   const fakeReq = {
-    body: { newsText },
+    body: { title, content: newsText },
   };
 
   try {
@@ -389,7 +388,7 @@ async function mainLoop() {
     let newsTextList;
     try {
       const fakeReqForGetText = {
-        query: { idList },
+        query: { idList, origin_body: '' },
       };
 
       newsTextList = await callAndCatchApiSuccessInGeneralFunction(

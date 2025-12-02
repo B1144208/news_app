@@ -21,7 +21,8 @@ const OLLAMA_MODEL = 'qwen2.5:1.5b';
 */
 
 async function getText (req, res, next) {
-    let { id, idList } = req.query ?? {}
+    let { idList } = req.query ?? {}
+    const origin_body = req.query?.origin_body !== undefined;
 
     /*try {
       [ id, idList ] = await checkRequireField ([
@@ -37,8 +38,17 @@ async function getText (req, res, next) {
       query: { mode: "complex" },
       body: { id: idList}
     }
+
+    
     try {
       let result = await callAndCatchApiSuccess(searchNews, fakeReq);
+      if (origin_body) {
+        return {
+          id: item.newsId,
+          title: item.newsTitle,
+          text: item.newsBody
+        };
+      }
       result = result.complexList.map(item => {
         const bodyText = (item.newsBody || [])
           .filter(part => typeof part.text === 'string' && part.text.trim() !== '')
