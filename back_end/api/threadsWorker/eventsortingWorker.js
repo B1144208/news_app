@@ -1,7 +1,7 @@
 // threads/event_sorter.js (CommonJS 格式 - DB 輔助函式已內建)
 
 const pool = require('../connect_db'); // 從根目錄引入連線池
-const { ollamaSummarize } = require('../utils/ollama_client');
+const { ollamaSummarize } = require('../utils/event_ollama_client');
 const { getEmbedding, findSimilarEvents } = require('../utils/embeddingHelper');
 
 // --- 配置與任務狀態 ---
@@ -16,37 +16,56 @@ const TASK_STATUS_FAILED = 2;
 /** 抓取待處理的 relation_id (eventsoring_text = 0) */
 async function getPendingRelationIds() {
     const [rows] = await pool.query(
-        `SELECT relation_id FROM relation_task WHERE eventsoring_text = 0`
+        `SELECT relation_id FROM relation_task WHERE eventsorting_text = 0`
     );
     return rows.map(row => row.relation_id);
 }
 
 /** 取得事件相關的新聞 ID，並依照時間升序排序 */
 async function getNewsIdsByRelationId(relationId) {
+    // *** 修正 A: 直接從 news_data 查找 relation_id ***
     const sql = `
-        SELECT t1.news_id
-        FROM relation_news_link AS t1
-        JOIN news_data AS t2 ON t1.news_id = t2.news_id
-        WHERE t1.relation_id = ?
-        ORDER BY t2.news_publish_time ASC
+        SELECT news_id
+        FROM news_data
+        WHERE relation_id = ?
+        ORDER BY news_date ASC
     `;
     const [rows] = await pool.query(sql, [relationId]);
     return rows.map(row => row.news_id);
 }
 
 /** 根據新聞 ID 獲取新聞文本 (標題 + 內文) */
+/** * 取得新聞標題和完整內文 (修正版：JOIN news_body 合併內文)
+ * @param {number[]} idList - 新聞 ID 陣列
+ * @returns {Promise<string[]>} 格式化後的新聞文字陣列
+ */
 async function getNewsTextsByIds(idList) {
     if (!idList || idList.length === 0) return [];
 
+    const placeholders = idList.map(() => '?').join(',');
+
+    // 關鍵修正：
+    // 1. JOIN news_body (t2)
+    // 2. 使用 GROUP_CONCAT 依照 body_order 串連所有 body_text
+    // 3. 將結果欄位命名為 news_text
     const sql = `
-        SELECT news_title, news_text
-        FROM news_data
-        WHERE news_id IN (?)
-        ORDER BY news_id
+        SELECT
+            t1.news_title,
+            -- 將所有文字內文依照 body_order 串連起來，並命名為 news_text
+            GROUP_CONCAT(t2.body_text ORDER BY t2.body_order SEPARATOR '') AS news_text
+        FROM news_data AS t1
+        JOIN news_body AS t2 ON t1.news_id = t2.news_id
+        WHERE t1.news_id IN (${placeholders}) AND t2.body_type = 'text' -- 只抓取文字部分
+        GROUP BY t1.news_id, t1.news_title
+        ORDER BY FIELD(t1.news_id, ${placeholders})
     `;
 
-    const [rows] = await pool.query(sql, [idList]);
+    // 參數需要放入兩次：一次給 IN 語句，一次給 ORDER BY FIELD 語句
+    const params = [...idList, ...idList];
 
+    const [rows] = await pool.query(sql, params);
+
+    // 格式化輸出：將標題和內文組合成模型所需的輸入格式
     return rows.map(row =>
         `標題: ${row.news_title}\n內文: ${row.news_text}`
     );
@@ -86,10 +105,10 @@ async function saveEventsortingHorizontal(relationId, relatedEvents) {
     }
 }
 
-/** 更新 relation_task 狀態 */
 async function updateRelationTaskStatus(relationId, status) {
+    // 修正：移除對 updated_at 的更新
     await pool.query(
-        `UPDATE relation_task SET eventsoring_text = ?, updated_at = NOW() WHERE relation_id = ?`,
+        `UPDATE relation_task SET eventsorting_text = ? WHERE relation_id = ?`,
         [status, relationId]
     );
 }
@@ -120,7 +139,7 @@ async function processTask(relationId) {
         const combinedNewsText = newsTexts.join('\n\n--- [新聞分隔線] ---\n\n');
 
         // 呼叫 Ollama 模型
-        const { title, summary } = await ollamaSummarize('eventsorting-curation', combinedNewsText);
+        const { title, summary } = await ollamaSummarize('event_sorting', combinedNewsText);
 
         // 取得 Embedding 向量
         const embedding = await getEmbedding(title + ' ' + summary);
