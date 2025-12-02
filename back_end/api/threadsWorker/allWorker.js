@@ -335,7 +335,7 @@ async function handleOneNews(newsItem) {
       return;
     }
 
-    const { group, location, keyword, reporter, chat } = result.data;
+    const { group, location, keyword, reporter, chat } = result;
 
     let ok = true;
 
