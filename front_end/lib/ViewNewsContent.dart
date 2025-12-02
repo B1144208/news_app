@@ -33,12 +33,9 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
   bool _isLoading = false;
   String? _error;
 
-  // 模擬留言數據
-  final List<Map<String, dynamic>> _comments = [
-    {'user': '用戶A', 'content': '這個新聞很有意思!', 'time': '2小時前', 'avatar': 'A'},
-    {'user': '用戶B', 'content': '感謝分享這個重要資訊', 'time': '3小時前', 'avatar': 'B'},
-    {'user': '用戶C', 'content': '希望能有更多這樣的報導', 'time': '5小時前', 'avatar': 'C'},
-  ];
+  // 真實留言數據
+  List<Map<String, dynamic>> _comments = [];
+  bool _isLoadingComments = false;
 
   // AI朗讀模式相關變數
   bool _showReadModes = false;
@@ -88,6 +85,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
     _fetchNewsDetail();
     _checkBookmarkStatus();
     _cleanExpiredCache(); // ========== 新增：清理過期快取 ==========
+    _loadComments(); // ========== 新增：載入留言 ==========
 
     _audioPlayer.onPlayerComplete.listen((event) {
       _onAudioComplete();
@@ -147,6 +145,88 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
     } catch (e) {
       print('❌ 檢查收藏狀態失敗: $e');
     }
+  }
+
+  // ========== 新增：載入留言資料 ==========
+  Future<void> _loadComments() async {
+    setState(() {
+      _isLoadingComments = true;
+    });
+
+    try {
+      final newsId = widget.newsData['id'];
+      // 修改為正確的 API 路徑
+      final response = await http.get(
+        Uri.parse('${Config.apiBaseUrl}/user/comment/news?dataId=$newsId'),
+      );
+
+      print('📝 載入留言回應狀態碼: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+
+        if (responseData['success'] == true) {
+          final commentsData = responseData['data'] as List;
+
+          setState(() {
+            _comments = commentsData.map((comment) {
+              return {
+                'comment_id': comment['comment_id'],
+                'user_id': comment['user_id'],
+                'user': comment['display_name'] ?? '訪客',
+                'content': comment['comment_text'] ?? '',
+                'time': _formatCommentTime(comment['created_at']),
+                'avatar': _getAvatarText(comment['display_name'] ?? '訪客'),
+                'is_anonymous': comment['is_anonymous'] ?? false,
+              };
+            }).toList();
+            _isLoadingComments = false;
+          });
+
+          print('✅ 成功載入 ${_comments.length} 則留言');
+        } else {
+          throw Exception(responseData['message'] ?? '載入留言失敗');
+        }
+      } else {
+        throw Exception('伺服器錯誤: ${response.statusCode}');
+      }
+    } catch (error) {
+      print('❌ 載入留言失敗: $error');
+      setState(() {
+        _isLoadingComments = false;
+      });
+    }
+  }
+
+  // ========== 新增：格式化留言時間 ==========
+  String _formatCommentTime(String? createdAt) {
+    if (createdAt == null) return '未知時間';
+
+    try {
+      final commentTime = DateTime.parse(createdAt);
+      final now = DateTime.now();
+      final difference = now.difference(commentTime);
+
+      if (difference.inMinutes < 1) {
+        return '剛剛';
+      } else if (difference.inMinutes < 60) {
+        return '${difference.inMinutes}分鐘前';
+      } else if (difference.inHours < 24) {
+        return '${difference.inHours}小時前';
+      } else if (difference.inDays < 7) {
+        return '${difference.inDays}天前';
+      } else {
+        return '${commentTime.year}/${commentTime.month}/${commentTime.day}';
+      }
+    } catch (e) {
+      return '未知時間';
+    }
+  }
+
+  // ========== 新增：取得頭像文字 ==========
+  String _getAvatarText(String displayName) {
+    if (displayName.isEmpty) return '?';
+    return displayName.substring(0, 1).toUpperCase();
   }
 
   // ========== 新增：載入用戶AI模式設定 ==========
@@ -1094,21 +1174,9 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
           _buildRightButton(
             icon: Icons.comment,
             label: '${_comments.length}',
-            onTap: () async {
-              // ========== 新增：檢查登入狀態 ==========
-              final isLoggedIn = await _checkLoginStatus();
-              if (!isLoggedIn) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('請登入後再操作'),
-                      backgroundColor: Colors.orange,
-                    ),
-                  );
-                }
-                return;
-              }
-
+            showLabel: true, // 顯示留言數
+            onTap: () {
+              // 修改：未登入也能打開留言區查看留言
               setState(() {
                 showComments = true;
               });
@@ -1138,38 +1206,42 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
     required IconData icon,
     required String label,
     required VoidCallback onTap,
+    bool showLabel = false, // 新增參數控制是否顯示標籤
   }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: 48,
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        height: showLabel ? 56 : 48, // 有標籤時增加高度
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
+          shape: showLabel ? BoxShape.rectangle : BoxShape.circle,
+          borderRadius: showLabel ? BorderRadius.circular(24) : null,
           boxShadow: [
             BoxShadow(
-              color: Colors.black,
+              color: Colors.black.withValues(alpha: 0.15),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
           ],
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: showLabel
+            ? Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, size: 24, color: Colors.black87),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Text(
               label,
               style: const TextStyle(
-                fontSize: 10,
+                fontSize: 11,
                 color: Colors.black87,
+                fontWeight: FontWeight.w500,
               ),
-              textAlign: TextAlign.center,
             ),
           ],
-        ),
+        )
+            : Icon(icon, size: 24, color: Colors.black87),
       ),
     );
   }
@@ -1453,7 +1525,40 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                         ),
                       ),
                       Expanded(
-                        child: ListView.separated(
+                        child: _isLoadingComments
+                            ? const Center(
+                          child: CircularProgressIndicator(),
+                        )
+                            : _comments.isEmpty
+                            ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.comment_outlined,
+                                size: 64,
+                                color: Colors.grey[400],
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                '還沒有留言',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                '成為第一個留言的人吧！',
+                                style: TextStyle(
+                                  color: Colors.grey[500],
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                            : ListView.separated(
                           padding: const EdgeInsets.all(16),
                           itemCount: _comments.length,
                           separatorBuilder: (context, index) =>
@@ -1556,6 +1661,8 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
   }
 
   Widget _buildCommentItem(Map<String, dynamic> comment) {
+    final isAnonymous = comment['is_anonymous'] ?? false;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1563,14 +1670,14 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: Colors.blue[100],
+            color: isAnonymous ? Colors.grey[300] : Colors.blue[100],
             shape: BoxShape.circle,
           ),
           child: Center(
             child: Text(
               comment['avatar'],
               style: TextStyle(
-                color: Colors.blue[700],
+                color: isAnonymous ? Colors.grey[700] : Colors.blue[700],
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -1592,6 +1699,24 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                       fontSize: 14,
                     ),
                   ),
+                  if (isAnonymous) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '匿名',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(width: 8),
                   Text(
                     comment['time'],
@@ -1662,11 +1787,13 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
     );
   }
 
-  // ========== 修改：送出留言 - 檢查登入狀態 ==========
+  // ========== 修改：送出留言 - 呼叫後端 API ==========
   Future<void> _submitComment() async {
     if (_commentController.text.trim().isEmpty) return;
 
-    final isLoggedIn = await _checkLoginStatus();
+    final prefs = await SharedPreferences.getInstance();
+    final isLoggedIn = prefs.getBool('IsLogin') ?? false;
+
     if (!isLoggedIn) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1679,19 +1806,71 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
       return;
     }
 
-    setState(() {
-      _comments.insert(0, {
-        'user': '我',
-        'content': _commentController.text.trim(),
-        'time': '剛剛',
-        'avatar': '我',
-      });
-    });
+    final userId = prefs.getInt('UserID');
+    if (userId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('無法取得用戶資訊'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    final commentText = _commentController.text.trim();
     _commentController.clear();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('留言已發送'), duration: Duration(seconds: 1)),
-    );
+    try {
+      final newsId = widget.newsData['id'];
+      // 修改為正確的 API 路徑
+      final response = await http.post(
+        Uri.parse('${Config.apiBaseUrl}/user/comment/news'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'userId': userId,
+          'dataId': newsId,
+          'text': commentText,
+        }),
+      );
+
+      print('📤 送出留言回應狀態碼: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+
+        if (responseData['success'] == true) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('留言已發送'),
+                duration: Duration(seconds: 1),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+
+          // 重新載入留言列表
+          await _loadComments();
+        } else {
+          throw Exception(responseData['message'] ?? '發送留言失敗');
+        }
+      } else {
+        throw Exception('伺服器錯誤: ${response.statusCode}');
+      }
+    } catch (error) {
+      print('❌ 發送留言失敗: $error');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('留言發送失敗: $error'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
