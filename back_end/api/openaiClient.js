@@ -17,7 +17,7 @@ const OpenAI = require('openai');
 
 
 const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,  // ⭐ 用環境變數
+  apiKey: process.env.OPENAI_API_KEY || null,
 });
 
 // 可選：偵錯用，正式環境可以刪掉

@@ -2,9 +2,7 @@
 'use strict';
 
 const pool = require('../connect_db');
-const {
-  newsAllClassifier, // ★ 這裡要對應你 classifierController 裡的統一入口
-} = require('../middlewares/classifierController');
+const { newsAllClassifier } = require('../middlewares/classifierController');
 const { searchGroup } = require('../middlewares/groupController');
 const { searchLocation } = require('../middlewares/locationController');
 const { insertKeyword } = require('../middlewares/keywordController');
@@ -438,8 +436,8 @@ async function mainLoop() {
 
 // 啟動
 mainLoop().catch(err => {
-  console.error('[newsMainWorker] 無法啟動:', err);
-  process.exit(1);
+    console.error('[newsMainWorker] 無法啟動:', err);
+    process.exit(1);
 });
 
 // 優雅關閉
