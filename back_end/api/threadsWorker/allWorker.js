@@ -388,7 +388,7 @@ async function mainLoop() {
     let newsTextList;
     try {
       const fakeReqForGetText = {
-        query: { idList, origin_body: '' },
+        query: { idList: idList, origin_body: '' },
       };
 
       newsTextList = await callAndCatchApiSuccessInGeneralFunction(

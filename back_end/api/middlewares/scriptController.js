@@ -42,14 +42,14 @@ async function getText (req, res, next) {
     
     try {
       let result = await callAndCatchApiSuccess(searchNews, fakeReq);
-      if (origin_body) {
-        return {
-          id: item.newsId,
-          title: item.newsTitle,
-          text: item.newsBody
-        };
-      }
       result = result.complexList.map(item => {
+        if (origin_body) {
+          return {
+            id: item.newsId,
+            title: item.newsTitle,
+            text: item.newsBody
+          };
+        }
         const bodyText = (item.newsBody || [])
           .filter(part => typeof part.text === 'string' && part.text.trim() !== '')
           .map(part => part.text.trim())
