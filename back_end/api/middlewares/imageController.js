@@ -1,6 +1,8 @@
 const pool = require('../connect_db');
 const { checkRequireField } = require('../utils/checkHelper');
 const { callAndCatchApiSuccess } = require('../utils/fakeHelper');
+const https = require('https');
+const http = require('http');
 
 // search
 async function searchImage (req, res, next) {
@@ -8,8 +10,8 @@ async function searchImage (req, res, next) {
     let { src, alt } = req.body ?? {};
 
     let sql = `
-        SELECT * 
-        FROM image_data 
+        SELECT *
+        FROM image_data
         WHERE 1
     `
     let params = []
@@ -17,7 +19,7 @@ async function searchImage (req, res, next) {
         sql += ' AND ( image_origin_url = ? AND image_text = ? )';
         params = [src, alt || null]
     }
-    
+
     try {
         let [result] = await pool.query(sql, params);
 
@@ -38,11 +40,73 @@ async function searchImage (req, res, next) {
     }
 }
 
+// ========== 新增：圖片代理端點 ==========
+async function proxyImage(req, res, next) {
+    const imageUrl = req.query.url;
+
+    if (!imageUrl) {
+        return res.status(400).json({
+            success: false,
+            message: 'Missing image URL parameter'
+        });
+    }
+
+    try {
+        // 驗證 URL
+        const url = new URL(imageUrl);
+        const protocol = url.protocol === 'https:' ? https : http;
+
+        // 發送請求獲取圖片
+        protocol.get(imageUrl, (imageResponse) => {
+            // 檢查響應狀態
+            if (imageResponse.statusCode !== 200) {
+                return res.status(imageResponse.statusCode).json({
+                    success: false,
+                    message: 'Failed to fetch image'
+                });
+            }
+
+            // 設置 CORS headers
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.setHeader('Access-Control-Allow-Methods', 'GET');
+            res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+            // 轉發 content-type
+            const contentType = imageResponse.headers['content-type'];
+            if (contentType) {
+                res.setHeader('Content-Type', contentType);
+            }
+
+            // 設置緩存 header
+            res.setHeader('Cache-Control', 'public, max-age=86400'); // 緩存 24 小時
+
+            // 將圖片流轉發給客戶端
+            imageResponse.pipe(res);
+
+        }).on('error', (error) => {
+            console.error('圖片代理錯誤:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error fetching image',
+                error: error.message
+            });
+        });
+
+    } catch (error) {
+        console.error('圖片代理錯誤:', error);
+        res.status(400).json({
+            success: false,
+            message: 'Invalid image URL',
+            error: error.message
+        });
+    }
+}
+
 // insert
 async function insertImage (req, res, next) {
     let { img } = req.body ?? {};
 
-    // 檢查必要欄位 & 格式 - 
+    // 檢查必要欄位 & 格式 -
     try {
         [ img ] = await checkRequireField ([
             { field: 'img'   , data: img  , type: 'image'    , other: ['non_null'] }
@@ -57,7 +121,7 @@ async function insertImage (req, res, next) {
     let fakeReq = {
         body: { src: src, alt: alt }
     };
-    
+
     try {
         let result = await callAndCatchApiSuccess ( searchImage, fakeReq );
         if ( Array.isArray ( result ) && result.length > 0 ) {
@@ -138,7 +202,7 @@ async function deleteImage(req, res, next) {
     }
 
     let sql = `
-        DELETE FROM image_data 
+        DELETE FROM image_data
         WHERE image_id = ?
     `;
     let params = [ id ]
@@ -164,5 +228,6 @@ module.exports = {
     searchImage,
     insertImage,
     updateImage,
-    deleteImage
+    deleteImage,
+    proxyImage  // 新增：導出代理函數
 };

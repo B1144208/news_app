@@ -47,6 +47,17 @@ class _HomePageState extends State<HomePage> {
   final ScrollController _scrollController = ScrollController(); // 新增:滾動控制器
   int _displayStartIndex = 0; // 新增:當前顯示資料在_allNewsData中的起始索引
 
+  // ========== 新增:圖片代理函數 ==========
+  String _getProxiedImageUrl(String? originalUrl) {
+    if (originalUrl == null || originalUrl.isEmpty) return '';
+
+    // URL 編碼原始圖片 URL
+    final encodedUrl = Uri.encodeComponent(originalUrl);
+
+    // 構建代理 URL
+    return '${Config.apiBaseUrl}/image/proxy?url=$encodedUrl';
+  }
+
   // 快速播放相關變數
   bool _isPlayerVisible = false;
   bool _isPlaying = false;
@@ -1469,7 +1480,7 @@ class _HomePageState extends State<HomePage> {
                         borderRadius: BorderRadius.circular(8),
                         child: news['cover_img'] != null && news['cover_img'].isNotEmpty
                             ? Image.network(
-                          news['cover_img'],
+                          _getProxiedImageUrl(news['cover_img']),
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
                             return const Icon(Icons.image, color: Colors.grey);

@@ -1,6 +1,10 @@
 const express = require('express')
 const router = express.Router()
-const { searchImage, insertImage, updateImage, deleteImage } = require('../middlewares/imageController');
+const { searchImage, insertImage, updateImage, deleteImage, proxyImage } = require('../middlewares/imageController');
+
+// ========== 新增：圖片代理端點 ==========
+// 這個路由要放在最前面,避免被其他路由匹配
+router.get('/proxy', proxyImage);
 
 // search
 router.get('/', searchImage);
