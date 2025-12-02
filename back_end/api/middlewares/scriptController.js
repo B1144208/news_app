@@ -38,8 +38,6 @@ async function getText (req, res, next) {
       query: { mode: "complex" },
       body: { id: idList}
     }
-
-    
     try {
       let result = await callAndCatchApiSuccess(searchNews, fakeReq);
       result = result.complexList.map(item => {

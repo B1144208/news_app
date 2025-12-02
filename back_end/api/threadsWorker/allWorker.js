@@ -6,6 +6,7 @@ const { newsAllClassifier } = require('../middlewares/classifierController');
 const { searchGroup } = require('../middlewares/groupController');
 const { searchLocation } = require('../middlewares/locationController');
 const { insertKeyword } = require('../middlewares/keywordController');
+const { searchNews, insertNews } = require('../middlewares/newsController');
 const { getText } = require('../middlewares/scriptController');
 const { callAndCatchApiSuccessInGeneralFunction } = require('../utils/fakeHelper');
 
@@ -291,6 +292,117 @@ async function insertNewsChatForOneNews(newsId, chatList) {
   }
 }
 
+/* ---------- translate：翻譯 非中文新聞 ---------- */
+
+async function insertNewsTranslateForOneNews(originalNewsId, translate) {
+  // --------- 情況一：沒有 translate（本來就中文）---------
+  if (
+    !translate ||
+    typeof translate.title !== 'string' ||
+    typeof translate.text !== 'string'
+  ) {
+    try {
+      await pool.query(
+        'UPDATE news_data SET is_chinese = 1 WHERE news_id = ?;',
+        [originalNewsId]
+      );
+    } catch (err) {
+      console.warn(
+        '[newsAllWorker] insertNewsTranslateForOneNews: 更新原新聞 is_chinese 失敗，news_id =',
+        originalNewsId,
+        'err =',
+        err.message
+      );
+    }
+
+    // 沒有新新聞，後面就直接對原 newsId 寫 group/location/keyword...
+    return { targetNewsId: originalNewsId, newNewsId: null };
+  }
+
+  // --------- 情況二：有 translate，要產生一筆新的「中文新聞」---------
+  try {
+    // 1) 取原始新聞完整資料
+    const fakeReqForSearch = {
+      query: { mode: 'complex' },
+      body: { id: originalNewsId }
+    };
+
+    const searchRes = await callAndCatchApiSuccessInGeneralFunction(
+      searchNews,
+      fakeReqForSearch
+    );
+
+    const original = searchRes?.complexList?.[0];
+    if (!original) {
+      console.warn(
+        '[newsAllWorker] insertNewsTranslateForOneNews: searchNews 找不到對應新聞，news_id =',
+        originalNewsId
+      );
+      // 找不到就只好 fallback 回原本 newsId
+      return { targetNewsId: originalNewsId, newNewsId: null };
+    }
+
+    // 2) 組成新的中文新聞 payload
+    const newNewsPayload = {
+      url: '原網址: ' + (original.newsUrl || ''),
+      channel: original.channelName || '',
+      cover_img: {
+        src: original.coverImageUrl || '',
+        alt: null     // 你指定 alt = null
+      },
+      title: translate.title,      // 中文標題
+      publish_date: original.publishDate,
+      detail: translate.text       // 中文內文（你原本系統是 text，不是 content）
+    };
+
+    const fakeReqForInsert = { body: newNewsPayload };
+
+    const insertRes = await callAndCatchApiSuccessInGeneralFunction(
+      insertNews,
+      fakeReqForInsert
+    );
+
+    const newNewsId = insertRes?.insertId;
+    if (!newNewsId) {
+      console.warn(
+        '[newsAllWorker] insertNewsTranslateForOneNews: insertNews 沒有回傳 insertId，news_id =',
+        originalNewsId
+      );
+      return { targetNewsId: originalNewsId, newNewsId: null };
+    }
+
+    // 3) 更新新新聞：is_chinese = 1, translate_id = 原本 newsId
+    try {
+      await pool.query(
+        `
+          UPDATE news_data
+          SET is_chinese = 1,
+              translate_id = ?
+          WHERE news_id = ?;
+        `,
+        [originalNewsId, newNewsId]
+      );
+    } catch (err) {
+      console.warn(
+        '[newsAllWorker] insertNewsTranslateForOneNews: 更新新新聞 is_chinese/translate_id 失敗，新 news_id =',
+        newNewsId,
+        'err =',
+        err.message
+      );
+    }
+
+    // 後面 group/location/keyword... 都寫到 newNewsId 上
+    return { targetNewsId: newNewsId, newNewsId };
+  } catch (err) {
+    console.warn(
+      '[newsAllWorker] insertNewsTranslateForOneNews: 流程發生錯誤，fallback 原新聞，news_id =',
+      originalNewsId,
+      'err =',
+      err.message
+    );
+    return { targetNewsId: originalNewsId, newNewsId: null };
+  }
+}
 
 /* ---------- 將 news_task 三個欄位都設為完成 ---------- */
 /*
@@ -313,7 +425,7 @@ async function markTaskDoneAll(newsId) {
 /* ---------- 處理單一 news 的完整流程 ---------- */
 
 async function handleOneNews(newsItem) {
-  const newsId  = newsItem.id;
+  const newsId  = newsItem.id;           // 原始（可能是英文） news_id
   const title   = newsItem.title || '';
   const newsText = newsItem.text  || '';
 
@@ -335,24 +447,26 @@ async function handleOneNews(newsItem) {
       return;
     }
 
-    const { group, location, keyword, reporter, chat } = result;
+    // 把 translate 也一起解構出來
+    const { group, location, keyword, reporter, chat, translate } = result;
+
+    // 先處理翻譯／is_chinese，拿到 targetNewsId & newNewsId
+    const { targetNewsId, newNewsId } =
+      await insertNewsTranslateForOneNews(newsId, translate);
+
+    // 決定哪些 news_id 要寫入（舊 + 新）
+    const idsToWrite = newNewsId ? [newsId, newNewsId] : [newsId];
 
     let ok = true;
 
-    // group
-    if (!(await insertNewsGroupsForOneNews(newsId, group))) ok = false;
-
-    // location
-    if (!(await insertNewsLocationsForOneNews(newsId, location))) ok = false;
-
-    // keyword
-    if (!(await insertNewsKeywordsForOneNews(newsId, keyword))) ok = false;
-
-    // reporter_script
-    if (!(await updateNewsReporterForOneNews(newsId, reporter))) ok = false;
-
-    // chat 對話
-    if (!(await insertNewsChatForOneNews(newsId, chat))) ok = false;
+    // 對每一個 id 都寫 group/location/keyword/reporter/chat
+    for (const targetId of idsToWrite) {
+      if (!(await insertNewsGroupsForOneNews(targetId, group)))      ok = false;
+      if (!(await insertNewsLocationsForOneNews(targetId, location))) ok = false;
+      if (!(await insertNewsKeywordsForOneNews(targetId, keyword)))  ok = false;
+      if (!(await updateNewsReporterForOneNews(targetId, reporter))) ok = false;
+      if (!(await insertNewsChatForOneNews(targetId, chat)))        ok = false;
+    }
 
     if (!ok) {
       console.warn(
@@ -361,8 +475,11 @@ async function handleOneNews(newsItem) {
       return;
     }
 
-    // 全部都成功才刪掉 news_task 這筆
-    await markTaskDoneAll(newsId);
+    // ★ 任務完成：舊的、新的都 mark 一下
+    await markTaskDoneAll(newsId);        // 原本那筆
+    if (newNewsId) {
+      await markTaskDoneAll(newNewsId);   // 新增的翻譯那筆
+    }
   } catch (err) {
     err.desc =
       'threadsWorker-newsAll-handleOneNews(): ' + (err.message || '');
