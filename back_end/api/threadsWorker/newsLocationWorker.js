@@ -16,7 +16,7 @@ function sleep (ms) {
  * 依照五個欄位的加總分數由大到小排序，再依照 created_at 越新越前面
  * 一次最多抓 100 筆
  */
-async function fetchPendingNewsIds () {
+async function fetchPendingNewsIds(LIMIT) {
   const sql = `
     SELECT
       nt.news_id,
@@ -32,7 +32,7 @@ async function fetchPendingNewsIds () {
     ORDER BY
       score DESC,
       nd.created_at
-    LIMIT 100;
+    LIMIT ${LIMIT};
   `;
 
   const [rows] = await pool.query(sql);
@@ -180,11 +180,11 @@ async function handleOneNews (newsItem) {
  * - 若有資料，逐筆處理
  * - 若沒有資料，sleep 一小時後再試
  */
-async function runLocationWorker() {
+async function runLocationWorker(LIMIT) {
   console.log('[newsLocationWorker] 啟動');
 
     try {
-        const idList = await fetchPendingNewsIds();
+        const idList = await fetchPendingNewsIds(LIMIT);
 
         console.log("抓取" , idList, " 資料")
 

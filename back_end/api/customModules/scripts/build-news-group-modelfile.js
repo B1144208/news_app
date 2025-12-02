@@ -14,7 +14,7 @@ const groupJson    = JSON.stringify(groupObj, null, 2);
 const OTHER_GROUP_ID = 15;
 
 // 組 Modelfile 內容
-const modelfileContent = `FROM qwen2.5:3b
+const modelfileContent = `FROM qwen2.5:1.5b
 
 PARAMETER temperature 0.15
 PARAMETER top_p 0.5

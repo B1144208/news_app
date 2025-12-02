@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
 
 // 組 Modelfile 內容（只有 location）
-const modelfileContent = `FROM qwen2.5:3b
+const modelfileContent = `FROM qwen2.5:1.5b
 
 PARAMETER temperature 0.15
 PARAMETER top_p 0.5
