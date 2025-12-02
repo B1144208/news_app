@@ -23,9 +23,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
   bool isFavorite = false;
   int? _bookmarkId; // 儲存bookmark_id用於刪除
   bool showComments = false;
-  bool showChatBox = false;
   final TextEditingController _commentController = TextEditingController();
-  final TextEditingController _chatController = TextEditingController();
 
   // 從API獲取的詳細資料
   Map<String, dynamic>? _newsDetail;
@@ -33,12 +31,9 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
   bool _isLoading = false;
   String? _error;
 
-  // 模擬留言數據
-  final List<Map<String, dynamic>> _comments = [
-    {'user': '用戶A', 'content': '這個新聞很有意思!', 'time': '2小時前', 'avatar': 'A'},
-    {'user': '用戶B', 'content': '感謝分享這個重要資訊', 'time': '3小時前', 'avatar': 'B'},
-    {'user': '用戶C', 'content': '希望能有更多這樣的報導', 'time': '5小時前', 'avatar': 'C'},
-  ];
+  // 真實留言數據
+  List<Map<String, dynamic>> _comments = [];
+  bool _isLoadingComments = false;
 
   // AI朗讀模式相關變數
   bool _showReadModes = false;
@@ -88,12 +83,16 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
     _fetchNewsDetail();
     _checkBookmarkStatus();
     _cleanExpiredCache(); // ========== 新增：清理過期快取 ==========
+    _loadComments(); // ========== 新增：載入留言 ==========
 
     _audioPlayer.onPlayerComplete.listen((event) {
+      if (!mounted) return; // 檢查 widget 是否還在樹中
       _onAudioComplete();
     });
 
     _audioPlayer.onPlayerStateChanged.listen((state) {
+      if (!mounted) return; // 檢查 widget 是否還在樹中
+
       if (state == PlayerState.playing) {
         setState(() {
           _isPlaying = true;
@@ -131,11 +130,12 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
 
           // 查找是否已收藏此新聞
           final bookmark = bookmarks.firstWhere(
-            (b) => b['news_id'] == newsId,
+                (b) => b['news_id'] == newsId,
             orElse: () => null,
           );
 
           if (bookmark != null) {
+            if (!mounted) return;
             setState(() {
               isFavorite = true;
               _bookmarkId = bookmark['bookmark_id'];
@@ -149,6 +149,91 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
     }
   }
 
+  // ========== 新增：載入留言資料 ==========
+  Future<void> _loadComments() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingComments = true;
+    });
+
+    try {
+      final newsId = widget.newsData['id'];
+      // 修改為正確的 API 路徑
+      final response = await http.get(
+        Uri.parse('${Config.apiBaseUrl}/user/comment/news?dataId=$newsId'),
+      );
+
+      print('📝 載入留言回應狀態碼: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+
+        if (responseData['success'] == true) {
+          final commentsData = responseData['data'] as List;
+
+          if (!mounted) return;
+          setState(() {
+            _comments = commentsData.map((comment) {
+              return {
+                'comment_id': comment['comment_id'],
+                'user_id': comment['user_id'],
+                'user': comment['display_name'] ?? '訪客',
+                'content': comment['comment_text'] ?? '',
+                'time': _formatCommentTime(comment['created_at']),
+                'avatar': _getAvatarText(comment['display_name'] ?? '訪客'),
+                'is_anonymous': comment['is_anonymous'] ?? false,
+              };
+            }).toList();
+            _isLoadingComments = false;
+          });
+
+          print('✅ 成功載入 ${_comments.length} 則留言');
+        } else {
+          throw Exception(responseData['message'] ?? '載入留言失敗');
+        }
+      } else {
+        throw Exception('伺服器錯誤: ${response.statusCode}');
+      }
+    } catch (error) {
+      print('❌ 載入留言失敗: $error');
+      if (!mounted) return;
+      setState(() {
+        _isLoadingComments = false;
+      });
+    }
+  }
+
+  // ========== 新增：格式化留言時間 ==========
+  String _formatCommentTime(String? createdAt) {
+    if (createdAt == null) return '未知時間';
+
+    try {
+      final commentTime = DateTime.parse(createdAt);
+      final now = DateTime.now();
+      final difference = now.difference(commentTime);
+
+      if (difference.inMinutes < 1) {
+        return '剛剛';
+      } else if (difference.inMinutes < 60) {
+        return '${difference.inMinutes}分鐘前';
+      } else if (difference.inHours < 24) {
+        return '${difference.inHours}小時前';
+      } else if (difference.inDays < 7) {
+        return '${difference.inDays}天前';
+      } else {
+        return '${commentTime.year}/${commentTime.month}/${commentTime.day}';
+      }
+    } catch (e) {
+      return '未知時間';
+    }
+  }
+
+  // ========== 新增：取得頭像文字 ==========
+  String _getAvatarText(String displayName) {
+    if (displayName.isEmpty) return '?';
+    return displayName.substring(0, 1).toUpperCase();
+  }
+
   // ========== 新增：載入用戶AI模式設定 ==========
   Future<void> _loadUserAiMode() async {
     final prefs = await SharedPreferences.getInstance();
@@ -156,11 +241,13 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
 
     if (isLoggedIn) {
       final userAiMode = prefs.getInt('UserAiMode') ?? 1;
+      if (!mounted) return;
       setState(() {
         _selectedAiMode = userAiMode;
       });
       print('📱 已登入用戶,載入AI模式: $_selectedAiMode');
     } else {
+      if (!mounted) return;
       setState(() {
         _selectedAiMode = 1;
       });
@@ -169,6 +256,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
   }
 
   Future<void> _fetchNewsDetail() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _error = null;
@@ -176,7 +264,11 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
 
     try {
       final uri = Uri.parse('${Config.apiBaseUrl}/news/search').replace(
-        queryParameters: {'mode': 'complex', 'order': 'general', 'limit': '1'},
+        queryParameters: {
+          'mode': 'complex',
+          'order': 'general',
+          'limit': '1',
+        },
       );
 
       final response = await http.post(
@@ -198,6 +290,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
           if (complexList != null && complexList.isNotEmpty) {
             final newsData = complexList[0];
 
+            if (!mounted) return;
             setState(() {
               _newsDetail = {
                 'news_id': newsData['newsId'],
@@ -226,6 +319,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
       }
     } catch (error) {
       print('獲取新聞詳情失敗: $error');
+      if (!mounted) return;
       setState(() {
         _error = '載入新聞詳情時發生錯誤: $error';
         _isLoading = false;
@@ -314,7 +408,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('請登入後再操作'),
-            backgroundColor: const Color(0xFF1a2a4e),
+            backgroundColor: Colors.orange,
           ),
         );
       }
@@ -341,6 +435,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
         print('📡 取消收藏回應: ${response.statusCode}');
 
         if (response.statusCode == 200) {
+          if (!mounted) return;
           setState(() {
             isFavorite = false;
             _bookmarkId = null;
@@ -377,6 +472,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
           final data = json.decode(response.body);
 
           if (data['success'] == true || data['insertId'] != null) {
+            if (!mounted) return;
             setState(() {
               isFavorite = true;
               _bookmarkId = data['insertId'];
@@ -405,7 +501,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('操作失敗: $e'),
-            backgroundColor: const Color(0xFFef4444),
+            backgroundColor: Colors.red,
           ),
         );
       }
@@ -413,6 +509,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
   }
 
   Future<void> _startReading() async {
+    if (!mounted) return;
     setState(() {
       _isPlayerVisible = true;
       _isTtsLoading = true; // ========== 開始載入 ==========
@@ -451,9 +548,9 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
   Future<void> _playGeneralMode() async {
     if (generalPlaymodeTexts.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('沒有可朗讀的內容')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('沒有可朗讀的內容')),
+        );
       }
       _closePlayer();
       return;
@@ -466,9 +563,9 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
   Future<void> _playReporterMode() async {
     if (reporterPlaymode.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('播報稿為空')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('播報稿為空')),
+        );
       }
       _closePlayer();
       return;
@@ -479,13 +576,14 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
 
   // ========== 修改：使用前端快取的TTS播放 ==========
 
+
   // ========== 新增：對話模式 - 播放對話列表 ==========
   Future<void> _playDialogueMode() async {
     if (dialoguePlaymode.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('對話稿為空')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('對話稿為空')),
+        );
       }
       _closePlayer();
       return;
@@ -533,9 +631,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
           audioFilePaths.add(cachedPath);
         } else {
           // 調用TTS API
-          print(
-            '📡 生成音訊[$i]: $speaker - ${text.substring(0, text.length > 20 ? 20 : text.length)}...',
-          );
+          print('📡 生成音訊[$i]: $speaker - ${text.substring(0, text.length > 20 ? 20 : text.length)}...');
 
           final response = await http.post(
             Uri.parse('${Config.apiBaseUrl}/tts'),
@@ -566,15 +662,17 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
       } else {
         throw Exception('沒有可播放的音訊');
       }
+
     } catch (e) {
       print('❌ 對話模式播放錯誤: $e');
+      if (!mounted) return;
       setState(() {
         _isTtsLoading = false;
       });
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('對話播放錯誤: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('對話播放錯誤: $e')),
+        );
       }
       _closePlayer();
     }
@@ -604,12 +702,14 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
       await _audioPlayer.setPlaybackRate(_playbackSpeed);
       await _audioPlayer.play(UrlSource(dataUrl));
 
+      if (!mounted) return;
       setState(() {
         _isPlaying = true;
         _isTtsLoading = false;
       });
 
       print('🎭 正在播放對話模式');
+
     } catch (e) {
       print('❌ 合併播放錯誤: $e');
       throw e;
@@ -618,9 +718,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
 
   Future<void> _playTextWithTTS(String text) async {
     try {
-      print(
-        '🎵 準備播放文本: ${text.substring(0, text.length > 50 ? 50 : text.length)}...',
-      );
+      print('🎵 準備播放文本: ${text.substring(0, text.length > 50 ? 50 : text.length)}...');
 
       // ========== 前端快取系統 ==========
       final newsId = widget.newsData['id'];
@@ -658,8 +756,10 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
 
         // 4. 播放音訊
         await _playAudioFromFile(savedPath);
+
       } else {
         print('❌ TTS API 錯誤: ${response.statusCode}');
+        if (!mounted) return;
         setState(() {
           _isTtsLoading = false;
         });
@@ -672,13 +772,14 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
       }
     } catch (e) {
       print('❌ 播放錯誤: $e');
+      if (!mounted) return;
       setState(() {
         _isTtsLoading = false;
       });
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('播放錯誤: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('播放錯誤: $e')),
+        );
       }
       _closePlayer();
     }
@@ -721,6 +822,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
 
       print('✅ 找到有效快取: $cacheKey (${difference.inDays}天前)');
       return file.path;
+
     } catch (e) {
       print('❌ 檢查快取失敗: $e');
       return null;
@@ -728,10 +830,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
   }
 
   // ========== 新增：儲存音訊到快取 ==========
-  Future<String> _saveAudioToCache(
-    String cacheKey,
-    Uint8List audioBytes,
-  ) async {
+  Future<String> _saveAudioToCache(String cacheKey, Uint8List audioBytes) async {
     final cachePath = await _getCacheDirectory();
     final file = File('$cachePath/$cacheKey.mp3');
 
@@ -748,6 +847,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
     // 使用 DeviceFileSource 播放本地檔案
     await _audioPlayer.play(DeviceFileSource(filePath));
 
+    if (!mounted) return;
     setState(() {
       _isPlaying = true;
       _isTtsLoading = false;
@@ -787,6 +887,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
       if (deletedCount > 0) {
         print('✅ 清理完成: 刪除了 $deletedCount 個過期快取檔案');
       }
+
     } catch (e) {
       print('❌ 清理快取失敗: $e');
     }
@@ -800,11 +901,13 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
   Future<void> _togglePlayPause() async {
     if (_isPlaying) {
       await _audioPlayer.pause();
+      if (!mounted) return;
       setState(() {
         _isPlaying = false;
       });
     } else {
       await _audioPlayer.resume();
+      if (!mounted) return;
       setState(() {
         _isPlaying = true;
       });
@@ -812,6 +915,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
   }
 
   Future<void> _adjustPlaybackSpeed() async {
+    if (!mounted) return;
     setState(() {
       if (_playbackSpeed == 0.5) {
         _playbackSpeed = 1.0;
@@ -827,6 +931,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
 
   Future<void> _closePlayer() async {
     await _audioPlayer.stop();
+    if (!mounted) return;
     setState(() {
       _isPlayerVisible = false;
       _isPlaying = false;
@@ -861,12 +966,10 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                     ],
                   ),
                 ),
-                _buildBottomActionBar(),
               ],
             ),
 
             if (showComments) _buildCommentsOverlay(),
-            if (showChatBox) _buildChatOverlay(),
             if (_isPlayerVisible) _buildReadingPlayer(),
           ],
         ),
@@ -877,11 +980,11 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
   Widget _buildCustomAppBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: const Color(0xFF0a1428),
+      color: Color(0xFFC9BDFF),
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            icon: const Icon(Icons.arrow_back, color: Colors.black),
             onPressed: () => Navigator.of(context).pop(),
           ),
           const SizedBox(width: 8),
@@ -890,15 +993,11 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder:
-                      (context) => ChannelDetailPage(
-                        channelId: widget.newsData['channel_id'] ?? 1,
-                        channelName:
-                            _newsDetail?['channel_name'] ??
-                            widget.newsData['channel'] ??
-                            '新聞台',
-                        channelDescription: null,
-                      ),
+                  builder: (context) => ChannelDetailPage(
+                    channelId: widget.newsData['channel_id'] ?? 1,
+                    channelName: _newsDetail?['channel_name'] ?? widget.newsData['channel'] ?? '新聞台',
+                    channelDescription: null,
+                  ),
                 ),
               );
             },
@@ -906,26 +1005,20 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: const Color(0xFF3b82f6),
+                color: Colors.grey[300],
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: const Icon(
-                Icons.tv,
-                size: 20,
-                color: const Color(0xFF60a5fa),
-              ),
+              child: const Icon(Icons.tv, size: 20, color: Colors.black54),
             ),
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              _newsDetail?['channel_name'] ??
-                  widget.newsData['channel'] ??
-                  '新聞台',
+              _newsDetail?['channel_name'] ?? widget.newsData['channel'] ?? '新聞台',
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: Colors.black,
               ),
               overflow: TextOverflow.ellipsis,
             ),
@@ -952,15 +1045,11 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.error_outline,
-                size: 60,
-                color: const Color(0xFFef4444),
-              ),
+              const Icon(Icons.error_outline, size: 60, color: Colors.red),
               const SizedBox(height: 16),
               Text(
                 _error!,
-                style: const TextStyle(color: const Color(0xFFef4444)),
+                style: const TextStyle(color: Colors.red),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
@@ -975,7 +1064,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
     }
 
     return Container(
-      color: const Color(0xFF1a2a4e),
+      color: Colors.white,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -985,14 +1074,12 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _newsDetail?['news_title'] ??
-                      widget.newsData['title'] ??
-                      '無標題',
+                  _newsDetail?['news_title'] ?? widget.newsData['title'] ?? '無標題',
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                     height: 1.3,
-                    color: Colors.white,
+                    color: Colors.black,
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -1000,7 +1087,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                   _formatDateTime(_newsDetail?['publish_date']),
                   style: TextStyle(
                     fontSize: 14,
-                    color: const Color(0xFFe5e7eb),
+                    color: Colors.grey[600],
                   ),
                 ),
               ],
@@ -1020,7 +1107,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
           padding: EdgeInsets.all(16.0),
           child: Text(
             '暫無新聞內容',
-            style: TextStyle(color: const Color(0xFFe5e7eb)),
+            style: TextStyle(color: Colors.grey),
           ),
         ),
       ];
@@ -1035,7 +1122,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
             style: const TextStyle(
               fontSize: 16,
               height: 1.6,
-              color: Colors.white,
+              color: Colors.black87,
             ),
           ),
         );
@@ -1053,29 +1140,21 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                   errorBuilder: (context, error, stackTrace) {
                     return Container(
                       height: 200,
-                      color: const Color(0xFF3b82f6),
+                      color: Colors.grey[300],
                       child: const Center(
-                        child: Icon(
-                          Icons.broken_image,
-                          size: 50,
-                          color: const Color(0xFFe5e7eb),
-                        ),
+                        child: Icon(Icons.broken_image, size: 50, color: Colors.grey),
                       ),
                     );
                   },
                 ),
-              if (bodyItem['body_text'] != null &&
-                  bodyItem['body_text'].toString().isNotEmpty)
+              if (bodyItem['body_text'] != null && bodyItem['body_text'].toString().isNotEmpty)
                 Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16.0,
-                    vertical: 8.0,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                   child: Text(
                     bodyItem['body_text'],
                     style: TextStyle(
                       fontSize: 14,
-                      color: const Color(0xFFe5e7eb),
+                      color: Colors.grey[600],
                       fontStyle: FontStyle.italic,
                     ),
                   ),
@@ -1115,21 +1194,9 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
           _buildRightButton(
             icon: Icons.comment,
             label: '${_comments.length}',
-            onTap: () async {
-              // ========== 新增：檢查登入狀態 ==========
-              final isLoggedIn = await _checkLoginStatus();
-              if (!isLoggedIn) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('請登入後再操作'),
-                      backgroundColor: const Color(0xFF1a2a4e),
-                    ),
-                  );
-                }
-                return;
-              }
-
+            showLabel: true, // 顯示留言數
+            onTap: () {
+              // 修改：未登入也能打開留言區查看留言
               setState(() {
                 showComments = true;
               });
@@ -1159,85 +1226,46 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
     required IconData icon,
     required String label,
     required VoidCallback onTap,
+    bool showLabel = false, // 新增參數控制是否顯示標籤
   }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: 48,
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        height: showLabel ? 56 : 48, // 有標籤時增加高度
         decoration: BoxDecoration(
-          color: const Color(0xFF1a2a4e),
-          borderRadius: BorderRadius.circular(24),
+          color: Colors.white,
+          shape: showLabel ? BoxShape.rectangle : BoxShape.circle,
+          borderRadius: showLabel ? BorderRadius.circular(24) : null,
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF3b82f6).withOpacity(0.3),
+              color: Colors.black.withValues(alpha: 0.15),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
           ],
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: showLabel
+            ? Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 24, color: const Color(0xFF60a5fa)),
-            const SizedBox(height: 4),
+            Icon(icon, size: 24, color: Colors.black87),
+            const SizedBox(height: 2),
             Text(
               label,
               style: const TextStyle(
-                fontSize: 10,
-                color: const Color(0xFFe5e7eb),
+                fontSize: 11,
+                color: Colors.black87,
+                fontWeight: FontWeight.w500,
               ),
-              textAlign: TextAlign.center,
             ),
           ],
-        ),
+        )
+            : Icon(icon, size: 24, color: Colors.black87),
       ),
     );
   }
 
-  Widget _buildBottomActionBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFe5e7eb),
-            blurRadius: 4,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          GestureDetector(
-            onTap: () {
-              setState(() {
-                showChatBox = !showChatBox;
-              });
-            },
-            child: Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: const Color(0xFF60a5fa),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF60a5fa),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: const Icon(Icons.smart_toy, color: Colors.white, size: 28),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   // ========== 修改：朗讀播放器 - 加入載入狀態顯示 ==========
   Widget _buildReadingPlayer() {
@@ -1251,7 +1279,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFe5e7eb),
+              color: Colors.grey,
               spreadRadius: 1,
               blurRadius: 5,
               offset: const Offset(0, -2),
@@ -1274,36 +1302,29 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                           height: 16,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.blue,
-                            ),
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
                           ),
                         )
                       else
-                        const Icon(
-                          Icons.volume_up,
-                          color: const Color(0xFF60a5fa),
-                          size: 20,
-                        ),
+                        const Icon(Icons.volume_up, color: Colors.blue, size: 20),
                       const SizedBox(width: 8),
                       Text(
-                        _isTtsLoading
-                            ? '載入中...'
-                            : '${_getModeName(_selectedAiMode)}朗讀',
+                        _isTtsLoading ? '載入中...' : '${_getModeName(_selectedAiMode)}朗讀',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
-                          color: const Color(0xFF60a5fa),
+                          color: Colors.blue,
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    _newsDetail?['news_title'] ??
-                        widget.newsData['title'] ??
-                        '無標題',
-                    style: const TextStyle(fontSize: 12, color: Colors.white),
+                    _newsDetail?['news_title'] ?? widget.newsData['title'] ?? '無標題',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.black87,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -1315,39 +1336,22 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 GestureDetector(
-                  onTap:
-                      _isTtsLoading
-                          ? null
-                          : () {
-                            int nextMode = (_selectedAiMode % 3) + 1;
-                            _switchAiMode(nextMode);
-                          },
+                  onTap: _isTtsLoading ? null : () {
+                    int nextMode = (_selectedAiMode % 3) + 1;
+                    _switchAiMode(nextMode);
+                  },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color:
-                          _isTtsLoading
-                              ? const Color(0xFF1a2a4e)
-                              : const Color(0xFF1a2a4e),
-                      border: Border.all(
-                        color:
-                            _isTtsLoading
-                                ? const Color(0xFFe5e7eb)
-                                : const Color(0xFF60a5fa),
-                      ),
+                      color: _isTtsLoading ? Colors.grey[200] : Colors.blue[50],
+                      border: Border.all(color: _isTtsLoading ? Colors.grey : Colors.blue),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
                       _getModeName(_selectedAiMode),
                       style: TextStyle(
                         fontSize: 12,
-                        color:
-                            _isTtsLoading
-                                ? const Color(0xFFe5e7eb)
-                                : const Color(0xFF60a5fa),
+                        color: _isTtsLoading ? Colors.grey : Colors.blue[700],
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -1357,21 +1361,17 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                 const SizedBox(width: 8),
 
                 IconButton(
-                  onPressed:
-                      _isTtsLoading
-                          ? null
-                          : () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('內文跳轉功能開發中'),
-                                duration: Duration(seconds: 1),
-                              ),
-                            );
-                          },
+                  onPressed: _isTtsLoading ? null : () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('內文跳轉功能開發中'),
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                  },
                   icon: Icon(
                     Icons.article_outlined,
-                    color:
-                        _isTtsLoading ? const Color(0xFFe5e7eb) : Colors.white,
+                    color: _isTtsLoading ? Colors.grey : Colors.black87,
                   ),
                   iconSize: 24,
                 ),
@@ -1379,27 +1379,16 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                 GestureDetector(
                   onTap: _isTtsLoading ? null : _adjustPlaybackSpeed,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      border: Border.all(
-                        color:
-                            _isTtsLoading
-                                ? const Color(0xFFe5e7eb)
-                                : const Color(0xFFe5e7eb),
-                      ),
+                      border: Border.all(color: _isTtsLoading ? Colors.grey[300]! : Colors.grey),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
                       '${_playbackSpeed}x',
                       style: TextStyle(
                         fontSize: 12,
-                        color:
-                            _isTtsLoading
-                                ? const Color(0xFFe5e7eb)
-                                : Colors.white,
+                        color: _isTtsLoading ? Colors.grey : Colors.black87,
                       ),
                     ),
                   ),
@@ -1411,25 +1400,21 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                   onPressed: _isTtsLoading ? null : _togglePlayPause,
                   icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow),
                   iconSize: 28,
-                  color: _isTtsLoading ? const Color(0xFFe5e7eb) : Colors.white,
+                  color: _isTtsLoading ? Colors.grey : Colors.black87,
                 ),
 
                 IconButton(
-                  onPressed:
-                      _isTtsLoading
-                          ? null
-                          : () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('下一篇功能開發中'),
-                                duration: Duration(seconds: 1),
-                              ),
-                            );
-                          },
+                  onPressed: _isTtsLoading ? null : () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('下一篇功能開發中'),
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                  },
                   icon: Icon(
                     Icons.skip_next,
-                    color:
-                        _isTtsLoading ? const Color(0xFFe5e7eb) : Colors.white,
+                    color: _isTtsLoading ? Colors.grey : Colors.black87,
                   ),
                   iconSize: 24,
                 ),
@@ -1449,176 +1434,128 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
 
   Widget _buildCommentsOverlay() {
     return Positioned.fill(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            showComments = false;
-          });
-        },
-        child: Container(
-          color: Colors.white,
-          child: GestureDetector(
-            onTap: () {},
+      child: Column(
+        children: [
+          // 上半部分：半透明背景,點擊關閉留言區
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  showComments = false;
+                });
+              },
+              child: Container(
+                color: Colors.black.withValues(alpha: 0.5),
+              ),
+            ),
+          ),
+          // 下半部分:白色留言區
+          Container(
+            height: MediaQuery.of(context).size.height * 0.6,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+              ),
+            ),
             child: Column(
               children: [
-                const Spacer(),
+                // 頂部拖拽指示器
                 Container(
-                  height: MediaQuery.of(context).size.height * 0.7,
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(20),
-                      topRight: Radius.circular(20),
-                    ),
+                  margin: const EdgeInsets.only(top: 12, bottom: 8),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                  child: Column(
+                ),
+                // 標題列
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(20),
-                            topRight: Radius.circular(20),
-                          ),
-                          border: Border(
-                            bottom: BorderSide(color: const Color(0xFF3b82f6)!),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            const Text(
-                              '留言',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              '${_comments.length}則',
-                              style: TextStyle(
-                                color: const Color(0xFFe5e7eb),
-                                fontSize: 16,
-                              ),
-                            ),
-                            const Spacer(),
-                            IconButton(
-                              icon: const Icon(Icons.close),
-                              onPressed: () {
-                                setState(() {
-                                  showComments = false;
-                                });
-                              },
-                            ),
-                          ],
+                      Text(
+                        '留言 (${_comments.length})',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      Expanded(
-                        child: ListView.separated(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _comments.length,
-                          separatorBuilder:
-                              (context, index) => const SizedBox(height: 16),
-                          itemBuilder: (context, index) {
-                            final comment = _comments[index];
-                            return _buildCommentItem(comment);
-                          },
-                        ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () {
+                          setState(() {
+                            showComments = false;
+                          });
+                        },
                       ),
-                      _buildCommentInput(),
                     ],
                   ),
                 ),
+                Divider(height: 1, color: Colors.grey[300]),
+                // 留言列表
+                Expanded(
+                  child: _isLoadingComments
+                      ? const Center(
+                    child: CircularProgressIndicator(),
+                  )
+                      : _comments.isEmpty
+                      ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.comment_outlined,
+                          size: 64,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          '還沒有留言',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '成為第一個留言的人吧！',
+                          style: TextStyle(
+                            color: Colors.grey[500],
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                      : ListView.separated(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _comments.length,
+                    separatorBuilder: (context, index) =>
+                    const SizedBox(height: 16),
+                    itemBuilder: (context, index) {
+                      final comment = _comments[index];
+                      return _buildCommentItem(comment);
+                    },
+                  ),
+                ),
+                // 留言輸入框
+                _buildCommentInput(),
               ],
             ),
           ),
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildChatOverlay() {
-    return Positioned(
-      bottom: 80,
-      left: 16,
-      right: 16,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFFe5e7eb),
-              spreadRadius: 1,
-              blurRadius: 5,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.smart_toy, color: const Color(0xFF60a5fa)),
-                const SizedBox(width: 8),
-                const Text(
-                  'AI 助手',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.close, size: 20),
-                  onPressed: () {
-                    setState(() {
-                      showChatBox = false;
-                    });
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _chatController,
-              decoration: InputDecoration(
-                hintText: '請問有什麼要詢問的呢?',
-                hintStyle: TextStyle(color: const Color(0xFFe5e7eb)),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.send, color: const Color(0xFF60a5fa)),
-                  onPressed: () {
-                    if (_chatController.text.trim().isNotEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('AI 功能開發中'),
-                          duration: Duration(seconds: 1),
-                        ),
-                      );
-                      _chatController.clear();
-                    }
-                  },
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildCommentItem(Map<String, dynamic> comment) {
+    final isAnonymous = comment['is_anonymous'] ?? false;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1626,14 +1563,14 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: const Color(0xFF1a2a4e),
+            color: isAnonymous ? Colors.grey[300] : Colors.blue[100],
             shape: BoxShape.circle,
           ),
           child: Center(
             child: Text(
               comment['avatar'],
               style: TextStyle(
-                color: const Color(0xFF60a5fa),
+                color: isAnonymous ? Colors.grey[700] : Colors.blue[700],
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -1655,13 +1592,28 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                       fontSize: 14,
                     ),
                   ),
+                  if (isAnonymous) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '匿名',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(width: 8),
                   Text(
                     comment['time'],
-                    style: TextStyle(
-                      color: const Color(0xFFe5e7eb),
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
                   ),
                 ],
               ),
@@ -1673,7 +1625,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                 style: const TextStyle(
                   fontSize: 14,
                   height: 1.4,
-                  color: Colors.white,
+                  color: Colors.black,
                 ),
               ),
             ],
@@ -1688,8 +1640,8 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF1a2a4e),
-        border: Border(top: BorderSide(color: const Color(0xFF3b82f6)!)),
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Colors.grey[300]!)),
       ),
       child: Row(
         children: [
@@ -1698,10 +1650,10 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
               controller: _commentController,
               decoration: InputDecoration(
                 hintText: '請輸入文字',
-                hintStyle: TextStyle(color: const Color(0xFFe5e7eb)),
+                hintStyle: TextStyle(color: Colors.grey[500]),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(20),
-                  borderSide: BorderSide(color: const Color(0xFF3b82f6)!),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
                 ),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
@@ -1717,7 +1669,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
               width: 44,
               height: 44,
               decoration: const BoxDecoration(
-                color: const Color(0xFF60a5fa),
+                color: Colors.blue,
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.send, color: Colors.white, size: 20),
@@ -1728,43 +1680,96 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
     );
   }
 
-  // ========== 修改：送出留言 - 檢查登入狀態 ==========
+  // ========== 修改：送出留言 - 呼叫後端 API ==========
   Future<void> _submitComment() async {
     if (_commentController.text.trim().isEmpty) return;
 
-    final isLoggedIn = await _checkLoginStatus();
+    final prefs = await SharedPreferences.getInstance();
+    final isLoggedIn = prefs.getBool('IsLogin') ?? false;
+
     if (!isLoggedIn) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('請登入後再操作'),
-            backgroundColor: const Color(0xFF1a2a4e),
+            backgroundColor: Colors.orange,
           ),
         );
       }
       return;
     }
 
-    setState(() {
-      _comments.insert(0, {
-        'user': '我',
-        'content': _commentController.text.trim(),
-        'time': '剛剛',
-        'avatar': '我',
-      });
-    });
+    final userId = prefs.getInt('UserID');
+    if (userId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('無法取得用戶資訊'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    final commentText = _commentController.text.trim();
     _commentController.clear();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('留言已發送'), duration: Duration(seconds: 1)),
-    );
+    try {
+      final newsId = widget.newsData['id'];
+      // 修改為正確的 API 路徑
+      final response = await http.post(
+        Uri.parse('${Config.apiBaseUrl}/user/comment/news'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'userId': userId,
+          'dataId': newsId,
+          'text': commentText,
+        }),
+      );
+
+      print('📤 送出留言回應狀態碼: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+
+        if (responseData['success'] == true) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('留言已發送'),
+                duration: Duration(seconds: 1),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+
+          // 重新載入留言列表
+          await _loadComments();
+        } else {
+          throw Exception(responseData['message'] ?? '發送留言失敗');
+        }
+      } else {
+        throw Exception('伺服器錯誤: ${response.statusCode}');
+      }
+    } catch (error) {
+      print('❌ 發送留言失敗: $error');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('留言發送失敗: $error'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
   void dispose() {
     _audioPlayer.dispose();
     _commentController.dispose();
-    _chatController.dispose();
     super.dispose();
   }
 }
