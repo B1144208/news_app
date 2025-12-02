@@ -375,7 +375,7 @@ async function handleOneNews(newsItem) {
 
 /* ---------- 主流程 ---------- */
 
-async function runAllWorker() {
+async function mainLoop() {
   console.log('[newsAllWorker] 啟動');
 
   try {
@@ -435,6 +435,25 @@ async function runAllWorker() {
   }
 }
 
-module.exports = {
+
+// 啟動
+mainLoop().catch(err => {
+  console.error('[newsMainWorker] 無法啟動:', err);
+  process.exit(1);
+});
+
+// 優雅關閉
+process.on('SIGINT', () => {
+    console.log('\n[newsMainWorker] 收到 SIGINT，準備結束');
+    process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+    console.log('\n[newsMainWorker] 收到 SIGTERM，準備結束');
+    process.exit(0);
+});
+
+
+/*module.exports = {
   runAllWorker,
-};
+};*/
