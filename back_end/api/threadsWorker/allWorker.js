@@ -328,7 +328,7 @@ async function handleOneNews(newsItem) {
     );
     console.log('[newsAllWorker] classifier result:', result);
 
-    if (!result || result.success === false || !result.data) {
+    if (!result) {
       console.warn(
         `[newsAllWorker] news_id=${newsId} newsAllClassifier 未正常完成，略過 markTaskDone`
       );
