@@ -1,13 +1,15 @@
 const pool = require('../connect_db');
 const axios = require('axios');
+const path = require('path');
 const { checkRequireField } = require('../utils/checkHelper');
 const { callAndCatchApiSuccess } = require('../utils/fakeHelper');
 const { shortenArticle, cleanNewsScript } = require('../utils/scriptHelper');
 const { execFile } = require('child_process');
-const path = require('path');
 const { searchNews } = require('./newsController');
-const { getEmbedding } = require('../utils/embeddingHelper');
-const { runAllWorker } = require('../threadsWorker/allWorker')
+const { runAllWorker } = require('../threadsWorker/allWorker');
+const { quickScriptModel } = require('../openai/quickScript');
+
+
 
 
 const OLLAMA_URL = 'http://localhost:11434/api/generate';
@@ -376,7 +378,26 @@ async function getScript(req, res, next) {
   }
 }
 
+async function getQuickScipt(req, res, next) {
 
+  // searchNews 抓 10 筆資料
+  let fakeReq = {
+    query: { mode: "id", limit: 10},  //, order: "heat"
+    body: {}
+  }
+  try {
+    let result = await callAndCatchApiSuccess(searchNews, fakeReq);
+    console.log("result: ", result);
+    let 
+  } catch (err) {
+    err.desc = "middlewares-scriptController(): searchNews error";
+    return next(err);
+  }
+
+  const result = await quickScriptModel(news);
+  return res.apiSuccess(result);
+
+}
 
 
 
@@ -1120,6 +1141,7 @@ async function callAskScript(req, res, next) {
 module.exports = {
   getText,
   getScript,
+  getQuickScipt,
   quickScript,  // 新增：快速播放功能
   callAskScript
 };

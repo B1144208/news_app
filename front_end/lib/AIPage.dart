@@ -573,7 +573,7 @@ class _AIPageState extends State<AIPage> {
               ),
 
               const SizedBox(width: 8),
-
+              /*
               // Switch for Event Sorting / Multiple Perspectives (原 AIPage 邏輯)
               Switch(
                 value: !_isEventSortingMode,
@@ -588,7 +588,7 @@ class _AIPageState extends State<AIPage> {
                 activeColor: Colors.blue,
                 inactiveTrackColor: Colors.grey.shade300,
                 inactiveThumbColor: Colors.white,
-              ),
+              ),*/
             ],
           ),
         );
