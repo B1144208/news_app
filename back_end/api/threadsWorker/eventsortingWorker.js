@@ -29,7 +29,7 @@ async function getPendingRelationIds() {
 async function getNewsIdsByRelationId(relationId) {
     const sql = `
         SELECT news_id
-        FROM news_data
+        FROM news_data 
         WHERE relation_id = ?
         ORDER BY news_date ASC
     `;
