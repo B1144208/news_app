@@ -67,10 +67,7 @@ async function searchNews(req, res, next) {
     // general : 直接查找 [ news 主頁 ]
     if ( searchMode == "general" ) {
         sql = `
-            SELECT nd.news_id
-            FROM news_data nd
-            where reporter_script is not null
-                  and is_chinese=1;
+            select news_id from news_data where reporter_script is not null and is_chinese=1;
         `;
         params = [];
         
