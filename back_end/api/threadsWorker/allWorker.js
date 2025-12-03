@@ -10,7 +10,7 @@ const { searchNews, insertNews } = require('../middlewares/newsController');
 const { getText } = require('../middlewares/scriptController');
 const { callAndCatchApiSuccessInGeneralFunction } = require('../utils/fakeHelper');
 
-const LIMIT = 5;
+const LIMIT = 100;
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
