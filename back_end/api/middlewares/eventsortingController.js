@@ -28,19 +28,22 @@ async function searchEventsorting (req, res, next) {
             GROUP_CONCAT(DISTINCT eh.horizontal_id) AS horizontal_events,
             GROUP_CONCAT(DISTINCT ev.news_id) AS vertical_news,
             -- 💥 計算排序分數 (total_heat)
-            (COALESCE(rd.total_heat, 0) * 0.4 + COALESCE(ed.total_heat, 0) * 0.6) AS sorting_score
+            (COALESCE(rd.total_heat, 0) * 0.4 + COALESCE(ed.total_heat, 0) * 0.6 + COALESCE(ed.total_news, 0) * 2) AS sorting_score
         FROM eventsorting_data ed
         -- 假設 eventsorting_data.eventsorting_id 就是 relation_data.relation_id
         LEFT JOIN relation_data rd ON ed.eventsorting_id = rd.relation_id
         LEFT JOIN eventsorting_horizontal eh ON ed.eventsorting_id = eh.eventsorting_id
         LEFT JOIN eventsorting_vertical ev ON ed.eventsorting_id = ev.eventsorting_id
         WHERE 1
+        
     `;
     let params = [];
     if ( id ) {
         sql += ` AND ed.eventsorting_id=?`;
         params.push( id );
     }
+
+
 
     // GROUP BY 是必要的，因為使用了 GROUP_CONCAT 聚合函數
     sql += ` GROUP BY ed.eventsorting_id`;
