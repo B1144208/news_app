@@ -73,21 +73,15 @@ class _HomePageState extends State<HomePage> {
   bool _isPlayerVisible = false;
   bool _isPlaying = false;
   double _playbackSpeed = 1.0;
-  //int _currentNewsIndex = 0;
+  bool _isLoadingQuickPlay = false; // 新增：載入快速播放的狀態
 
   // 新增:AudioPlayer 實例
   final AudioPlayer _audioPlayer = AudioPlayer();
 
-  // 新增:後台文本串列
-  int paragraphCount = 6;
-  List<String> paragraphText = [
-    "開始為您播放今日焦點新聞，第一篇是快新聞，北市中正一警局下通牒　黃國昌明天未到案就送北檢偵辦。",
-    "第二篇是快新聞／好可怕！台南警匪追逐戰　歹徒持榔頭攻擊員警、所長被咬傷。",
-    "第三篇是青少年受情緒困擾 兒盟調查：逾2成想過輕生。",
-    "第四篇是喝咖啡讓人更長壽？　營養師：每天3至5杯效果最佳。",
-    "第五篇是腸病毒重症已奪8命！伊科11型來勢洶洶　疾管署：幼童是高風險族群。",
-    "接下來是各篇新聞的大致內容：「走讀活動」引發警方與民眾對峙，8名警員受傷，而主嫌黃國昌涉嫌違反《集會遊行法》及《聚眾妨害公務法》。台北市警局已通知黃國昌明早到案說服，如果他不來將送北檢處理。",
-  ];
+  // 修改：移除硬編碼文本，改為從 API 獲取
+  int paragraphCount = 0;
+  List<String> paragraphText = [];
+  List<String> audioUrls = []; // 新增：儲存音訊 URL
   int _currentParagraphIndex = 0; // 當前播放的文章索引
 
   @override
@@ -165,7 +159,7 @@ class _HomePageState extends State<HomePage> {
 
       // 按 group_id 排序
       categories.sort(
-        (a, b) => (a['group_id'] ?? 0).compareTo(b['group_id'] ?? 0),
+            (a, b) => (a['group_id'] ?? 0).compareTo(b['group_id'] ?? 0),
       );
 
       print('✅ 最終分類數量: ${categories.length}');
@@ -357,9 +351,9 @@ class _HomePageState extends State<HomePage> {
       if (_scrollController.hasClients) {
         // 計算新增加的項目高度，保持視覺位置
         final addedItemsCount =
-            _displayStartIndex == 0
-                ? _newsPerPage
-                : (_allNewsData.length - _displayStartIndex);
+        _displayStartIndex == 0
+            ? _newsPerPage
+            : (_allNewsData.length - _displayStartIndex);
         _scrollController.jumpTo(currentScrollPosition + (itemHeight * 30));
       }
     });
@@ -437,21 +431,21 @@ class _HomePageState extends State<HomePage> {
 
           // 處理新聞數據
           List<Map<String, dynamic>> processedNews =
-              newsList.map<Map<String, dynamic>>((news) {
-                return {
-                  'id': news['newsId'],
-                  'title': news['newsTitle'] ?? '無標題',
-                  'channel': news['channelName'] ?? '未知頻道',
-                  'publish_date': _formatDate(news['publishDate']),
-                  'cover_img': news['coverImageUrl'],
-                  'cover_img_alt': news['coverImageAlt'] ?? '',
-                  'news_date': news['publishDate'],
-                  'comments': 0,
-                  'views': 0,
-                  'shares': 0,
-                  'bookmarks': 0,
-                };
-              }).toList();
+          newsList.map<Map<String, dynamic>>((news) {
+            return {
+              'id': news['newsId'],
+              'title': news['newsTitle'] ?? '無標題',
+              'channel': news['channelName'] ?? '未知頻道',
+              'publish_date': _formatDate(news['publishDate']),
+              'cover_img': news['coverImageUrl'],
+              'cover_img_alt': news['coverImageAlt'] ?? '',
+              'news_date': news['publishDate'],
+              'comments': 0,
+              'views': 0,
+              'shares': 0,
+              'bookmarks': 0,
+            };
+          }).toList();
 
           // 根據選擇的排序方式排序
           _sortNews(processedNews);
@@ -549,38 +543,38 @@ class _HomePageState extends State<HomePage> {
     switch (_selectedSortType) {
       case '瀏覽數量':
         newsList.sort(
-          (a, b) => (b['views'] as int).compareTo(a['views'] as int),
+              (a, b) => (b['views'] as int).compareTo(a['views'] as int),
         );
         break;
       case '分享數量':
         newsList.sort(
-          (a, b) => (b['shares'] as int).compareTo(a['shares'] as int),
+              (a, b) => (b['shares'] as int).compareTo(a['shares'] as int),
         );
         break;
       case '收藏數量':
         newsList.sort(
-          (a, b) => (b['bookmarks'] as int).compareTo(a['bookmarks'] as int),
+              (a, b) => (b['bookmarks'] as int).compareTo(a['bookmarks'] as int),
         );
         break;
       case '留言數量':
         newsList.sort(
-          (a, b) => (b['comments'] as int).compareTo(a['comments'] as int),
+              (a, b) => (b['comments'] as int).compareTo(a['comments'] as int),
         );
         break;
       case '總熱度':
       default:
-        // 總熱度 = 瀏覽數 + 分享數*2 + 收藏數*3 + 留言數*2
+      // 總熱度 = 瀏覽數 + 分享數*2 + 收藏數*3 + 留言數*2
         newsList.sort((a, b) {
           int heatA =
               (a['views'] as int) +
-              (a['shares'] as int) * 2 +
-              (a['bookmarks'] as int) * 3 +
-              (a['comments'] as int) * 2;
+                  (a['shares'] as int) * 2 +
+                  (a['bookmarks'] as int) * 3 +
+                  (a['comments'] as int) * 2;
           int heatB =
               (b['views'] as int) +
-              (b['shares'] as int) * 2 +
-              (b['bookmarks'] as int) * 3 +
-              (b['comments'] as int) * 2;
+                  (b['shares'] as int) * 2 +
+                  (b['bookmarks'] as int) * 3 +
+                  (b['comments'] as int) * 2;
           return heatB.compareTo(heatA);
         });
         break;
@@ -676,83 +670,110 @@ class _HomePageState extends State<HomePage> {
 
   // 快速播放功能
   Future<void> _startQuickPlay() async {
-    if (paragraphText.isEmpty || paragraphCount == 0) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('沒有可播放的文本')));
-      return;
-    }
-
     setState(() {
-      _isPlayerVisible = true;
-      _currentParagraphIndex = 0;
+      _isLoadingQuickPlay = true;
     });
 
-    // 播放第一篇文章
-    await _playCurrentParagraph();
+    try {
+      // 呼叫後端 API 獲取 quick-script 及音訊檔案
+      final response = await http.get(
+        Uri.parse('${Config.apiBaseUrl}/script/quick?limit=10'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(utf8.decode(response.bodyBytes));
+        print('✅ 收到 quick-script 數據: ${data['data']}');
+
+        // 提取 scripts 陣列（包含 text 和 audioPath）
+        final List<dynamic> scripts = data['data']['scripts'] ?? [];
+
+        if (scripts.isEmpty) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('沒有可播放的新聞')),
+            );
+          }
+          setState(() {
+            _isLoadingQuickPlay = false;
+          });
+          return;
+        }
+
+        // 更新 paragraphText 和 audioUrls
+        setState(() {
+          paragraphText = scripts.map((item) => item['text'] as String).toList();
+          // 組合完整的音訊 URL
+          audioUrls = scripts.map((item) {
+            final audioPath = item['audioPath'] as String;
+            return '${Config.apiBaseUrl}$audioPath';
+          }).toList();
+          paragraphCount = paragraphText.length;
+          _isPlayerVisible = true;
+          _currentParagraphIndex = 0;
+          _isLoadingQuickPlay = false;
+        });
+
+        print('📝 已載入 ${paragraphCount} 篇新聞播報稿及音訊');
+        print('🎵 音訊 URLs: $audioUrls');
+
+        // 播放第一篇文章
+        await _playCurrentParagraph();
+      } else {
+        print('❌ API 錯誤: ${response.statusCode}');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('載入快速播放失敗: ${response.statusCode}')),
+          );
+        }
+        setState(() {
+          _isLoadingQuickPlay = false;
+        });
+      }
+    } catch (e) {
+      print('❌ 載入錯誤: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('載入快速播放錯誤: $e')),
+        );
+      }
+      setState(() {
+        _isLoadingQuickPlay = false;
+      });
+    }
   }
 
-  // 播放當前文章
+  // 播放當前文章 - 修改：直接播放遠端 MP3
   Future<void> _playCurrentParagraph() async {
-    if (_currentParagraphIndex >= paragraphText.length) {
+    if (_currentParagraphIndex >= audioUrls.length) {
       // 所有文章播放完畢
       _closePlayer();
       return;
     }
 
     try {
+      String currentAudioUrl = audioUrls[_currentParagraphIndex];
       String currentText = paragraphText[_currentParagraphIndex];
 
       print(
-        '🎵 準備播放第 ${_currentParagraphIndex + 1} 篇文章: ${currentText.substring(0, currentText.length > 50 ? 50 : currentText.length)}...',
+        '🎵 準備播放第 ${_currentParagraphIndex + 1} 篇: ${currentText.substring(0, currentText.length > 50 ? 50 : currentText.length)}...',
       );
+      print('🎵 音訊 URL: $currentAudioUrl');
 
-      // 呼叫 TTS API
-      final response = await http.post(
-        Uri.parse('${Config.apiBaseUrl}/tts'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'text': currentText,
-          'voiceId': '9lHjugDhwqoxA5MhX0az', // ANNA_SU - Taiwan, social media
-          'stability': 0.5,
-          'similarity_boost': 0.75,
-        }),
-      );
+      // 停止當前播放
+      await _audioPlayer.stop();
 
-      if (response.statusCode == 200) {
-        // 獲取音訊 bytes
-        final Uint8List bytes = response.bodyBytes;
+      // 設定播放速度
+      await _audioPlayer.setPlaybackRate(_playbackSpeed);
 
-        print('✅ 收到音訊數據: ${bytes.length} bytes');
+      // 直接播放遠端 MP3 檔案
+      await _audioPlayer.play(UrlSource(currentAudioUrl));
 
-        // 停止當前播放
-        await _audioPlayer.stop();
+      setState(() {
+        _isPlaying = true;
+      });
 
-        // 轉換為 base64 data URL
-        final String base64Audio = base64Encode(bytes);
-        final String dataUrl = 'data:audio/mpeg;base64,$base64Audio';
-
-        print('🔄 轉換為 data URL, 長度: ${dataUrl.length}');
-
-        // 設定播放速度
-        await _audioPlayer.setPlaybackRate(_playbackSpeed);
-
-        // 使用 UrlSource 播放 data URL
-        await _audioPlayer.play(UrlSource(dataUrl));
-
-        setState(() {
-          _isPlaying = true;
-        });
-
-        print('🎵 正在播放第 ${_currentParagraphIndex + 1} 篇文章');
-      } else {
-        print('❌ TTS API 錯誤: ${response.statusCode}');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('語音合成失敗: ${response.statusCode}')),
-          );
-        }
-      }
+      print('🎵 正在播放第 ${_currentParagraphIndex + 1} 篇文章');
     } catch (e) {
       print('❌ 播放錯誤: $e');
       if (mounted) {
@@ -768,7 +789,7 @@ class _HomePageState extends State<HomePage> {
     print('✅ 第 ${_currentParagraphIndex + 1} 篇播放完成');
 
     // 自動播放下一篇
-    if (_currentParagraphIndex < paragraphText.length - 1) {
+    if (_currentParagraphIndex < audioUrls.length - 1) {
       setState(() {
         _currentParagraphIndex++;
       });
@@ -806,7 +827,7 @@ class _HomePageState extends State<HomePage> {
 
   // 下一篇文章
   Future<void> _nextNews() async {
-    if (_currentParagraphIndex < paragraphText.length - 1) {
+    if (_currentParagraphIndex < audioUrls.length - 1) {
       setState(() {
         _currentParagraphIndex++;
       });
@@ -868,13 +889,13 @@ class _HomePageState extends State<HomePage> {
         AnimatedContainer(
           duration: const Duration(milliseconds: 300),
           width:
-              _isSidebarExpanded
-                  ? SIDEBAR_EXPANDED_WIDTH
-                  : SIDEBAR_COLLAPSED_WIDTH,
+          _isSidebarExpanded
+              ? SIDEBAR_EXPANDED_WIDTH
+              : SIDEBAR_COLLAPSED_WIDTH,
           child:
-              _isSidebarExpanded
-                  ? _buildLeftSidebar()
-                  : const SizedBox.shrink(),
+          _isSidebarExpanded
+              ? _buildLeftSidebar()
+              : const SizedBox.shrink(),
         ),
         Expanded(
           child: Column(
@@ -895,7 +916,7 @@ class _HomePageState extends State<HomePage> {
         color: const Color(0xFF0a0e27),
         border: Border(
           right: BorderSide(
-            color: const Color(0xFF6366f1).withOpacity(0.3),
+            color: const Color(0x4D6366f1), // 0.3 opacity
             width: 2,
           ),
         ),
@@ -935,10 +956,10 @@ class _HomePageState extends State<HomePage> {
               margin: const EdgeInsets.all(8),
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFF6366f1).withOpacity(0.25),
+                color: const Color(0x406366f1), // 0.25 opacity
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(
-                  color: const Color(0xFF6366f1).withOpacity(0.6),
+                  color: const Color(0x996366f1), // 0.6 opacity
                   width: 1.5,
                 ),
               ),
@@ -963,264 +984,264 @@ class _HomePageState extends State<HomePage> {
           Container(
             height: 1,
             margin: const EdgeInsets.symmetric(horizontal: 8),
-            color: const Color(0xFF6366f1).withOpacity(0.3),
+            color: const Color(0x4D6366f1), // 0.3 opacity
           ),
           const SizedBox(height: 8),
           Expanded(
             child:
-                _categories.isEmpty
-                    ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.folder_open,
-                            size: 40,
-                            color: const Color(0xFF94a3b8),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '暫無分類',
+            _categories.isEmpty
+                ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.folder_open,
+                    size: 40,
+                    color: const Color(0xFF94a3b8),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '暫無分類',
+                    style: TextStyle(
+                      color: const Color(0xFF94a3b8),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            )
+                : ListView.builder(
+              itemCount: _categories.length,
+              itemBuilder: (context, index) {
+                final category = _categories[index];
+                final categoryName = category['group_name'] ?? '未命名';
+                final groupId = category['group_id'];
+                final isSelected = _selectedCategory == categoryName;
+
+                // 提前初始化 GlobalKey（確保箭頭能使用）
+                if (groupId != null &&
+                    !_arrowButtonKeys.containsKey(groupId)) {
+                  _arrowButtonKeys[groupId] = GlobalKey();
+                }
+
+                return Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 10,
+                  ),
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color:
+                    isSelected
+                        ? const Color.fromARGB(255, 87, 25, 152)
+                        : const Color.fromARGB(0, 6, 6, 6),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border(
+                      left: BorderSide(
+                        color:
+                        isSelected
+                            ? const Color.fromARGB(
+                          255,
+                          88,
+                          151,
+                          223,
+                        )
+                            : const Color.fromARGB(
+                          77, // 0.3 opacity (77 = 0x4D)
+                          72,
+                          60,
+                          206,
+                        ),
+                        width: 3,
+                      ),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      // 左邊：分類名稱（點擊切換）
+                      Expanded(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () {
+                            setState(() {
+                              _selectedCategory = categoryName;
+                              _selectedGroupId = groupId ?? 0;
+                            });
+                            _fetchNews();
+                          },
+                          child: Text(
+                            categoryName,
                             style: TextStyle(
-                              color: const Color(0xFF94a3b8),
+                              color: const Color.fromARGB(
+                                255,
+                                84,
+                                122,
+                                209,
+                              ),
+                              fontWeight:
+                              isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
                               fontSize: 12,
                             ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ],
+                        ),
                       ),
-                    )
-                    : ListView.builder(
-                      itemCount: _categories.length,
-                      itemBuilder: (context, index) {
-                        final category = _categories[index];
-                        final categoryName = category['group_name'] ?? '未命名';
-                        final groupId = category['group_id'];
-                        final isSelected = _selectedCategory == categoryName;
+                      // 分割線（不明顯，透明度 20%）
+                      Container(
+                        width: 1,
+                        height: 16,
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                        ),
+                        color: const Color(0x336366f1), // 0.2 opacity
+                      ),
+                      // 右邊：下拉箭頭（點擊顯示菜單）
+                      if (groupId != null)
+                        GestureDetector(
+                          key: _arrowButtonKeys[groupId],
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () async {
+                            print(
+                              '📌 點擊箭頭: $categoryName (ID: $groupId)',
+                            );
+                            await _fetchCategoryDetails(groupId);
 
-                        // 提前初始化 GlobalKey（確保箭頭能使用）
-                        if (groupId != null &&
-                            !_arrowButtonKeys.containsKey(groupId)) {
-                          _arrowButtonKeys[groupId] = GlobalKey();
-                        }
+                            final details =
+                                _categoryDetails[groupId] ?? [];
 
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 10,
-                          ),
-                          margin: const EdgeInsets.symmetric(
-                            horizontal: 4,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color:
-                                isSelected
-                                    ? const Color.fromARGB(255, 87, 25, 152)
-                                    : const Color.fromARGB(0, 6, 6, 6),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border(
-                              left: BorderSide(
-                                color:
-                                    isSelected
-                                        ? const Color.fromARGB(
-                                          255,
-                                          88,
-                                          151,
-                                          223,
-                                        )
-                                        : const Color.fromARGB(
-                                          255,
-                                          72,
-                                          60,
-                                          206,
-                                        ).withOpacity(0.3),
-                                width: 3,
+                            if (details.isEmpty) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(
+                                  context,
+                                ).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('該分類沒有詳細子分類'),
+                                    duration: Duration(seconds: 1),
+                                  ),
+                                );
+                              }
+                              return;
+                            }
+
+                            final RenderBox? button =
+                            _arrowButtonKeys[groupId]
+                                ?.currentContext
+                                ?.findRenderObject()
+                            as RenderBox?;
+                            if (button == null) {
+                              print('❌ 無法獲取按鈕位置');
+                              return;
+                            }
+
+                            final RenderBox overlay =
+                            Overlay.of(
+                              context,
+                            ).context.findRenderObject()
+                            as RenderBox;
+                            final RelativeRect position =
+                            RelativeRect.fromRect(
+                              Rect.fromPoints(
+                                button.localToGlobal(
+                                  Offset.zero,
+                                  ancestor: overlay,
+                                ),
+                                button.localToGlobal(
+                                  button.size.bottomRight(
+                                    Offset.zero,
+                                  ),
+                                  ancestor: overlay,
+                                ),
+                              ),
+                              Offset.zero & overlay.size,
+                            );
+
+                            final selectedDetail = await showMenu<
+                                Map<String, dynamic>
+                            >(
+                              context: context,
+                              position: position,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              color: const Color(0xFF1a2a4e),
+                              constraints: const BoxConstraints(
+                                minWidth: 150,
+                                maxWidth: 250,
+                              ),
+                              items:
+                              details.map((detail) {
+                                return PopupMenuItem<
+                                    Map<String, dynamic>
+                                >(
+                                  value: detail,
+                                  child: Text(
+                                    detail['group_detail_name'] ??
+                                        '未命名',
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      color: Color(0xFFd1d5db),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            );
+
+                            if (selectedDetail != null) {
+                              print(
+                                '📌 選擇詳細分類: ${selectedDetail['group_detail_name']} (ID: ${selectedDetail['group_detail_id']})',
+                              );
+
+                              setState(() {
+                                _selectedCategory =
+                                '${categoryName} > ${selectedDetail['group_detail_name']}';
+                                _selectedGroupId =
+                                selectedDetail['group_detail_id'];
+                              });
+
+                              _fetchNewsByGroupDetail(
+                                selectedDetail['group_detail_id'],
+                              );
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Icon(
+                              Icons.arrow_drop_down,
+                              size: 18,
+                              color:
+                              isSelected
+                                  ? const Color.fromARGB(
+                                255,
+                                73,
+                                99,
+                                218,
+                              )
+                                  : const Color.fromARGB(
+                                255,
+                                78,
+                                90,
+                                222,
                               ),
                             ),
                           ),
-                          child: Row(
-                            children: [
-                              // 左邊：分類名稱（點擊切換）
-                              Expanded(
-                                child: GestureDetector(
-                                  behavior: HitTestBehavior.opaque,
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedCategory = categoryName;
-                                      _selectedGroupId = groupId ?? 0;
-                                    });
-                                    _fetchNews();
-                                  },
-                                  child: Text(
-                                    categoryName,
-                                    style: TextStyle(
-                                      color: const Color.fromARGB(
-                                        255,
-                                        84,
-                                        122,
-                                        209,
-                                      ),
-                                      fontWeight:
-                                          isSelected
-                                              ? FontWeight.bold
-                                              : FontWeight.normal,
-                                      fontSize: 12,
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ),
-                              // 分割線（不明顯，透明度 20%）
-                              Container(
-                                width: 1,
-                                height: 16,
-                                margin: const EdgeInsets.symmetric(
-                                  horizontal: 4,
-                                ),
-                                color: const Color(0xFF6366f1).withOpacity(0.2),
-                              ),
-                              // 右邊：下拉箭頭（點擊顯示菜單）
-                              if (groupId != null)
-                                GestureDetector(
-                                  key: _arrowButtonKeys[groupId],
-                                  behavior: HitTestBehavior.opaque,
-                                  onTap: () async {
-                                    print(
-                                      '📌 點擊箭頭: $categoryName (ID: $groupId)',
-                                    );
-                                    await _fetchCategoryDetails(groupId);
-
-                                    final details =
-                                        _categoryDetails[groupId] ?? [];
-
-                                    if (details.isEmpty) {
-                                      if (mounted) {
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          const SnackBar(
-                                            content: Text('該分類沒有詳細子分類'),
-                                            duration: Duration(seconds: 1),
-                                          ),
-                                        );
-                                      }
-                                      return;
-                                    }
-
-                                    final RenderBox? button =
-                                        _arrowButtonKeys[groupId]
-                                                ?.currentContext
-                                                ?.findRenderObject()
-                                            as RenderBox?;
-                                    if (button == null) {
-                                      print('❌ 無法獲取按鈕位置');
-                                      return;
-                                    }
-
-                                    final RenderBox overlay =
-                                        Overlay.of(
-                                              context,
-                                            ).context.findRenderObject()
-                                            as RenderBox;
-                                    final RelativeRect position =
-                                        RelativeRect.fromRect(
-                                          Rect.fromPoints(
-                                            button.localToGlobal(
-                                              Offset.zero,
-                                              ancestor: overlay,
-                                            ),
-                                            button.localToGlobal(
-                                              button.size.bottomRight(
-                                                Offset.zero,
-                                              ),
-                                              ancestor: overlay,
-                                            ),
-                                          ),
-                                          Offset.zero & overlay.size,
-                                        );
-
-                                    final selectedDetail = await showMenu<
-                                      Map<String, dynamic>
-                                    >(
-                                      context: context,
-                                      position: position,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      color: const Color(0xFF1a2a4e),
-                                      constraints: const BoxConstraints(
-                                        minWidth: 150,
-                                        maxWidth: 250,
-                                      ),
-                                      items:
-                                          details.map((detail) {
-                                            return PopupMenuItem<
-                                              Map<String, dynamic>
-                                            >(
-                                              value: detail,
-                                              child: Text(
-                                                detail['group_detail_name'] ??
-                                                    '未命名',
-                                                style: const TextStyle(
-                                                  fontSize: 13,
-                                                  color: Color(0xFFd1d5db),
-                                                ),
-                                              ),
-                                            );
-                                          }).toList(),
-                                    );
-
-                                    if (selectedDetail != null) {
-                                      print(
-                                        '📌 選擇詳細分類: ${selectedDetail['group_detail_name']} (ID: ${selectedDetail['group_detail_id']})',
-                                      );
-
-                                      setState(() {
-                                        _selectedCategory =
-                                            '${categoryName} > ${selectedDetail['group_detail_name']}';
-                                        _selectedGroupId =
-                                            selectedDetail['group_detail_id'];
-                                      });
-
-                                      _fetchNewsByGroupDetail(
-                                        selectedDetail['group_detail_id'],
-                                      );
-                                    }
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 8,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Icon(
-                                      Icons.arrow_drop_down,
-                                      size: 18,
-                                      color:
-                                          isSelected
-                                              ? const Color.fromARGB(
-                                                255,
-                                                73,
-                                                99,
-                                                218,
-                                              )
-                                              : const Color.fromARGB(
-                                                255,
-                                                78,
-                                                90,
-                                                222,
-                                              ),
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -1231,7 +1252,7 @@ class _HomePageState extends State<HomePage> {
   Widget _buildTopToolBar() {
     return FutureBuilder<bool>(
       future: SharedPreferences.getInstance().then(
-        (prefs) => prefs.getBool('IsLogin') ?? false,
+            (prefs) => prefs.getBool('IsLogin') ?? false,
       ),
       builder: (context, snapshot) {
         final isLoggedIn = snapshot.data ?? false;
@@ -1241,7 +1262,7 @@ class _HomePageState extends State<HomePage> {
           child: Row(
             children: [
               if (!isLoggedIn)
-                // 未登入狀態 - 顯示登入和註冊按鈕
+              // 未登入狀態 - 顯示登入和註冊按鈕
                 Row(
                   children: [
                     ElevatedButton(
@@ -1297,7 +1318,7 @@ class _HomePageState extends State<HomePage> {
                   ],
                 )
               else
-                // 已登入狀態 - 顯示用戶頭像
+              // 已登入狀態 - 顯示用戶頭像
                 FutureBuilder<Map<String, dynamic>>(
                   future: _getUserInfo(),
                   builder: (context, userSnapshot) {
@@ -1566,16 +1587,16 @@ class _HomePageState extends State<HomePage> {
                             ),
                             decoration: BoxDecoration(
                               color:
-                                  isSelected
-                                      ? const Color.fromARGB(255, 157, 60, 218)
-                                      : const Color(0xFF1a2a4e),
+                              isSelected
+                                  ? const Color.fromARGB(255, 157, 60, 218)
+                                  : const Color(0xFF1a2a4e),
                               borderRadius:
-                                  groupId != null
-                                      ? const BorderRadius.only(
-                                        topLeft: Radius.circular(20),
-                                        bottomLeft: Radius.circular(20),
-                                      )
-                                      : BorderRadius.circular(20),
+                              groupId != null
+                                  ? const BorderRadius.only(
+                                topLeft: Radius.circular(20),
+                                bottomLeft: Radius.circular(20),
+                              )
+                                  : BorderRadius.circular(20),
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.grey,
@@ -1589,13 +1610,13 @@ class _HomePageState extends State<HomePage> {
                               categoryName,
                               style: TextStyle(
                                 color:
-                                    isSelected
-                                        ? Colors.white
-                                        : const Color(0xFFd1d5db),
+                                isSelected
+                                    ? Colors.white
+                                    : const Color(0xFFd1d5db),
                                 fontWeight:
-                                    isSelected
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
+                                isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
                                 fontSize: 14,
                               ),
                             ),
@@ -1627,34 +1648,34 @@ class _HomePageState extends State<HomePage> {
 
                               // 使用 GlobalKey 獲取按鈕位置
                               final RenderBox? button =
-                                  _arrowButtonKeys[groupId]?.currentContext
-                                          ?.findRenderObject()
-                                      as RenderBox?;
+                              _arrowButtonKeys[groupId]?.currentContext
+                                  ?.findRenderObject()
+                              as RenderBox?;
                               if (button == null) {
                                 print('❌ 無法獲取按鈕位置');
                                 return;
                               }
 
                               final RenderBox overlay =
-                                  Overlay.of(context).context.findRenderObject()
-                                      as RenderBox;
+                              Overlay.of(context).context.findRenderObject()
+                              as RenderBox;
                               final RelativeRect position =
-                                  RelativeRect.fromRect(
-                                    Rect.fromPoints(
-                                      button.localToGlobal(
-                                        Offset.zero,
-                                        ancestor: overlay,
-                                      ),
-                                      button.localToGlobal(
-                                        button.size.bottomRight(Offset.zero),
-                                        ancestor: overlay,
-                                      ),
-                                    ),
-                                    Offset.zero & overlay.size,
-                                  );
+                              RelativeRect.fromRect(
+                                Rect.fromPoints(
+                                  button.localToGlobal(
+                                    Offset.zero,
+                                    ancestor: overlay,
+                                  ),
+                                  button.localToGlobal(
+                                    button.size.bottomRight(Offset.zero),
+                                    ancestor: overlay,
+                                  ),
+                                ),
+                                Offset.zero & overlay.size,
+                              );
 
                               final selectedDetail = await showMenu<
-                                Map<String, dynamic>
+                                  Map<String, dynamic>
                               >(
                                 context: context,
                                 position: position,
@@ -1666,17 +1687,17 @@ class _HomePageState extends State<HomePage> {
                                   maxWidth: 250,
                                 ),
                                 items:
-                                    details.map((detail) {
-                                      return PopupMenuItem<
-                                        Map<String, dynamic>
-                                      >(
-                                        value: detail,
-                                        child: Text(
-                                          detail['group_detail_name'] ?? '未命名',
-                                          style: const TextStyle(fontSize: 13),
-                                        ),
-                                      );
-                                    }).toList(),
+                                details.map((detail) {
+                                  return PopupMenuItem<
+                                      Map<String, dynamic>
+                                  >(
+                                    value: detail,
+                                    child: Text(
+                                      detail['group_detail_name'] ?? '未命名',
+                                      style: const TextStyle(fontSize: 13),
+                                    ),
+                                  );
+                                }).toList(),
                               );
 
                               if (selectedDetail != null) {
@@ -1687,9 +1708,9 @@ class _HomePageState extends State<HomePage> {
                                 // 根據詳細分類篩選新聞
                                 setState(() {
                                   _selectedCategory =
-                                      '${categoryName} > ${selectedDetail['group_detail_name']}';
+                                  '${categoryName} > ${selectedDetail['group_detail_name']}';
                                   _selectedGroupId =
-                                      selectedDetail['group_detail_id'];
+                                  selectedDetail['group_detail_id'];
                                 });
 
                                 // 使用 groupType: 'detail' 來篩選新聞
@@ -1747,7 +1768,7 @@ class _HomePageState extends State<HomePage> {
           decoration: BoxDecoration(
             color: const Color(0xFF0a1428),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFF6366f1).withOpacity(0.2)),
+            border: Border.all(color: const Color(0x336366f1)), // 0.2 opacity
           ),
           child: Row(
             children: [
@@ -1760,10 +1781,10 @@ class _HomePageState extends State<HomePage> {
                 child: Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF6366f1).withOpacity(0.2),
+                    color: const Color(0x336366f1), // 0.2 opacity
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(
-                      color: const Color(0xFF60a5fa).withOpacity(0.5),
+                      color: const Color(0x8060a5fa), // 0.5 opacity
                       width: 1,
                     ),
                   ),
@@ -1794,7 +1815,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(width: 12),
                     ElevatedButton(
-                      onPressed: () {
+                      onPressed: _isLoadingQuickPlay ? null : () {
                         setState(() {
                           _isPlayerVisible = !_isPlayerVisible;
                           if (_isPlayerVisible && !_isPlaying) {
@@ -1811,7 +1832,16 @@ class _HomePageState extends State<HomePage> {
                         ),
                         elevation: 0,
                       ),
-                      child: const Text('播放', style: TextStyle(fontSize: 12)),
+                      child: _isLoadingQuickPlay
+                          ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                          : const Text('播放', style: TextStyle(fontSize: 12)),
                     ),
                   ],
                 ),
@@ -1827,7 +1857,7 @@ class _HomePageState extends State<HomePage> {
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
                       border: Border.all(
-                        color: const Color(0xFF6366f1).withOpacity(0.3),
+                        color: const Color(0x4D6366f1), // 0.3 opacity
                       ),
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -1840,15 +1870,15 @@ class _HomePageState extends State<HomePage> {
                         fontSize: 12,
                       ),
                       items:
-                          _sortTypes.map((sortType) {
-                            return DropdownMenuItem<String>(
-                              value: sortType,
-                              child: Text(
-                                sortType,
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                            );
-                          }).toList(),
+                      _sortTypes.map((sortType) {
+                        return DropdownMenuItem<String>(
+                          value: sortType,
+                          child: Text(
+                            sortType,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        );
+                      }).toList(),
                       onChanged: (value) {
                         setState(() {
                           _selectedSortType = value!;
@@ -1862,7 +1892,7 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
         ),
-        Container(height: 1, color: const Color(0xFF6366f1).withOpacity(0.15)),
+        Container(height: 1, color: const Color(0x266366f1)), // 0.15 opacity
       ],
     );
   }
@@ -1963,19 +1993,19 @@ class _HomePageState extends State<HomePage> {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child:
-                            news['cover_img'] != null &&
-                                    news['cover_img'].isNotEmpty
-                                ? Image.network(
-                                  _getProxiedImageUrl(news['cover_img']),
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return const Icon(
-                                      Icons.image,
-                                      color: Colors.grey,
-                                    );
-                                  },
-                                )
-                                : const Icon(Icons.image, color: Colors.grey),
+                        news['cover_img'] != null &&
+                            news['cover_img'].isNotEmpty
+                            ? Image.network(
+                          _getProxiedImageUrl(news['cover_img']),
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Icon(
+                              Icons.image,
+                              color: Colors.grey,
+                            );
+                          },
+                        )
+                            : const Icon(Icons.image, color: Colors.grey),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -1996,7 +2026,7 @@ class _HomePageState extends State<HomePage> {
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
-                              color: const Color(0xFF1a2a4e),
+                              color: const Color(0xFFFFFFFF),
                             ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
@@ -2133,9 +2163,9 @@ class _HomePageState extends State<HomePage> {
                 // 下一篇按鈕
                 IconButton(
                   onPressed:
-                      _currentParagraphIndex < paragraphText.length - 1
-                          ? _nextNews
-                          : null,
+                  _currentParagraphIndex < audioUrls.length - 1
+                      ? _nextNews
+                      : null,
                   icon: const Icon(Icons.skip_next),
                   iconSize: 24,
                 ),

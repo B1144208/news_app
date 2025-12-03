@@ -2,6 +2,8 @@
 // 如果此版本仍有問題，請使用 ttsController-node-fetch.js
 
 const { checkRequireField } = require('../utils/checkHelper');
+const fs = require('fs').promises;
+const path = require('path');
 
 // ElevenLabs API 配置
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
@@ -11,6 +13,23 @@ const YU = "fQj4gJSexpu8RDE2Ii5m"; //Taiwan, conversational
 const KEVIN_TU = "BrbEfHMQu0fyclQR7lfh"; //Taiwan, narrative & story
 const ANNA_SU = "9lHjugDhwqoxA5MhX0az"; //Taiwan, social media
 const API_BASE_URL = "https://api.elevenlabs.io/v1";
+
+// 音訊檔案儲存路徑
+const AUDIO_STORAGE_PATH = process.env.AUDIO_STORAGE_PATH || path.join(__dirname, '../public/audio');
+
+/**
+ * 確保音訊儲存目錄存在
+ */
+async function ensureAudioDirectory() {
+    try {
+        await fs.mkdir(AUDIO_STORAGE_PATH, { recursive: true });
+        console.log(`[TTS] 音訊目錄已準備: ${AUDIO_STORAGE_PATH}`);
+    } catch (err) {
+        if (err.code !== 'EEXIST') {
+            throw err;
+        }
+    }
+}
 
 /**
  * 文字轉語音 API
@@ -172,7 +191,89 @@ async function getVoices(req, res, next) {
     }
 }
 
+/**
+ * 文字轉語音並儲存為 MP3（供 scriptController 內部使用）
+ * @param {number} newsId - 新聞 ID
+ * @param {string} text - 文字內容
+ * @returns {Promise<Object>} - 返回檔案資訊
+ */
+async function textToSpeechAndSaveInternal(newsId, text) {
+    if (!ELEVENLABS_API_KEY) {
+        throw new Error('ELEVENLABS_API_KEY 未設定');
+    }
+
+    if (text.length > 5000) {
+        throw new Error('文字長度超過 5000 字元限制');
+    }
+
+    // 確保音訊目錄存在
+    await ensureAudioDirectory();
+
+    // 生成檔案名稱：news_[newsId]_[timestamp].mp3
+    const timestamp = Date.now();
+    const filename = `news_${newsId}_${timestamp}.mp3`;
+    const filepath = path.join(AUDIO_STORAGE_PATH, filename);
+
+    console.log(`[TTS-Save] 準備儲存音訊: ${filename}`);
+
+    // 準備請求
+    const url = `${API_BASE_URL}/text-to-speech/${ANNA_SU}`;
+    const payload = {
+        text,
+        model_id: "eleven_multilingual_v2",
+        voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.75
+        }
+    };
+
+    console.log(`[TTS] 生成語音 - 文字長度: ${text.length}, Voice: ANNA_SU`);
+
+    // 呼叫 ElevenLabs API
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'xi-api-key': ELEVENLABS_API_KEY,
+            'Content-Type': 'application/json',
+            'Accept': 'audio/mpeg'
+        },
+        body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[TTS] ElevenLabs API 錯誤: ${response.status} - ${errorText}`);
+        throw new Error(`TTS 服務錯誤: ${response.status} - ${errorText}`);
+    }
+
+    // 讀取音訊資料並儲存
+    const reader = response.body.getReader();
+    const chunks = [];
+
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+    }
+
+    // 合併所有 chunks 並寫入檔案
+    const audioBuffer = Buffer.concat(chunks.map(chunk => Buffer.from(chunk)));
+    await fs.writeFile(filepath, audioBuffer);
+
+    const fileSize = audioBuffer.length;
+    console.log(`[TTS-Save] 音訊已儲存: ${filename}, 大小: ${fileSize} bytes`);
+
+    // 返回檔案資訊
+    return {
+        newsId,
+        filename,
+        filepath: `/audio/${filename}`,  // 相對於 public 目錄的路徑
+        fileSize
+    };
+}
+
 module.exports = {
     textToSpeech,
-    getVoices
+    getVoices,
+    textToSpeechAndSaveInternal  // 供 scriptController 使用
 };
