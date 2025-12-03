@@ -17,11 +17,4 @@ router.post('/', textToSpeech);
  */
 router.get('/voices', getVoices);
 
-/*
- * POST /api/tts/save-quickplay
- * 快速播放專用：文字轉語音並儲存到 public/audio/quickplay/
- * Body: { text: string, filename: string, voiceId?: string }
- */
-router.post('/save-quickplay', saveQuickPlay);
-
 module.exports = router;
