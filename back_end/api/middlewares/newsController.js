@@ -314,6 +314,9 @@ async function searchNews(req, res, next) {
 async function insertNews(req, res, next) {
     let { url, channel, cover_img, title, publish_date, detail, group, location, keyword, comment } = req.body ?? {};
     let news_id = image_id = relation_id = null; // 重新初始化 relation_id 為 null
+
+    // ******************************************************************************
+    console.log("insertNews-publish_date: ", publish_date)
     try {
         // 優先檢查 url 是否已經存在
         try {
