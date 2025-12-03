@@ -15,10 +15,10 @@ class BookmarkPage extends StatefulWidget {
 }
 
 class _BookmarkPageState extends State<BookmarkPage> {
-  String _selectedCategory = '全部'; // 預設選中"全部"
-  int? _selectedCategoryId; // 選中的分類ID (null代表"全部")
-  bool _showNews = true; // true: 顯示新聞, false: 顯示頻道, null: 顯示事件
-  String _selectedType = 'news'; // 'news', 'channel', 'eventsorting'
+  String _selectedCategory = '全部';
+  int? _selectedCategoryId;
+  bool _showNews = true;
+  String _selectedType = 'news';
   bool _isLoading = true;
   int? _currentUserId;
 
@@ -30,11 +30,10 @@ class _BookmarkPageState extends State<BookmarkPage> {
   @override
   void initState() {
     super.initState();
-    print('🔍 BookmarkPage initState');
+    print('📍 BookmarkPage initState');
     _loadUserIdAndFetchData();
   }
 
-  // 從 SharedPreferences 載入用戶ID並獲取數據
   Future<void> _loadUserIdAndFetchData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -63,7 +62,6 @@ class _BookmarkPageState extends State<BookmarkPage> {
     }
   }
 
-  // 獲取用戶的分類列表
   Future<void> _fetchCategories() async {
     if (_currentUserId == null) return;
 
@@ -96,7 +94,6 @@ class _BookmarkPageState extends State<BookmarkPage> {
     }
   }
 
-  // 獲取收藏的新聞和頻道
   Future<void> _fetchBookmarkedData() async {
     if (_currentUserId == null) {
       setState(() {
@@ -124,9 +121,9 @@ class _BookmarkPageState extends State<BookmarkPage> {
     }
   }
 
-  // 獲取收藏的新聞
+  // ✅ 修正：正確處理後端返回的欄位名稱
   Future<void> _fetchBookmarkedNews() async {
-    print('\n🔍 ========== 開始獲取收藏新聞 ==========');
+    print('\n📰 ========== 開始獲取收藏新聞 ==========');
     print('📌 當前用戶ID: $_currentUserId');
 
     if (_currentUserId == null) {
@@ -151,22 +148,28 @@ class _BookmarkPageState extends State<BookmarkPage> {
         if (data['success'] && data['data'] != null) {
           final newsList = List<Map<String, dynamic>>.from(data['data']);
 
-          // 詳細檢查每筆數據
-          for (int i = 0; i < newsList.length && i < 3; i++) {
-            print('\n📌 數據 #${i + 1}:');
-            final item = newsList[i];
-            print('   - bookmark_id: ${item['bookmark_id']}');
-            print('   - id: ${item['id']}');
-            print('   - title: ${item['title']}');
-            print('   - channel: ${item['channel']}');
-            print('   - cover_img: ${item['cover_img']}');
-            print('   - publish_date: ${item['publish_date']}');
-            print('   - url: ${item['url']}');
-            print('   完整數據: $item');
-          }
+          // ✅ 關鍵修正：標準化欄位名稱
+          final normalizedList = newsList.map((item) {
+            print('\n📌 原始數據: $item');
+
+            // 標準化欄位名稱映射
+            final normalized = {
+              'bookmark_id': item['bookmark_id'],
+              // 使用 news_id 作為 id（這是實際的新聞ID）
+              'id': item['news_id'] ?? item['id'],
+              'title': item['news_title'] ?? item['title'] ?? '',
+              'channel': item['channel_name'] ?? item['channel'] ?? '',
+              'cover_img': item['cover_image_url'] ?? item['cover_img'] ?? item['coverImageUrl'],
+              'publish_date': item['publish_date'] ?? item['publishDate'] ?? '',
+              'url': item['origin_url'] ?? item['url'] ?? '',
+            };
+
+            print('📌 標準化後: $normalized');
+            return normalized;
+          }).toList();
 
           setState(() {
-            _bookmarkedNews = newsList;
+            _bookmarkedNews = normalizedList;
           });
           print('\n✅ 收藏新聞更新成功,數量: ${_bookmarkedNews.length}');
         } else {
@@ -185,7 +188,6 @@ class _BookmarkPageState extends State<BookmarkPage> {
     print('========== 獲取收藏新聞結束 ==========\n');
   }
 
-  // 獲取收藏的頻道
   Future<void> _fetchBookmarkedChannels() async {
     try {
       final url = '${Config.apiBaseUrl}/user/bookmark/channel?userId=$_currentUserId';
@@ -204,7 +206,6 @@ class _BookmarkPageState extends State<BookmarkPage> {
     }
   }
 
-  // 獲取收藏的事件
   Future<void> _fetchBookmarkedEvents() async {
     try {
       final url = '${Config.apiBaseUrl}/user/bookmark/eventsorting?userId=$_currentUserId';
@@ -220,20 +221,20 @@ class _BookmarkPageState extends State<BookmarkPage> {
       }
     } catch (e) {
       print('Error fetching bookmarked events: $e');
-      // 如果API還未實作，設為空陣列
       setState(() {
         _bookmarkedEvents = [];
       });
     }
   }
 
-  // 移除收藏
+  // ✅ 修正：使用正確的 ID 刪除收藏
   Future<void> _removeBookmark(int itemId, String type) async {
     if (_currentUserId == null) return;
 
     try {
       String url;
       if (type == 'news') {
+        // 使用 bookmark_id 來刪除
         url = '${Config.apiBaseUrl}/user/bookmark/$itemId';
       } else if (type == 'channel') {
         url = '${Config.apiBaseUrl}/user/bookmark/$itemId';
@@ -241,12 +242,14 @@ class _BookmarkPageState extends State<BookmarkPage> {
         url = '${Config.apiBaseUrl}/user/bookmark/$itemId';
       }
 
+      print('🗑️ 刪除收藏: $url');
       final response = await http.delete(Uri.parse(url));
 
       if (response.statusCode == 200) {
         setState(() {
           if (type == 'news') {
-            _bookmarkedNews.removeWhere((news) => news['id'] == itemId);
+            // 使用 bookmark_id 來移除
+            _bookmarkedNews.removeWhere((news) => news['bookmark_id'] == itemId);
           } else if (type == 'channel') {
             _bookmarkedChannels.removeWhere((channel) => channel['channel_id'] == itemId);
           } else {
@@ -272,7 +275,6 @@ class _BookmarkPageState extends State<BookmarkPage> {
     }
   }
 
-  // 顯示選擇分類對話框
   void _showCategorySelectionDialog(int itemId, String type) {
     if (_categories.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -315,9 +317,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
     );
   }
 
-  // 將收藏項目分配到指定分類
   Future<void> _assignToCategory(int itemId, String type, int categoryId) async {
-    // 暫時顯示成功訊息
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('已移動到分類'),
@@ -326,7 +326,6 @@ class _BookmarkPageState extends State<BookmarkPage> {
     );
   }
 
-  // 打開分類管理頁面
   Future<void> _openCategoryManagement() async {
     await Navigator.push(
       context,
@@ -337,7 +336,6 @@ class _BookmarkPageState extends State<BookmarkPage> {
         ),
       ),
     );
-    // 返回後重新載入分類
     _fetchCategories();
   }
 
@@ -362,7 +360,6 @@ class _BookmarkPageState extends State<BookmarkPage> {
     );
   }
 
-  // 自定義AppBar
   Widget _buildAppBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -397,13 +394,11 @@ class _BookmarkPageState extends State<BookmarkPage> {
     );
   }
 
-  // 類別篩選器
   Widget _buildCategoryFilter() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          // 三條線圖標按鈕 - 打開分類管理頁面
           GestureDetector(
             onTap: _openCategoryManagement,
             child: Container(
@@ -428,9 +423,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  // "全部" 分類 - 永遠顯示
                   _buildCategoryChip('全部', null),
-                  // 用戶自定義分類 - 只在有分類時顯示
                   if (_categories.isNotEmpty)
                     ..._categories.map((category) {
                       return _buildCategoryChip(
@@ -447,7 +440,6 @@ class _BookmarkPageState extends State<BookmarkPage> {
     );
   }
 
-  // 分類標籤
   Widget _buildCategoryChip(String label, int? categoryId) {
     final isSelected = (categoryId == null && _selectedCategoryId == null) ||
         (categoryId == _selectedCategoryId);
@@ -489,7 +481,6 @@ class _BookmarkPageState extends State<BookmarkPage> {
     );
   }
 
-  // 新聞/頻道/事件切換開關
   Widget _buildToggleSwitch() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -599,14 +590,12 @@ class _BookmarkPageState extends State<BookmarkPage> {
     );
   }
 
-  // 載入中指示器
   Widget _buildLoadingWidget() {
     return const Center(
       child: CircularProgressIndicator(),
     );
   }
 
-  // 內容列表
   Widget _buildContentList() {
     print('🎨 構建內容列表');
     print('   _currentUserId: $_currentUserId');
@@ -650,7 +639,6 @@ class _BookmarkPageState extends State<BookmarkPage> {
     );
   }
 
-  // 未登入狀態
   Widget _buildNotLoggedInWidget() {
     return Center(
       child: Column(
@@ -674,7 +662,6 @@ class _BookmarkPageState extends State<BookmarkPage> {
     );
   }
 
-  // 空狀態
   Widget _buildEmptyWidget() {
     IconData icon;
     String message;
@@ -712,8 +699,10 @@ class _BookmarkPageState extends State<BookmarkPage> {
     );
   }
 
-  // 新聞項目
+  // ✅ 修正：確保使用正確的 ID 和欄位
   Widget _buildNewsItem(Map<String, dynamic> news) {
+    print('🔍 建立新聞項目: ${news['title']} (id: ${news['id']})');
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
@@ -730,6 +719,8 @@ class _BookmarkPageState extends State<BookmarkPage> {
       ),
       child: InkWell(
         onTap: () {
+          // ✅ 使用實際的 news_id (存在 'id' 欄位)
+          print('👆 點擊新聞: id=${news['id']}, title=${news['title']}');
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -747,7 +738,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
                 color: Colors.grey[300],
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: news['cover_img'] != null
+              child: news['cover_img'] != null && news['cover_img'].toString().isNotEmpty
                   ? ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: Image.network(
@@ -794,7 +785,6 @@ class _BookmarkPageState extends State<BookmarkPage> {
                         ),
                       ),
                       const Spacer(),
-                      // 三個點選單
                       PopupMenuButton<String>(
                         icon: const Icon(
                           Icons.more_vert,
@@ -803,9 +793,10 @@ class _BookmarkPageState extends State<BookmarkPage> {
                         ),
                         onSelected: (value) {
                           if (value == 'category') {
-                            _showCategorySelectionDialog(news['id'], 'news');
+                            _showCategorySelectionDialog(news['bookmark_id'], 'news');
                           } else if (value == 'remove') {
-                            _removeBookmark(news['id'], 'news');
+                            // ✅ 使用 bookmark_id 來刪除
+                            _removeBookmark(news['bookmark_id'], 'news');
                           }
                         },
                         itemBuilder: (context) => [
@@ -842,7 +833,6 @@ class _BookmarkPageState extends State<BookmarkPage> {
     );
   }
 
-  // 頻道項目
   Widget _buildChannelItem(Map<String, dynamic> channel) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -925,7 +915,6 @@ class _BookmarkPageState extends State<BookmarkPage> {
                         ),
                       ),
                       const Spacer(),
-                      // 三個點選單
                       PopupMenuButton<String>(
                         icon: const Icon(
                           Icons.more_vert,
@@ -973,7 +962,6 @@ class _BookmarkPageState extends State<BookmarkPage> {
     );
   }
 
-  // 事件項目
   Widget _buildEventItem(Map<String, dynamic> event) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -992,7 +980,6 @@ class _BookmarkPageState extends State<BookmarkPage> {
       child: InkWell(
         onTap: () {
           // TODO: 導航到事件詳細頁面
-          // Navigator.push(context, MaterialPageRoute(builder: (context) => EventDetailPage(...)));
         },
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1047,7 +1034,6 @@ class _BookmarkPageState extends State<BookmarkPage> {
                         ),
                       ),
                       const Spacer(),
-                      // 三個點選單
                       PopupMenuButton<String>(
                         icon: const Icon(
                           Icons.more_vert,
