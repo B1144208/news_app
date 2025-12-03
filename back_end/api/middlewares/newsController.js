@@ -11,7 +11,7 @@ const { getEmbedding, findNewsRelationId } = require('../utils/embeddingHelper')
 // search
 async function searchNews(req, res, next) {
     let { mode, order, limit } = req.query || {}
-    let { id, url, keyword, groupId, groupType, locationId, locationType } = req.body ?? {};
+    let { id, url, keyword, groupId, groupType, locationId, locationType, channel_id } = req.body ?? {};
 
     // 檢查必要欄位 & 格式
     try {
@@ -25,7 +25,8 @@ async function searchNews(req, res, next) {
             { field: 'groupId'      , data: groupId      , type: 'number' , other: ['lth'                     ]                                       },
             { field: 'groupType'    , data: groupType    , type: 'string' , other: ['lth'                     ] , enum: ['data', 'detail']            },
             { field: 'locationId'   , data: locationId   , type: 'number' , other: ['lth'                     ]                                       },
-            { field: 'locationType' , data: locationType , type: 'string' , other: ['lth'                     ] , enum: ['region', 'country', 'state']}
+            { field: 'locationType' , data: locationType , type: 'string' , other: ['lth'                     ] , enum: ['region', 'country', 'state']},
+            { field: 'channel_id'   , data: channel_id   , type: 'number' , other: ['lth'                     ]                                       }
         ]);
     } catch (err) {
         err.desc = "middlewares-searchNews(): Missing or Invalid required fields";
@@ -55,7 +56,8 @@ async function searchNews(req, res, next) {
     else if ( keyword ) searchMode = "keyword";
     else if ( groupId && groupType ) searchMode = "group";
     else if ( locationId && locationType) searchMode = "location";
-
+    else if ( channel_id ) searchMode = "channel";
+    
     let idList = [];
     let sql = null;
     let params = [];
@@ -128,7 +130,15 @@ async function searchNews(req, res, next) {
         `;
         params = [locationId];
     }
-
+    // channel : 查找指定頻道的新聞
+    if ( searchMode == "channel" ) {
+        sql = `
+            SELECT nd.news_id
+            FROM news_data nd
+            WHERE nd.channel_id = ?
+        `;
+        params = [channel_id];
+    }
     // ORDER
     let ORDER_SQL = null;
     if (order=="general") {
@@ -916,4 +926,5 @@ module.exports = {
     insertNews,
     updateNews,
     deleteNews
+
 }
