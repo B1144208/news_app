@@ -875,7 +875,8 @@ class _MapPageState extends State<MapPage> {
           children: [
             if (hasRegionScope)
               Padding(
-                padding: EdgeInsets.only(right: hasStateScope ? 8.0 : 0.0),
+                // 修正 padding，因為不再需要為「往州/省新聞」按鈕預留空間
+                padding: const EdgeInsets.only(right: 0.0),
                 child: ElevatedButton(
                   onPressed: () => _toggleNewsScope(targetScope: 'region'),
                   style: ElevatedButton.styleFrom(
@@ -888,17 +889,8 @@ class _MapPageState extends State<MapPage> {
                 ),
               ),
 
-            if (hasStateScope)
-              ElevatedButton(
-                onPressed: () => _toggleNewsScope(targetScope: 'state'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  minimumSize: const Size(0, 30),
-                  backgroundColor: const Color(0xFF60a5fa),
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('往州/省新聞', style: TextStyle(fontSize: 12)),
-              ),
+            // 已移除 '往州/省新聞' 按鈕的區塊 (原 if (hasStateScope))
+
           ],
         );
       } else {
