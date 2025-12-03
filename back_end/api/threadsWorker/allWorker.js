@@ -343,7 +343,8 @@ async function insertNewsTranslateForOneNews(originalNewsId, translate) {
     }
 
     console.log("3. 情況二 : 組字 original : \n", JSON.stringify(original, null, 2))
-    const publishDate = original.publishDate
+    const iso = String(original.publishDate);
+    const publishDate = iso
     ? String(original.publishDate).slice(0, 19).replace('T', ' ').replace(/-/g, '/') 
     : null;
 
