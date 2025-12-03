@@ -533,7 +533,7 @@ async function runAllWorker(LIMIT = 100, idList = null) {
 
 
 // 啟動
-mainLoop().catch(err => {
+runAllWorker().catch(err => {
     console.error('[newsMainWorker] 無法啟動:', err);
     process.exit(1);
 });
