@@ -67,7 +67,9 @@ class _BookmarkPageState extends State<BookmarkPage> {
 
     try {
       final response = await http.get(
-        Uri.parse('${Config.apiBaseUrl}/groupcustomize/order?userId=$_currentUserId&type=bookmark&dataType=$_selectedType'),
+        Uri.parse(
+          '${Config.apiBaseUrl}/groupcustomize/order?userId=$_currentUserId&type=bookmark&dataType=$_selectedType',
+        ),
       );
 
       if (response.statusCode == 200) {
@@ -132,7 +134,8 @@ class _BookmarkPageState extends State<BookmarkPage> {
     }
 
     try {
-      final url = '${Config.apiBaseUrl}/user/bookmark/news?userId=$_currentUserId';
+      final url =
+          '${Config.apiBaseUrl}/user/bookmark/news?userId=$_currentUserId';
       print('📌 請求URL: $url');
 
       final response = await http.get(Uri.parse(url));
@@ -149,24 +152,29 @@ class _BookmarkPageState extends State<BookmarkPage> {
           final newsList = List<Map<String, dynamic>>.from(data['data']);
 
           // ✅ 關鍵修正：標準化欄位名稱
-          final normalizedList = newsList.map((item) {
-            print('\n📌 原始數據: $item');
+          final normalizedList =
+              newsList.map((item) {
+                print('\n📌 原始數據: $item');
 
-            // 標準化欄位名稱映射
-            final normalized = {
-              'bookmark_id': item['bookmark_id'],
-              // 使用 news_id 作為 id（這是實際的新聞ID）
-              'id': item['news_id'] ?? item['id'],
-              'title': item['news_title'] ?? item['title'] ?? '',
-              'channel': item['channel_name'] ?? item['channel'] ?? '',
-              'cover_img': item['cover_image_url'] ?? item['cover_img'] ?? item['coverImageUrl'],
-              'publish_date': item['publish_date'] ?? item['publishDate'] ?? '',
-              'url': item['origin_url'] ?? item['url'] ?? '',
-            };
+                // 標準化欄位名稱映射
+                final normalized = {
+                  'bookmark_id': item['bookmark_id'],
+                  // 使用 news_id 作為 id（這是實際的新聞ID）
+                  'id': item['news_id'] ?? item['id'],
+                  'title': item['news_title'] ?? item['title'] ?? '',
+                  'channel': item['channel_name'] ?? item['channel'] ?? '',
+                  'cover_img':
+                      item['cover_image_url'] ??
+                      item['cover_img'] ??
+                      item['coverImageUrl'],
+                  'publish_date':
+                      item['publish_date'] ?? item['publishDate'] ?? '',
+                  'url': item['origin_url'] ?? item['url'] ?? '',
+                };
 
-            print('📌 標準化後: $normalized');
-            return normalized;
-          }).toList();
+                print('📌 標準化後: $normalized');
+                return normalized;
+              }).toList();
 
           setState(() {
             _bookmarkedNews = normalizedList;
@@ -190,7 +198,8 @@ class _BookmarkPageState extends State<BookmarkPage> {
 
   Future<void> _fetchBookmarkedChannels() async {
     try {
-      final url = '${Config.apiBaseUrl}/user/bookmark/channel?userId=$_currentUserId';
+      final url =
+          '${Config.apiBaseUrl}/user/bookmark/channel?userId=$_currentUserId';
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
@@ -208,14 +217,17 @@ class _BookmarkPageState extends State<BookmarkPage> {
 
   Future<void> _fetchBookmarkedEvents() async {
     try {
-      final url = '${Config.apiBaseUrl}/user/bookmark/eventsorting?userId=$_currentUserId';
+      final url =
+          '${Config.apiBaseUrl}/user/bookmark/eventsorting?userId=$_currentUserId';
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success']) {
           setState(() {
-            _bookmarkedEvents = List<Map<String, dynamic>>.from(data['data'] ?? []);
+            _bookmarkedEvents = List<Map<String, dynamic>>.from(
+              data['data'] ?? [],
+            );
           });
         }
       }
@@ -249,9 +261,13 @@ class _BookmarkPageState extends State<BookmarkPage> {
         setState(() {
           if (type == 'news') {
             // 使用 bookmark_id 來移除
-            _bookmarkedNews.removeWhere((news) => news['bookmark_id'] == itemId);
+            _bookmarkedNews.removeWhere(
+              (news) => news['bookmark_id'] == itemId,
+            );
           } else if (type == 'channel') {
-            _bookmarkedChannels.removeWhere((channel) => channel['channel_id'] == itemId);
+            _bookmarkedChannels.removeWhere(
+              (channel) => channel['channel_id'] == itemId,
+            );
           } else {
             _bookmarkedEvents.removeWhere((event) => event['id'] == itemId);
           }
@@ -278,51 +294,54 @@ class _BookmarkPageState extends State<BookmarkPage> {
   void _showCategorySelectionDialog(int itemId, String type) {
     if (_categories.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('請先建立分類'),
-          backgroundColor: Colors.orange,
-        ),
+        const SnackBar(content: Text('請先建立分類'), backgroundColor: Colors.orange),
       );
       return;
     }
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('選擇分類'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: _categories.length,
-            itemBuilder: (context, index) {
-              final category = _categories[index];
-              return ListTile(
-                title: Text(category['groupcustomize_name'].toString()),
-                onTap: () {
-                  Navigator.pop(context);
-                  _assignToCategory(itemId, type, category['groupcustomize_id']);
+      builder:
+          (context) => AlertDialog(
+            title: const Text('選擇分類'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: _categories.length,
+                itemBuilder: (context, index) {
+                  final category = _categories[index];
+                  return ListTile(
+                    title: Text(category['groupcustomize_name'].toString()),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _assignToCategory(
+                        itemId,
+                        type,
+                        category['groupcustomize_id'],
+                      );
+                    },
+                  );
                 },
-              );
-            },
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('取消'),
+              ),
+            ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
-          ),
-        ],
-      ),
     );
   }
 
-  Future<void> _assignToCategory(int itemId, String type, int categoryId) async {
+  Future<void> _assignToCategory(
+    int itemId,
+    String type,
+    int categoryId,
+  ) async {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('已移動到分類'),
-        backgroundColor: Colors.green,
-      ),
+      const SnackBar(content: Text('已移動到分類'), backgroundColor: Colors.green),
     );
   }
 
@@ -330,10 +349,11 @@ class _BookmarkPageState extends State<BookmarkPage> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => GroupCustomizeBookmark(
-          userId: _currentUserId!,
-          bookmarkType: _selectedType,
-        ),
+        builder:
+            (context) => GroupCustomizeBookmark(
+              userId: _currentUserId!,
+              bookmarkType: _selectedType,
+            ),
       ),
     );
     _fetchCategories();
@@ -342,7 +362,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE8E3FF),
+      backgroundColor: const Color(0xFF0a1428), // 星空深藍
       body: SafeArea(
         child: Column(
           children: [
@@ -350,9 +370,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
             _buildCategoryFilter(),
             _buildToggleSwitch(),
             Expanded(
-              child: _isLoading
-                  ? _buildLoadingWidget()
-                  : _buildContentList(),
+              child: _isLoading ? _buildLoadingWidget() : _buildContentList(),
             ),
           ],
         ),
@@ -363,11 +381,11 @@ class _BookmarkPageState extends State<BookmarkPage> {
   Widget _buildAppBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: const Color(0xFFC9BDFF),
+      color: const Color(0xFF1a2a4e), // 深藍
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black),
+            icon: const Icon(Icons.arrow_back, color: Color(0xFF60a5fa)), // 淺藍
             onPressed: () => Navigator.of(context).pop(),
           ),
           const SizedBox(width: 8),
@@ -376,7 +394,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.black,
+              color: Color(0xFFd1d5db), // 淡灰
             ),
           ),
           const Spacer(),
@@ -384,7 +402,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: Colors.orange,
+              color: const Color(0xFF6366f1), // 紫藍
               borderRadius: BorderRadius.circular(8),
             ),
             child: const Icon(Icons.star, color: Colors.white, size: 20),
@@ -404,17 +422,18 @@ class _BookmarkPageState extends State<BookmarkPage> {
             child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: const Color(0xFF2a3a5e), // 深藍
                 borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey,
-                    spreadRadius: 1,
-                    blurRadius: 2,
-                  ),
-                ],
+                border: Border.all(
+                  color: const Color(0xFF6366f1).withOpacity(0.3),
+                  width: 1,
+                ),
               ),
-              child: const Icon(Icons.menu, size: 20),
+              child: const Icon(
+                Icons.menu,
+                size: 20,
+                color: Color(0xFF60a5fa),
+              ), // 淺藍
             ),
           ),
           const SizedBox(width: 12),
@@ -441,7 +460,8 @@ class _BookmarkPageState extends State<BookmarkPage> {
   }
 
   Widget _buildCategoryChip(String label, int? categoryId) {
-    final isSelected = (categoryId == null && _selectedCategoryId == null) ||
+    final isSelected =
+        (categoryId == null && _selectedCategoryId == null) ||
         (categoryId == _selectedCategoryId);
 
     return Container(
@@ -454,16 +474,16 @@ class _BookmarkPageState extends State<BookmarkPage> {
           });
         },
         child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 8,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: isSelected ? Colors.blue : Colors.white,
+            color:
+                isSelected
+                    ? const Color(0xFF6366f1)
+                    : const Color(0xFF2a3a5e), // 紫藍/深藍
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Colors.grey,
+                color: const Color(0xFF6366f1).withOpacity(0.7), // 淡紫
                 spreadRadius: 1,
                 blurRadius: 2,
               ),
@@ -472,7 +492,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
           child: Text(
             label,
             style: TextStyle(
-              color: isSelected ? Colors.white : Colors.black,
+              color: Colors.white, // 都是白色
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             ),
           ),
@@ -486,15 +506,12 @@ class _BookmarkPageState extends State<BookmarkPage> {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF1a2a4e), // 深藍
         borderRadius: BorderRadius.circular(25),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey,
-            spreadRadius: 1,
-            blurRadius: 3,
-          ),
-        ],
+        border: Border.all(
+          color: const Color(0xFF6366f1).withOpacity(0.3),
+          width: 1,
+        ),
       ),
       child: Row(
         children: [
@@ -512,15 +529,24 @@ class _BookmarkPageState extends State<BookmarkPage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
-                  color: _selectedType == 'news' ? Colors.blue : Colors.transparent,
+                  color:
+                      _selectedType == 'news'
+                          ? const Color(0xFF6366f1)
+                          : Colors.transparent, // 紫藍
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Center(
                   child: Text(
                     '新聞',
                     style: TextStyle(
-                      color: _selectedType == 'news' ? Colors.white : Colors.grey[600],
-                      fontWeight: _selectedType == 'news' ? FontWeight.bold : FontWeight.normal,
+                      color:
+                          _selectedType == 'news'
+                              ? Colors.white
+                              : const Color(0xFF6366f1), // 白/紫藍
+                      fontWeight:
+                          _selectedType == 'news'
+                              ? FontWeight.bold
+                              : FontWeight.normal,
                     ),
                   ),
                 ),
@@ -541,15 +567,24 @@ class _BookmarkPageState extends State<BookmarkPage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
-                  color: _selectedType == 'channel' ? Colors.blue : Colors.transparent,
+                  color:
+                      _selectedType == 'channel'
+                          ? const Color(0xFF6366f1)
+                          : Colors.transparent, // 紫藍
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Center(
                   child: Text(
                     '頻道',
                     style: TextStyle(
-                      color: _selectedType == 'channel' ? Colors.white : Colors.grey[600],
-                      fontWeight: _selectedType == 'channel' ? FontWeight.bold : FontWeight.normal,
+                      color:
+                          _selectedType == 'channel'
+                              ? Colors.white
+                              : const Color(0xFF6366f1), // 白/紫藍
+                      fontWeight:
+                          _selectedType == 'channel'
+                              ? FontWeight.bold
+                              : FontWeight.normal,
                     ),
                   ),
                 ),
@@ -570,15 +605,24 @@ class _BookmarkPageState extends State<BookmarkPage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
-                  color: _selectedType == 'eventsorting' ? Colors.blue : Colors.transparent,
+                  color:
+                      _selectedType == 'eventsorting'
+                          ? const Color(0xFF6366f1)
+                          : Colors.transparent, // 紫藍
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Center(
                   child: Text(
                     '事件',
                     style: TextStyle(
-                      color: _selectedType == 'eventsorting' ? Colors.white : Colors.grey[600],
-                      fontWeight: _selectedType == 'eventsorting' ? FontWeight.bold : FontWeight.normal,
+                      color:
+                          _selectedType == 'eventsorting'
+                              ? Colors.white
+                              : const Color(0xFF6366f1), // 白/紫藍
+                      fontWeight:
+                          _selectedType == 'eventsorting'
+                              ? FontWeight.bold
+                              : FontWeight.normal,
                     ),
                   ),
                 ),
@@ -591,9 +635,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
   }
 
   Widget _buildLoadingWidget() {
-    return const Center(
-      child: CircularProgressIndicator(),
-    );
+    return const Center(child: CircularProgressIndicator());
   }
 
   Widget _buildContentList() {
@@ -644,18 +686,11 @@ class _BookmarkPageState extends State<BookmarkPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.login,
-            size: 64,
-            color: Colors.grey[400],
-          ),
+          Icon(Icons.login, size: 64, color: Colors.grey[400]),
           const SizedBox(height: 16),
           Text(
             '請先登入以查看收藏內容',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[600],
-            ),
+            style: TextStyle(fontSize: 16, color: const Color(0xFF6366f1)),
           ),
         ],
       ),
@@ -681,18 +716,11 @@ class _BookmarkPageState extends State<BookmarkPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            icon,
-            size: 64,
-            color: Colors.grey[400],
-          ),
+          Icon(icon, size: 64, color: Colors.grey[400]),
           const SizedBox(height: 16),
           Text(
             message,
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[600],
-            ),
+            style: TextStyle(fontSize: 16, color: const Color(0xFF6366f1)),
           ),
         ],
       ),
@@ -707,11 +735,11 @@ class _BookmarkPageState extends State<BookmarkPage> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF1a2a4e), // 深藍
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey,
+            color: const Color(0xFF6366f1).withOpacity(0.7), // 淡紫
             spreadRadius: 1,
             blurRadius: 3,
           ),
@@ -738,18 +766,20 @@ class _BookmarkPageState extends State<BookmarkPage> {
                 color: Colors.grey[300],
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: news['cover_img'] != null && news['cover_img'].toString().isNotEmpty
-                  ? ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  news['cover_img'],
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return const Icon(Icons.image, color: Colors.grey);
-                  },
-                ),
-              )
-                  : const Icon(Icons.image, color: Colors.grey),
+              child:
+                  news['cover_img'] != null &&
+                          news['cover_img'].toString().isNotEmpty
+                      ? ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          news['cover_img'],
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Icon(Icons.image, color: Colors.grey);
+                          },
+                        ),
+                      )
+                      : const Icon(Icons.image, color: Colors.grey),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -759,7 +789,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
                   Text(
                     news['channel'] ?? '未知頻道',
                     style: TextStyle(
-                      color: Colors.grey[600],
+                      color: const Color(0xFF6366f1),
                       fontSize: 12,
                     ),
                   ),
@@ -780,7 +810,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
                       Text(
                         news['publish_date'] ?? '未知時間',
                         style: TextStyle(
-                          color: Colors.grey[600],
+                          color: const Color(0xFF6366f1),
                           fontSize: 12,
                         ),
                       ),
@@ -789,38 +819,49 @@ class _BookmarkPageState extends State<BookmarkPage> {
                         icon: const Icon(
                           Icons.more_vert,
                           size: 20,
-                          color: Colors.grey,
+                          color: Color.fromARGB(255, 87, 89, 203), // 淡紫
                         ),
                         onSelected: (value) {
                           if (value == 'category') {
-                            _showCategorySelectionDialog(news['bookmark_id'], 'news');
+                            _showCategorySelectionDialog(
+                              news['bookmark_id'],
+                              'news',
+                            );
                           } else if (value == 'remove') {
                             // ✅ 使用 bookmark_id 來刪除
                             _removeBookmark(news['bookmark_id'], 'news');
                           }
                         },
-                        itemBuilder: (context) => [
-                          const PopupMenuItem(
-                            value: 'category',
-                            child: Row(
-                              children: [
-                                Icon(Icons.folder_outlined, size: 20),
-                                SizedBox(width: 8),
-                                Text('選擇分類'),
-                              ],
-                            ),
-                          ),
-                          const PopupMenuItem(
-                            value: 'remove',
-                            child: Row(
-                              children: [
-                                Icon(Icons.bookmark_remove, size: 20, color: Colors.red),
-                                SizedBox(width: 8),
-                                Text('取消收藏', style: TextStyle(color: Colors.red)),
-                              ],
-                            ),
-                          ),
-                        ],
+                        itemBuilder:
+                            (context) => [
+                              const PopupMenuItem(
+                                value: 'category',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.folder_outlined, size: 20),
+                                    SizedBox(width: 8),
+                                    Text('選擇分類'),
+                                  ],
+                                ),
+                              ),
+                              const PopupMenuItem(
+                                value: 'remove',
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.bookmark_remove,
+                                      size: 20,
+                                      color: Colors.red,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      '取消收藏',
+                                      style: TextStyle(color: Colors.red),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                       ),
                     ],
                   ),
@@ -838,11 +879,11 @@ class _BookmarkPageState extends State<BookmarkPage> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF1a2a4e), // 深藍
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey,
+            color: const Color(0xFF6366f1).withOpacity(0.7), // 淡紫
             spreadRadius: 1,
             blurRadius: 3,
           ),
@@ -853,12 +894,13 @@ class _BookmarkPageState extends State<BookmarkPage> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => ChannelDetailPage(
-                channelId: channel['channel_id'],
-                channelName: channel['channel_name'] ?? '未知頻道',
-                channelDescription: channel['channel_description'],
-                channelUrl: channel['channel_url'],
-              ),
+              builder:
+                  (context) => ChannelDetailPage(
+                    channelId: channel['channel_id'],
+                    channelName: channel['channel_name'] ?? '未知頻道',
+                    channelDescription: channel['channel_description'],
+                    channelUrl: channel['channel_url'],
+                  ),
             ),
           );
         },
@@ -872,11 +914,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
                 color: Colors.blue[100],
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(
-                Icons.tv,
-                color: Colors.blue,
-                size: 30,
-              ),
+              child: const Icon(Icons.tv, color: Colors.blue, size: 30),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -898,7 +936,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
                     Text(
                       channel['channel_description'],
                       style: TextStyle(
-                        color: Colors.grey[600],
+                        color: const Color(0xFF6366f1),
                         fontSize: 14,
                       ),
                       maxLines: 2,
@@ -910,7 +948,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
                       Text(
                         '頻道',
                         style: TextStyle(
-                          color: Colors.grey[600],
+                          color: const Color(0xFF6366f1),
                           fontSize: 12,
                         ),
                       ),
@@ -919,37 +957,48 @@ class _BookmarkPageState extends State<BookmarkPage> {
                         icon: const Icon(
                           Icons.more_vert,
                           size: 20,
-                          color: Colors.grey,
+                          color: Color.fromARGB(255, 87, 90, 217), // 淡紫
                         ),
                         onSelected: (value) {
                           if (value == 'category') {
-                            _showCategorySelectionDialog(channel['channel_id'], 'channel');
+                            _showCategorySelectionDialog(
+                              channel['channel_id'],
+                              'channel',
+                            );
                           } else if (value == 'remove') {
                             _removeBookmark(channel['channel_id'], 'channel');
                           }
                         },
-                        itemBuilder: (context) => [
-                          const PopupMenuItem(
-                            value: 'category',
-                            child: Row(
-                              children: [
-                                Icon(Icons.folder_outlined, size: 20),
-                                SizedBox(width: 8),
-                                Text('選擇分類'),
-                              ],
-                            ),
-                          ),
-                          const PopupMenuItem(
-                            value: 'remove',
-                            child: Row(
-                              children: [
-                                Icon(Icons.bookmark_remove, size: 20, color: Colors.red),
-                                SizedBox(width: 8),
-                                Text('取消收藏', style: TextStyle(color: Colors.red)),
-                              ],
-                            ),
-                          ),
-                        ],
+                        itemBuilder:
+                            (context) => [
+                              const PopupMenuItem(
+                                value: 'category',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.folder_outlined, size: 20),
+                                    SizedBox(width: 8),
+                                    Text('選擇分類'),
+                                  ],
+                                ),
+                              ),
+                              const PopupMenuItem(
+                                value: 'remove',
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.bookmark_remove,
+                                      size: 20,
+                                      color: Colors.red,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      '取消收藏',
+                                      style: TextStyle(color: Colors.red),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                       ),
                     ],
                   ),
@@ -967,11 +1016,11 @@ class _BookmarkPageState extends State<BookmarkPage> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF1a2a4e), // 深藍
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey,
+            color: const Color(0xFF6366f1).withOpacity(0.7), // 淡紫
             spreadRadius: 1,
             blurRadius: 3,
           ),
@@ -991,11 +1040,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
                 color: Colors.green[100],
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(
-                Icons.event,
-                color: Colors.green,
-                size: 30,
-              ),
+              child: const Icon(Icons.event, color: Colors.green, size: 30),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1017,7 +1062,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
                     Text(
                       event['description'],
                       style: TextStyle(
-                        color: Colors.grey[600],
+                        color: const Color(0xFF6366f1),
                         fontSize: 14,
                       ),
                       maxLines: 2,
@@ -1029,7 +1074,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
                       Text(
                         event['date'] ?? '未知時間',
                         style: TextStyle(
-                          color: Colors.grey[600],
+                          color: const Color(0xFF6366f1),
                           fontSize: 12,
                         ),
                       ),
@@ -1038,37 +1083,48 @@ class _BookmarkPageState extends State<BookmarkPage> {
                         icon: const Icon(
                           Icons.more_vert,
                           size: 20,
-                          color: Colors.grey,
+                          color: const Color(0xFF6366f1), // 淡紫
                         ),
                         onSelected: (value) {
                           if (value == 'category') {
-                            _showCategorySelectionDialog(event['id'], 'eventsorting');
+                            _showCategorySelectionDialog(
+                              event['id'],
+                              'eventsorting',
+                            );
                           } else if (value == 'remove') {
                             _removeBookmark(event['id'], 'eventsorting');
                           }
                         },
-                        itemBuilder: (context) => [
-                          const PopupMenuItem(
-                            value: 'category',
-                            child: Row(
-                              children: [
-                                Icon(Icons.folder_outlined, size: 20),
-                                SizedBox(width: 8),
-                                Text('選擇分類'),
-                              ],
-                            ),
-                          ),
-                          const PopupMenuItem(
-                            value: 'remove',
-                            child: Row(
-                              children: [
-                                Icon(Icons.bookmark_remove, size: 20, color: Colors.red),
-                                SizedBox(width: 8),
-                                Text('取消收藏', style: TextStyle(color: Colors.red)),
-                              ],
-                            ),
-                          ),
-                        ],
+                        itemBuilder:
+                            (context) => [
+                              const PopupMenuItem(
+                                value: 'category',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.folder_outlined, size: 20),
+                                    SizedBox(width: 8),
+                                    Text('選擇分類'),
+                                  ],
+                                ),
+                              ),
+                              const PopupMenuItem(
+                                value: 'remove',
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.bookmark_remove,
+                                      size: 20,
+                                      color: Colors.red,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      '取消收藏',
+                                      style: TextStyle(color: Colors.red),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                       ),
                     ],
                   ),
