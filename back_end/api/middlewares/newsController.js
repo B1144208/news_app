@@ -166,6 +166,7 @@ async function searchNews(req, res, next) {
                 FROM news_data nd
                 JOIN news_location nl USING (news_id)
                 WHERE ${whereClause}
+                ORDER BY nd.created_at DESC
             `;
         }
     // channel : 查找指定頻道的新聞
