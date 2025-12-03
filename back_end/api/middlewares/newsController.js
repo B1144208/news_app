@@ -7,6 +7,7 @@ const { insertGroup } = require('./groupController');
 const { searchLocation } = require('./locationController');
 const { insertRelation, deleteRelation } = require('./relationController');
 const { getEmbedding, findNewsRelationId } = require('../utils/embeddingHelper');
+const { text } = require('express');
 
 // search
 async function searchNews(req, res, next) {
@@ -526,7 +527,14 @@ async function insertNews(req, res, next) {
             return next(err);
         }
 
-        // -----------------------------------------------------
+        // hasChinese 檢查
+        function hasChinese(str) {
+            if (typeof str !== 'string') return 0;
+
+            // 判斷是否包含任何一個中文
+            const chineseRegex = /[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]/;
+            return chineseRegex.test(str) ? 1 : 0;
+        }
 
         // 插入資料庫
         let sql = '', params = []
@@ -540,10 +548,11 @@ async function insertNews(req, res, next) {
                 cover_image,
                 news_title,
                 news_date,
-                news_embedding
-            ) VALUES (?, ?, ?, ?, ?, ?, ?);
+                news_embedding,
+                is_chinese
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
         `;
-        params = [ url, channel_id, relation_id, cover_img_id, title, publish_date, embeddingJson ];
+        params = [ url, channel_id, relation_id, cover_img_id, title, publish_date, embeddingJson, hasChinese(title) ];
 
         try {
             const [newsDataResult] = await pool.query(sql, params);
