@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'config.dart';
+import 'ViewNewsContent.dart';
 
 class ChannelDetailPage extends StatefulWidget {
   final int channelId;
@@ -22,18 +24,24 @@ class ChannelDetailPage extends StatefulWidget {
 }
 
 class _ChannelDetailPageState extends State<ChannelDetailPage> {
-  static const String apiUrl =
-      "http://localhost:3000/api/news"; // TODO: 實際API端點
-  static const String channelImageUrl =
-      "http://localhost:3000/api/channel/image"; // 頻道圖片API
-
+  late String apiUrl;
   List<dynamic> channelNews = [];
   List<dynamic> channelReviews = [];
   bool isLoading = false;
+
+  // 从数据库获取的频道信息
+  Map<String, dynamic>? channelData;
   double averageRating = 4.3;
   int totalReviews = 1302;
   String updateFrequency = "每日更新";
-  String? channelBackgroundImage; // 頻道背景圖片URL
+  String? channelBackgroundImage;
+
+  // 新增:圖片代理函數
+  String _getProxiedImageUrl(String? originalUrl) {
+    if (originalUrl == null || originalUrl.isEmpty) return '';
+    final encodedUrl = Uri.encodeComponent(originalUrl);
+    return '${Config.apiBaseUrl}/image/proxy?url=$encodedUrl';
+  }
 
   // TODO: 未來可以從資料庫獲取的頻道詳細資訊
   Map<String, dynamic> channelStats = {
@@ -49,81 +57,163 @@ class _ChannelDetailPageState extends State<ChannelDetailPage> {
   @override
   void initState() {
     super.initState();
-    _loadChannelData();
+    apiUrl = '${Config.apiBaseUrl}/news';
+    _fetchChannelData(); // 先獲取頻道信息
+    _fetchChannelNews();
   }
 
-  // TODO: 從資料庫載入頻道相關新聞和圖片
-  Future<void> _loadChannelData() async {
+  // 新增: 從數據庫獲取頻道完整信息
+  Future<void> _fetchChannelData() async {
+    try {
+      print('🔍 DEBUG: 準備查詢頻道信息');
+      print('   channelId: ${widget.channelId}');
+
+      final response = await http.get(
+        Uri.parse('${Config.apiBaseUrl}/channel/${widget.channelId}'),
+      );
+
+      print('   響應狀態碼: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        if (data['success'] == true && data['data'] != null) {
+          setState(() {
+            channelData = data['data'];
+            print('✅ 載入頻道信息成功');
+            print('   名稱: ${channelData!['channel_name']}');
+            print('   描述: ${channelData!['channel_introduction']}');
+          });
+        }
+      } else {
+        print('⚠️ 無法獲取頻道信息: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ 獲取頻道信息失敗: $e');
+    }
+  }
+
+  // 新增:從資料庫獲取頻道新聞
+  Future<void> _fetchChannelNews() async {
     setState(() => isLoading = true);
 
     try {
-      // TODO: 載入頻道背景圖片
-      // final imageResponse = await http.get(Uri.parse("$channelImageUrl/${widget.channelId}"));
-      // if (imageResponse.statusCode == 200) {
-      //   final imageData = json.decode(imageResponse.body);
-      //   channelBackgroundImage = imageData['background_image_url'];
-      // }
+      print('🔍 DEBUG: 準備查詢新聞');
+      print('   channelId: ${widget.channelId}');
+      print('   API URL: $apiUrl/search');
 
-      // TODO: 實際API呼叫，目前使用模擬資料
-      await Future.delayed(Duration(seconds: 1)); // 模擬網路延遲
+      // 使用 POST 方式搜尋指定頻道的新聞
+      final requestBody = {'channel_id': widget.channelId};
 
-      setState(() {
-        // 模擬頻道背景圖片（之後從資料庫獲取）
-        channelBackgroundImage =
-            'https://via.placeholder.com/400x200/ff6b6b/ffffff?text=Channel+Background';
+      print('   請求體: ${json.encode(requestBody)}');
 
-        // 模擬新聞資料
-        channelNews = [
-          {
-            'id': 1,
-            'title':
-                'Alleged head of \'Zizlam\' cult arrested, linked to agent\'s death near Canada',
-            'publish_time': '2小時前',
-            'views': 1234,
-            'thumbnail': 'https://via.placeholder.com/60x45',
-            'url': 'https://example.com/news/1',
-          },
-          {
-            'id': 2,
-            'title':
-                'Health Canada seizes unauthorized sex enhancement products, issues...',
-            'publish_time': '4小時前',
-            'views': 856,
-            'thumbnail': 'https://via.placeholder.com/60x45',
-            'url': 'https://example.com/news/2',
-          },
-          {
-            'id': 3,
-            'title':
-                'Alberta premier shuffles deputy health minister amid corruption allegations',
-            'publish_time': '6小時前',
-            'views': 2341,
-            'thumbnail': 'https://via.placeholder.com/60x45',
-            'url': 'https://example.com/news/3',
-          },
-          // 更多新聞...
-        ];
+      // ✅ 修正：使用與首頁相同的 API 調用方式，包含查詢參數
+      final response = await http.post(
+        Uri.parse('$apiUrl/search?mode=simple&order=general&limit=300'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(requestBody),
+      );
 
-        // 模擬評論資料
-        channelReviews = [
-          {
-            'user': '新聞愛好者',
-            'rating': 5,
-            'comment': '很棒的國際新聞頻道，報導深入且及時',
-            'time': '2天前',
-          },
-          {
-            'user': '媒體觀察員',
-            'rating': 4,
-            'comment': '內容豐富，但有時更新頻率不夠',
-            'time': '1週前',
-          },
-        ];
-      });
+      print('   響應狀態碼: ${response.statusCode}');
+      print('   響應體: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        print('✅ 解析成功');
+        print('   success: ${data['success']}');
+
+        if (data['success'] == true && data['data'] != null) {
+          List<dynamic> newsList;
+
+          // ✅ 修正：處理不同的響應格式（與首頁相同）
+          if (data['data'] is List) {
+            newsList = data['data'];
+            print('📦 data 是 List 格式');
+          } else if (data['data'] is Map) {
+            newsList = data['data']['simpleList'] ?? [];
+            print('📦 data 是 Map 格式，提取 simpleList');
+          } else {
+            newsList = [];
+            print('⚠️ data 格式不明');
+          }
+
+          print('✅ 獲取到新聞數量: ${newsList.length}');
+
+          // ✅ 修正：使用相同的新聞數據處理邏輯（與首頁相同）
+          List<Map<String, dynamic>> processedNews =
+              newsList.map<Map<String, dynamic>>((news) {
+                return {
+                  'news_id': news['newsId'] ?? news['id'] ?? 0,
+                  'title': news['newsTitle'] ?? news['title'] ?? '無標題',
+                  'channel': news['channelName'] ?? news['channel'] ?? '未知頻道',
+                  'publish_date': _formatDate(
+                    news['publishDate'] ?? news['news_date'],
+                  ),
+                  'cover_img': news['coverImageUrl'] ?? news['cover_img'],
+                  'cover_img_alt':
+                      news['coverImageAlt'] ?? news['cover_img_alt'] ?? '',
+                  'news_date': news['publishDate'] ?? news['news_date'],
+                  'comments': 0,
+                  'views': 0,
+                  'shares': 0,
+                  'bookmarks': 0,
+                };
+              }).toList();
+
+          setState(() {
+            channelNews = processedNews;
+            print('✅ 載入 ${channelNews.length} 篇新聞');
+          });
+        } else {
+          print('⚠️ API 返回異常: ${data['message']}');
+          setState(() => channelNews = []);
+        }
+      } else {
+        print('❌ HTTP 錯誤: ${response.statusCode}');
+        print('   錯誤信息: ${response.body}');
+        setState(() => channelNews = []);
+      }
     } catch (e) {
-      _showErrorMessage('載入頻道資料失敗: $e');
+      print('❌ 網路錯誤: $e');
+      print('   堆棧跟蹤: ${StackTrace.current}');
+      _showErrorMessage('載入新聞失敗: $e');
+      setState(() => channelNews = []);
     } finally {
       setState(() => isLoading = false);
+    }
+  }
+
+  // 新增：格式化日期函數（與首頁相同）
+  String _formatDate(dynamic date) {
+    if (date == null) return '未知時間';
+
+    try {
+      DateTime dateTime;
+      if (date is String) {
+        dateTime = DateTime.parse(date);
+      } else if (date is DateTime) {
+        dateTime = date;
+      } else {
+        return '未知時間';
+      }
+
+      final now = DateTime.now();
+      final difference = now.difference(dateTime);
+
+      if (difference.inMinutes < 1) {
+        return '剛剛';
+      } else if (difference.inMinutes < 60) {
+        return '${difference.inMinutes}分鐘前';
+      } else if (difference.inHours < 24) {
+        return '${difference.inHours}小時前';
+      } else if (difference.inDays < 7) {
+        return '${difference.inDays}天前';
+      } else {
+        return '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')}';
+      }
+    } catch (e) {
+      return '未知時間';
     }
   }
 
@@ -147,12 +237,14 @@ class _ChannelDetailPageState extends State<ChannelDetailPage> {
                     const SizedBox(height: 16),
                     _buildNewsSection(),
                     const SizedBox(height: 16),
+                    /*
                     _buildRatingSection(),
                     const SizedBox(height: 16),
                     _buildDescriptionSection(),
                     const SizedBox(height: 16),
                     _buildInfoSection(),
                     const SizedBox(height: 20),
+                    */
                   ],
                 ),
               ),
@@ -346,9 +438,11 @@ class _ChannelDetailPageState extends State<ChannelDetailPage> {
 
                       SizedBox(height: 8),
 
-                      // 副標題
+                      // 副標題 (從數據庫或傳遞的數據獲取)
                       Text(
-                        channelStats['publisher'] ?? 'Unknown Publisher',
+                        channelData?['origin_url']?.toString().split('/')[2] ??
+                            channelStats['publisher'] ??
+                            'Unknown Publisher',
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.9),
                           fontSize: 16,
@@ -365,9 +459,10 @@ class _ChannelDetailPageState extends State<ChannelDetailPage> {
 
                       SizedBox(height: 16),
 
-                      // 描述
+                      // 描述 (從數據庫中的 channel_introduction 獲取)
                       Text(
-                        widget.channelDescription ??
+                        channelData?['channel_introduction'] ??
+                            widget.channelDescription ??
                             'The day\'s top stories from BBC News, including the latest from Gaza, on US politics and about the Ukraine conflict. Delivered twice a day on weekdays, daily at weekends.',
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.9),
@@ -510,8 +605,12 @@ class _ChannelDetailPageState extends State<ChannelDetailPage> {
       margin: EdgeInsets.only(bottom: 12),
       child: InkWell(
         onTap: () {
-          // TODO: 導航到新聞詳細頁面
-          _showComingSoon('新聞詳細頁面');
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ViewNewsContent(newsData: news),
+            ),
+          );
         },
         borderRadius: BorderRadius.circular(8),
         child: Container(
@@ -533,20 +632,30 @@ class _ChannelDetailPageState extends State<ChannelDetailPage> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(6),
-                  child: Image.network(
-                    news['thumbnail'] ?? '',
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        color: Colors.grey[300],
-                        child: Icon(
-                          Icons.image,
-                          color: Colors.grey[500],
-                          size: 20,
-                        ),
-                      );
-                    },
-                  ),
+                  child:
+                      news['cover_img'] != null && news['cover_img'].isNotEmpty
+                          ? Image.network(
+                            _getProxiedImageUrl(news['cover_img']),
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                color: Colors.grey[300],
+                                child: Icon(
+                                  Icons.image,
+                                  color: Colors.grey[500],
+                                  size: 20,
+                                ),
+                              );
+                            },
+                          )
+                          : Container(
+                            color: Colors.grey[300],
+                            child: Icon(
+                              Icons.image,
+                              color: Colors.grey[500],
+                              size: 20,
+                            ),
+                          ),
                 ),
               ),
 
@@ -574,7 +683,7 @@ class _ChannelDetailPageState extends State<ChannelDetailPage> {
                     Row(
                       children: [
                         Text(
-                          news['publish_time'] ?? '',
+                          news['publish_date'] ?? '',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey[600],
@@ -644,6 +753,7 @@ class _ChannelDetailPageState extends State<ChannelDetailPage> {
     );
   }
 
+  /*
   // 評分評論區域
   Widget _buildRatingSection() {
     return Container(
@@ -806,7 +916,8 @@ class _ChannelDetailPageState extends State<ChannelDetailPage> {
       ),
     );
   }
-
+  */
+  /*
   // 簡介區域
   Widget _buildDescriptionSection() {
     return Container(
@@ -846,7 +957,8 @@ class _ChannelDetailPageState extends State<ChannelDetailPage> {
       ),
     );
   }
-
+  */
+  /*
   // 資訊區域
   Widget _buildInfoSection() {
     return Container(
@@ -890,7 +1002,7 @@ class _ChannelDetailPageState extends State<ChannelDetailPage> {
       ),
     );
   }
-
+*/
   Widget _buildInfoRow(String label, String? value) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 4),

@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:share_plus/share_plus.dart';
 import 'dart:convert';
-import 'universal_template.dart';
+import 'config.dart';
 import 'ChannelDetailPage.dart';
+import 'ViewNewsContent.dart';
 
 class ChannelPage extends StatefulWidget {
   const ChannelPage({super.key});
@@ -13,7 +14,7 @@ class ChannelPage extends StatefulWidget {
 }
 
 class _ChannelPageState extends State<ChannelPage> {
-  static const String apiUrl = "http://localhost:3000/api/channel";
+  late String apiUrl;
 
   List<dynamic> channels = [];
   int? expandedChannelId;
@@ -23,6 +24,7 @@ class _ChannelPageState extends State<ChannelPage> {
   @override
   void initState() {
     super.initState();
+    apiUrl = '${Config.apiBaseUrl}/channel';
     fetchChannels();
   }
 
@@ -663,24 +665,27 @@ class _ChannelPageState extends State<ChannelPage> {
   @override
   @override
   Widget build(BuildContext context) {
-    return UniversalManagePage(
-      // 頁面基本資訊
-      pageTitle: '頻道管理',
-      pageDescription: '管理所有頻道的資訊和設定',
-      pageIcon: Icons.tv,
-      themeColor: const Color(0xFF60a5fa),
-
-      // 搜尋功能配置
-      searchHint: '搜尋頻道名稱...',
-      onSearch: (query) {
-        searchChannels(query);
-      },
-
-      // 新增按鈕配置
-      onAddPressed: showAddDialog,
-
-      // 主要內容區域
-      contentWidget: _buildChannelContent(),
+    return Scaffold(
+      backgroundColor: const Color(0xFF0a1428),
+      appBar: AppBar(
+        title: const Text('頻道管理'),
+        backgroundColor: const Color(0xFF0a1428),
+        foregroundColor: Colors.white,
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [_buildChannelContent(), const SizedBox(height: 80)],
+          ),
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: showAddDialog,
+        backgroundColor: const Color(0xFF60a5fa),
+        child: const Icon(Icons.add, color: Colors.white),
+        tooltip: '新增頻道',
+      ),
     );
   }
 }
