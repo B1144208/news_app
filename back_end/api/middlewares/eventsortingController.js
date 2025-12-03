@@ -47,7 +47,8 @@ async function searchEventsorting (req, res, next) {
     sql += ` GROUP BY ed.eventsorting_id`;
 
     // 💥 添加 ORDER BY 子句，根據計算出的 sorting_score 降序排列
-    sql += ` ORDER BY ed.total_heat DESC;`;
+    sql += ` ORDER BY ed.total_heat DESC;
+             LIMIT 50;`;
 
 
     try {
