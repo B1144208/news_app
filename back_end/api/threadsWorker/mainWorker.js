@@ -5,6 +5,7 @@ const pool = require('../connect_db');
 const { runGroupWorker }    = require('./newsGroupWorker');
 const { runLocationWorker } = require('./newsLocationWorker');
 const { runKeywordWorker }  = require('./newsKeywordWorker');
+const { runAllWorker } = require('./allWorker');
 
 const SLEEP_IF_IDLE_MS = 60 * 60 * 1000; // 1 小時
 const SLEEP_IF_REST_MS = 5 * 60 * 1000;  // 5 分鐘
