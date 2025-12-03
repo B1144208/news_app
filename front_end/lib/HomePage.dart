@@ -73,17 +73,28 @@ class _HomePageState extends State<HomePage> {
   bool _isPlayerVisible = false;
   bool _isPlaying = false;
   double _playbackSpeed = 1.0;
-  bool _isLoadingQuickPlay = false; // 新增：載入快速播放的狀態
 
   // 新增:AudioPlayer 實例
   final AudioPlayer _audioPlayer = AudioPlayer();
 
-  // 修改：移除硬編碼文本，改為從 API 獲取
-  int paragraphCount = 0;
-  List<String> paragraphText = [];
-  List<String> audioUrls = []; // 新增：儲存音訊 URL
+  // 新增:後台文本串列（10 篇新聞）
+  int paragraphCount = 10;
+  List<String> paragraphText = [
+    "快訊／川普簽字！白宮宣布《台灣保證實施法案》正式生效。這項法案旨在加強美國對台灣的支持與保證，標誌著美台關係進一步穩固，對區域安全有重要影響。",
+    "1972年日中聯合聲明重申台灣是中國領土不可分割的一部分。高雄市政府表示，這項立場沒有改變，強調遵守當年聲明的原則，維持兩岸關係現狀。",
+    "高市早苗公開稱台灣是中國領土不可分割的一部分。此言論引發關注，顯示她在兩岸立場上有所收斂，與過去表態相比態度轉趨保守。",
+    "川普簽署的《台灣保證實施法案》包含七大重點。法案強化美國對台軍事與外交支持，提升台灣安全保障，並促進雙邊經濟合作，展現美國對台承諾。",
+    "王世堅宣布不參選台北市長，首度透露原因令人心酸。他表示因個人考量與家庭因素，決定不投入選戰，強調未來仍會關注市政發展。",
+    "中國對日本展現霸凌態勢。華爾街日報社論指出，中國行為給全球上了一課，提醒國際社會警惕區域安全威脅，呼籲各國加強合作應對挑戰。",
+    "印航一架波音七三七客機消失十三年，竟停在機場無人知曉。事件離譜，航空公司還需支付三千五百萬賠償，引發外界對管理漏洞質疑。",
+    "記憶體股目標價衝上百八十元，EPS估計達十九點五元。華邦電、南亞科和群聯被點名為最強三巨頭，市場報價一路飆升，展望明年持續看好。",
+    "清潔隊員轉送價值三十二元電鍋給拾荒婦遭判刑。清潔隊長回應此事，強調依法處理並呼籲社會關注弱勢，案件引發輿論熱議。",
+    "谷歌四百萬片TPU產量未達標，原因卡在台積電。分析師表示，真正大規模爆發要等到二零二七年，顯示半導體供應鏈仍面臨挑戰。"
+  ];
   int _currentParagraphIndex = 0; // 當前播放的文章索引
 
+  // 儲存已生成的 MP3 快取（避免重複生成）
+  final Map<int, String> _audioCache = {};
   @override
   void initState() {
     super.initState();
@@ -785,110 +796,98 @@ class _HomePageState extends State<HomePage> {
 
   // 快速播放功能
   Future<void> _startQuickPlay() async {
+    // 直接開始播放，不從 API 獲取
     setState(() {
-      _isLoadingQuickPlay = true;
+      _isPlayerVisible = true;
+      _currentParagraphIndex = 0;
     });
 
-    try {
-      // 呼叫後端 API 獲取 quick-script 及音訊檔案
-      final response = await http.get(
-        Uri.parse('${Config.apiBaseUrl}/script/quick?limit=10'),
-        headers: {'Content-Type': 'application/json'},
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(utf8.decode(response.bodyBytes));
-        print('✅ 收到 quick-script 數據: ${data['data']}');
-
-        // 提取 scripts 陣列（包含 text 和 audioPath）
-        final List<dynamic> scripts = data['data']['scripts'] ?? [];
-
-        if (scripts.isEmpty) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('沒有可播放的新聞')),
-            );
-          }
-          setState(() {
-            _isLoadingQuickPlay = false;
-          });
-          return;
-        }
-
-        // 更新 paragraphText 和 audioUrls
-        setState(() {
-          paragraphText = scripts.map((item) => item['text'] as String).toList();
-          // 組合完整的音訊 URL
-          audioUrls = scripts.map((item) {
-            final audioPath = item['audioPath'] as String;
-            return '${Config.apiBaseUrl}$audioPath';
-          }).toList();
-          paragraphCount = paragraphText.length;
-          _isPlayerVisible = true;
-          _currentParagraphIndex = 0;
-          _isLoadingQuickPlay = false;
-        });
-
-        print('📝 已載入 ${paragraphCount} 篇新聞播報稿及音訊');
-        print('🎵 音訊 URLs: $audioUrls');
-
-        // 播放第一篇文章
-        await _playCurrentParagraph();
-      } else {
-        print('❌ API 錯誤: ${response.statusCode}');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('載入快速播放失敗: ${response.statusCode}')),
-          );
-        }
-        setState(() {
-          _isLoadingQuickPlay = false;
-        });
-      }
-    } catch (e) {
-      print('❌ 載入錯誤: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('載入快速播放錯誤: $e')),
-        );
-      }
-      setState(() {
-        _isLoadingQuickPlay = false;
-      });
-    }
+    // 播放第一篇文章
+    await _playCurrentParagraph();
   }
 
-  // 播放當前文章 - 修改：直接播放遠端 MP3
+  // 播放當前文章 - 檢查快取或生成 TTS
   Future<void> _playCurrentParagraph() async {
-    if (_currentParagraphIndex >= audioUrls.length) {
+    if (_currentParagraphIndex >= paragraphCount) {
       // 所有文章播放完畢
       _closePlayer();
       return;
     }
 
     try {
-      String currentAudioUrl = audioUrls[_currentParagraphIndex];
       String currentText = paragraphText[_currentParagraphIndex];
 
-      print(
-        '🎵 準備播放第 ${_currentParagraphIndex + 1} 篇: ${currentText.substring(0, currentText.length > 50 ? 50 : currentText.length)}...',
+      print('🎵 準備播放第 ${_currentParagraphIndex + 1} 篇');
+
+      // 檢查是否已有快取的音訊
+      if (_audioCache.containsKey(_currentParagraphIndex)) {
+        // 使用快取的 data URL
+        String cachedAudioUrl = _audioCache[_currentParagraphIndex]!;
+        print('✅ 使用快取音訊');
+
+        await _audioPlayer.stop();
+        await _audioPlayer.setPlaybackRate(_playbackSpeed);
+        await _audioPlayer.play(UrlSource(cachedAudioUrl));
+
+        setState(() {
+          _isPlaying = true;
+        });
+
+        print('🎵 正在播放第 ${_currentParagraphIndex + 1} 篇文章');
+        return;
+      }
+
+      // 沒有快取，呼叫 TTS API 生成音訊
+      print('🔄 生成 TTS 音訊...');
+
+      final response = await http.post(
+        Uri.parse('${Config.apiBaseUrl}/tts'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'text': currentText,
+          'voiceId': '9lHjugDhwqoxA5MhX0az', // ANNA_SU - Taiwan, social media
+          'stability': 0.5,
+          'similarity_boost': 0.75,
+        }),
       );
-      print('🎵 音訊 URL: $currentAudioUrl');
 
-      // 停止當前播放
-      await _audioPlayer.stop();
+      if (response.statusCode == 200) {
+        // 獲取音訊 bytes
+        final Uint8List bytes = response.bodyBytes;
 
-      // 設定播放速度
-      await _audioPlayer.setPlaybackRate(_playbackSpeed);
+        print('✅ 收到音訊數據: ${bytes.length} bytes');
 
-      // 直接播放遠端 MP3 檔案
-      await _audioPlayer.play(UrlSource(currentAudioUrl));
+        // 停止當前播放
+        await _audioPlayer.stop();
 
-      setState(() {
-        _isPlaying = true;
-      });
+        // 轉換為 base64 data URL
+        final String base64Audio = base64Encode(bytes);
+        final String dataUrl = 'data:audio/mpeg;base64,$base64Audio';
 
-      print('🎵 正在播放第 ${_currentParagraphIndex + 1} 篇文章');
+        // 儲存到快取
+        _audioCache[_currentParagraphIndex] = dataUrl;
+
+        print('💾 音訊已快取');
+
+        // 設定播放速度
+        await _audioPlayer.setPlaybackRate(_playbackSpeed);
+
+        // 使用 UrlSource 播放 data URL
+        await _audioPlayer.play(UrlSource(dataUrl));
+
+        setState(() {
+          _isPlaying = true;
+        });
+
+        print('🎵 正在播放第 ${_currentParagraphIndex + 1} 篇文章');
+      } else {
+        print('❌ TTS API 錯誤: ${response.statusCode}');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('語音合成失敗: ${response.statusCode}')),
+          );
+        }
+      }
     } catch (e) {
       print('❌ 播放錯誤: $e');
       if (mounted) {
@@ -904,7 +903,7 @@ class _HomePageState extends State<HomePage> {
     print('✅ 第 ${_currentParagraphIndex + 1} 篇播放完成');
 
     // 自動播放下一篇
-    if (_currentParagraphIndex < audioUrls.length - 1) {
+    if (_currentParagraphIndex < paragraphCount - 1) {
       setState(() {
         _currentParagraphIndex++;
       });
@@ -942,7 +941,7 @@ class _HomePageState extends State<HomePage> {
 
   // 下一篇文章
   Future<void> _nextNews() async {
-    if (_currentParagraphIndex < audioUrls.length - 1) {
+    if (_currentParagraphIndex < paragraphCount - 1) {
       setState(() {
         _currentParagraphIndex++;
       });
@@ -1915,8 +1914,8 @@ class _HomePageState extends State<HomePage> {
                 child: Row(
                   children: [
                     const Icon(
-                      Icons.rocket_launch,
-                      color: Color.fromARGB(255, 222, 73, 23),
+                      Icons.flash_on,
+                      color: Colors.orange,
                       size: 18,
                     ),
                     const SizedBox(width: 8),
@@ -1930,7 +1929,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(width: 12),
                     ElevatedButton(
-                      onPressed: _isLoadingQuickPlay ? null : () {
+                      onPressed: () {
                         setState(() {
                           _isPlayerVisible = !_isPlayerVisible;
                           if (_isPlayerVisible && !_isPlaying) {
@@ -1947,16 +1946,7 @@ class _HomePageState extends State<HomePage> {
                         ),
                         elevation: 0,
                       ),
-                      child: _isLoadingQuickPlay
-                          ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                          : const Text('播放', style: TextStyle(fontSize: 12)),
+                      child: const Text('播放', style: TextStyle(fontSize: 12)),
                     ),
                   ],
                 ),
@@ -2255,7 +2245,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        '快速播放：剩餘${_formatRemainingTime()}',
+                        '現正播放第${_currentParagraphIndex + 1}篇/總共${paragraphCount}篇',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
@@ -2279,6 +2269,7 @@ class _HomePageState extends State<HomePage> {
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8,
                       vertical: 4,
+
                     ),
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.grey),
@@ -2286,7 +2277,10 @@ class _HomePageState extends State<HomePage> {
                     ),
                     child: Text(
                       '${_playbackSpeed}x',
-                      style: const TextStyle(fontSize: 12),
+                      style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
@@ -2297,6 +2291,7 @@ class _HomePageState extends State<HomePage> {
                 IconButton(
                   onPressed: _currentParagraphIndex > 0 ? _previousNews : null,
                   icon: const Icon(Icons.skip_previous),
+                  color: Colors.white,
                   iconSize: 24,
                 ),
 
@@ -2304,16 +2299,18 @@ class _HomePageState extends State<HomePage> {
                 IconButton(
                   onPressed: _togglePlayPause,
                   icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow),
+                  color: Colors.white,
                   iconSize: 28,
                 ),
 
                 // 下一篇按鈕
                 IconButton(
                   onPressed:
-                  _currentParagraphIndex < audioUrls.length - 1
+                  _currentParagraphIndex < paragraphCount - 1
                       ? _nextNews
                       : null,
                   icon: const Icon(Icons.skip_next),
+                  color: Colors.white,
                   iconSize: 24,
                 ),
 
@@ -2321,6 +2318,7 @@ class _HomePageState extends State<HomePage> {
                 IconButton(
                   onPressed: _closePlayer,
                   icon: const Icon(Icons.close),
+                  color: Colors.white,
                   iconSize: 20,
                 ),
               ],
