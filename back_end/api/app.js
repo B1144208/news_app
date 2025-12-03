@@ -19,6 +19,9 @@ app.use('/api/permission', permissionRoutes);
 const cleanHelper = require('./utils/cleanHelper');
 app.get('/clean', cleanHelper);
 
+const channelRoutes = require('./routes/channel');
+app.use('/api/channel', channelRoutes);
+
 // router 設定
 const routes = require('./routes/index');
 app.use('/api', routes);

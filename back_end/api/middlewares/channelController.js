@@ -14,7 +14,7 @@ async function searchChannel(req, res, next) {
     `;
     let params = [];
 
-    // 檢查必要欄位 & 格式 - name
+    // æª¢æŸ¥å¿…è¦æ¬„ä½ & æ ¼å¼ - name
     if (name) {
         try {
             [ name ] = await checkRequireField ([
@@ -68,13 +68,45 @@ async function searchChannel(req, res, next) {
     }
 }
 
+// ✅ 新增：按 ID 获取单个频道信息
+async function getChannelById(req, res, next) {
+    let id = req.params?.id;
 
+    // 检查必要字段 & 格式 - id
+    try {
+        [ id ] = await checkRequireField ([
+            { field: 'id' , data: id , type: 'number' , other: ['non_null'] }
+        ]);
+    } catch (err) {
+        err.desc = "middlewares-getChannelById(): Missing or Invalid required fields";
+        return next(err);
+    }
+
+    let sql = `SELECT * FROM channel_data WHERE channel_id = ?`;
+    let params = [id];
+
+    try {
+        let [result] = await pool.query(sql, params);
+        
+        if (result.length === 0) {
+            const err = new Error('Channel not found');
+            err.status = 404;
+            err.desc = 'middlewares-getChannelById(): channel not found';
+            return next(err);
+        }
+
+        return res.apiSuccess(result[0], 'Get Success');
+    } catch (err) {
+        err.desc = 'middlewares-getChannelById(): database search error';
+        return next(err);
+    }
+}
 
 // insert
 async function insertChannel(req, res, next) {
     let { url=null, img=null, name, type=null, introduce=null } = req.body ?? {};
 
-    // 檢查必要欄位 & 格式 - url, img, name, type, introduce
+    // æª¢æŸ¥å¿…è¦æ¬„ä½ & æ ¼å¼ - url, img, name, type, introduce
     try {
         [ url, img, name, type, introduce ] = await checkRequireField ([
             { field: 'url'          , data: url         , type: 'string' },
@@ -88,7 +120,7 @@ async function insertChannel(req, res, next) {
         return next(err);
     }
 
-    // 先 search channel
+    // å…ˆ search channel
     try {
         let fakeReq = {
             query: { name: name }
@@ -155,7 +187,7 @@ async function deleteChannel(req, res, next) {
     let id = req.params?.id;
     const has = req.query?.has !== undefined;
 
-    // 檢查必要欄位 & 格式 - id
+    // æª¢æŸ¥å¿…è¦æ¬„ä½ & æ ¼å¼ - id
     try {
         [ id ] = await checkRequireField ([
             { field: 'id' , data: id , type: 'number' , other: ['non_null'] }
@@ -165,7 +197,7 @@ async function deleteChannel(req, res, next) {
         return next(err);
     }
 
-    // 檢查是否有 news 包含其中
+    // æª¢æŸ¥æ˜¯å¦æœ‰ news åŒ…å«å…¶ä¸­
     if ( has ) {
         let sql = `
             SELECT channel_id
@@ -195,7 +227,7 @@ async function deleteChannel(req, res, next) {
     try {
         let [result] = await pool.query(sql, params);
 
-        // 如果沒有刪除任何資料
+        // å¦‚æžœæ²'æœ‰åˆªé™¤ä»»ä½•è³‡æ–™
         if (result.affectedRows === 0) {
             let err = new Error('Channel not found')
             err.desc = 'middlewares-deleteChannel(): Channel not found';
@@ -215,5 +247,6 @@ module.exports = {
     searchChannel,
     insertChannel,
     updateChannel,
-    deleteChannel
+    deleteChannel,
+    getChannelById  // ✅ 新增导出
 };
