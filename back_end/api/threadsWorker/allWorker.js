@@ -414,22 +414,22 @@ async function insertNewsTranslateForOneNews(originalNewsId, translate) {
 }
 
 /* ---------- 將 news_task 三個欄位都設為完成 ---------- */
-/*
+
 async function markTaskDoneAll(newsId) {
   const sql = `
     DELETE FROM news_task
     WHERE news_id = ?;
   `;
   await pool.query(sql, [newsId]);
-}*/
-async function markTaskDoneAll(newsId) {
+}
+/*async function markTaskDoneAll(newsId) {
   const sql = `
     UPDATE news_task
     SET news_group = 1
     WHERE news_id = ?;
   `;
   await pool.query(sql, [newsId]);
-}
+}*/
 
 /* ---------- 處理單一 news 的完整流程 ---------- */
 
