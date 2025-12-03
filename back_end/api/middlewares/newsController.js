@@ -168,7 +168,8 @@ async function searchNews(req, res, next) {
             id.image_text AS coverImageAlt,
             nd.news_title AS newsTitle,
             nd.news_date  AS publishDate,
-            nd.origin_url AS newsUrl
+            nd.origin_url AS newsUrl,
+            nd.relation_id AS RelationId
         FROM news_data nd
             JOIN channel_data cd USING (channel_id)
             LEFT JOIN image_data id ON nd.cover_image = id.image_id
