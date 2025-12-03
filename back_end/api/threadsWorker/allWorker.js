@@ -359,6 +359,10 @@ async function insertNewsTranslateForOneNews(originalNewsId, translate) {
       detail: translate.content     // 中文內文
     };
 
+    console.log("original: ", original);
+    console.log("original.relationId: ", original.relationId);
+
+
     const fakeReqForInsert = { body: newNewsPayload };
     const insertRes = await callAndCatchApiSuccessInGeneralFunction(insertNews, fakeReqForInsert);
     const newNewsId = insertRes?.insertId;
