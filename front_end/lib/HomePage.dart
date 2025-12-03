@@ -360,6 +360,121 @@ class _HomePageState extends State<HomePage> {
   }
 
   // 修復後的 _fetchNews() 方法
+  // 新增:呼叫 getScript API
+  Future<List<Map<String, dynamic>>?> _callGetScriptAPI(int? clickedNewsId) async {
+    try {
+      // 檢查 clickedNewsId 是否有效
+      if (clickedNewsId == null) {
+        print('⚠️ clickedNewsId 為 null，無法呼叫 getScript API');
+        return null;
+      }
+
+      // 構建 idList：點擊的新聞 ID 在第一位，其餘按原順序
+      List<int> idList = [];
+
+      // 先加入點擊的新聞 ID
+      idList.add(clickedNewsId);
+
+      // 再加入其他新聞 ID（排除已點擊的）
+      for (var news in _newsData) {
+        final newsId = news['id']; // 修正：使用 'id' 而不是 'news_id'
+        if (newsId != null && newsId is int && newsId != clickedNewsId) {
+          idList.add(newsId);
+        }
+      }
+
+      // 如果沒有任何有效的 ID，則不呼叫 API
+      if (idList.isEmpty) {
+        print('⚠️ idList 為空，無法呼叫 getScript API');
+        return null;
+      }
+
+      print('🎯 呼叫 getScript API - idList: $idList');
+
+      // 構建 URL
+      final url = Uri.parse(
+        '${Config.apiBaseUrl}/script/general?idList=${jsonEncode(idList)}',
+      );
+
+      print('📡 API URL: $url');
+
+      // 發送 GET 請求
+      final response = await http.get(url);
+
+      print('📡 API 響應狀態碼: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        print('✅ getScript API 呼叫成功');
+
+        // 打印原始回應內容（前500字元）
+        final rawBody = response.body;
+        print('📄 原始回應長度: ${rawBody.length} 字元');
+        print('📄 原始回應（前500字元）: ${rawBody.substring(0, rawBody.length > 500 ? 500 : rawBody.length)}');
+
+        // ========== 處理 SSE 格式 ==========
+        List<Map<String, dynamic>> scriptList = [];
+
+        // 按行分割
+        final lines = rawBody.split('\n');
+        print('📄 總共 ${lines.length} 行');
+
+        for (var line in lines) {
+          line = line.trim();
+
+          // 跳過空行
+          if (line.isEmpty) continue;
+
+          // 處理 SSE 格式：data: {...}
+          if (line.startsWith('data: ')) {
+            final jsonStr = line.substring(6); // 移除 "data: " 前綴
+
+            try {
+              final jsonData = json.decode(jsonStr);
+
+              // 檢查類型
+              if (jsonData is Map) {
+                final type = jsonData['type'];
+
+                if (type == 'item') {
+                  // 這是一則新聞
+                  scriptList.add(Map<String, dynamic>.from(jsonData));
+                  print('✅ 解析新聞: ${jsonData['newsId']} - ${jsonData['title']}');
+                } else if (type == 'done') {
+                  // 結束標記
+                  print('✅ 收到結束標記');
+                } else {
+                  print('⚠️ 未知類型: $type');
+                }
+              }
+            } catch (e) {
+              print('❌ 解析 JSON 失敗: $e');
+              print('❌ 問題行: $jsonStr');
+            }
+          }
+        }
+
+        // 打印第一則新聞的詳細信息
+        if (scriptList.isNotEmpty) {
+          print('📰 第一則新聞:');
+          print('   keys: ${scriptList[0].keys}');
+          print('   newsId: ${scriptList[0]['newsId']}');
+          print('   title: ${scriptList[0]['title']}');
+          print('   reporter 長度: ${scriptList[0]['reporter']?.toString().length ?? 0}');
+          print('   chat 數量: ${(scriptList[0]['chat'] as List?)?.length ?? 0}');
+        }
+
+        print('📋 最終接收到 ${scriptList.length} 則新聞腳本');
+        return scriptList;
+      } else {
+        print('❌ getScript API 呼叫失敗: ${response.statusCode}');
+        return null;
+      }
+    } catch (error) {
+      print('❌ 呼叫 getScript API 發生錯誤: $error');
+      return null;
+    }
+  }
+
   Future<void> _fetchNews() async {
     setState(() {
       _isLoading = true;
@@ -1849,6 +1964,7 @@ class _HomePageState extends State<HomePage> {
 
               const SizedBox(width: 16),
 
+              /*
               Row(
                 children: [
                   const Icon(Icons.sort, color: Color(0xFF60a5fa), size: 16),
@@ -1888,7 +2004,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                 ],
-              ),
+              ),*/
             ],
           ),
         ),
@@ -1972,13 +2088,44 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
               child: InkWell(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ViewNewsContent(newsData: news),
-                    ),
-                  );
+                onTap: () async {
+                  print('🖱️ 點擊新聞: ${news['id']} - ${news['title']}');
+
+                  // 構建 idList：點擊的新聞 ID 在第一位，其餘按原順序
+                  List<int> idList = [];
+
+                  // 先加入點擊的新聞 ID
+                  final clickedId = news['id'];
+                  if (clickedId != null && clickedId is int) {
+                    idList.add(clickedId);
+                  }
+
+                  // 再加入其他新聞 ID（排除已點擊的）
+                  for (var newsItem in _newsData) {
+                    final newsId = newsItem['id'];
+                    if (newsId != null && newsId is int && newsId != clickedId) {
+                      idList.add(newsId);
+                    }
+                  }
+
+                  print('📋 構建 idList: ${idList.length} 則新聞');
+                  print('   第一個 ID: ${idList.isNotEmpty ? idList[0] : "無"}');
+
+                  // 導航到新聞詳情頁，傳遞 idList
+                  if (mounted) {
+                    print('🚀 導航到 ViewNewsContent');
+                    print('   傳遞 idList: ${idList.length} 個 ID');
+
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ViewNewsContent(
+                          newsData: news,
+                          newsIdList: idList, // 傳遞 ID 列表而不是 scriptList
+                        ),
+                      ),
+                    );
+                  }
                 },
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,

@@ -12,8 +12,13 @@ import 'ChannelDetailPage.dart';
 
 class ViewNewsContent extends StatefulWidget {
   final Map<String, dynamic> newsData;
+  final List<int>? newsIdList; // 新增：接收新聞 ID 列表
 
-  const ViewNewsContent({super.key, required this.newsData});
+  const ViewNewsContent({
+    super.key,
+    required this.newsData,
+    this.newsIdList,
+  });
 
   @override
   State<ViewNewsContent> createState() => _ViewNewsContentState();
@@ -46,31 +51,19 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
   // ========== 新增：TTS AudioPlayer ==========
   final AudioPlayer _audioPlayer = AudioPlayer();
 
+  // ========== 新增：getScript 相關變數 ==========
+  List<int> _newsIdList = []; // 儲存新聞 ID 列表
+  List<Map<String, dynamic>> _scriptList = []; // 儲存完整的 script 串列
+  int _currentScriptIndex = 0; // 目前播放的新聞索引
+  Map<String, dynamic>? _currentScript; // 目前的新聞腳本數據
+
+  // ========== 新增：播放模式相關變數 ==========
+  int _playMode = 0; // 0:一般, 1:播報, 2:對話
+  int _currentTextIndex = 0; // 當前播放的文本索引
+  List<String> _currentPlaylist = []; // 當前播放清單
+
   // ========== 新增：後台文本串列輸入區塊 ==========
   List<String> generalPlaymodeTexts = [];
-
-  String reporterPlaymode = '''
-各位觀眾大家好,歡迎收看今日新聞快報。
-
-接下來為您播報今天的頭條新聞。
-
-本新聞由我們的記者團隊精心採訪編輯,為您帶來最新、最準確的資訊。
-
-感謝您的收看,我們下次見。
-''';
-
-  // ========== 新增：對話模式文本 ==========
-  // 格式: [ "A:對話內容", "B:對話內容", "A:對話內容", ... ]
-  List<String> dialoguePlaymode = [
-    "A:歡迎收聽今日新聞對話節目,我是主持人小美。",
-    "B:大家好,我是評論員大明。",
-    "A:今天我們要討論的是這則重要新聞。大明,你對這則新聞有什麼看法?",
-    "B:這是一個非常值得關注的議題。從多個角度來看,這個事件反映了社會的變化。",
-    "A:沒錯,那麼對於普通民眾來說,這件事會帶來什麼影響呢?",
-    "B:我認為民眾應該保持理性的態度,持續關注後續發展。",
-    "A:感謝大明的精彩分析。各位聽眾,我們下次節目再見。",
-    "B:再見。",
-  ];
 
   // ========== 新增：對話模式的語音ID ==========
   final String voiceA = '9lHjugDhwqoxA5MhX0az'; // ANNA_SU - 主持人 (女聲)
@@ -80,6 +73,21 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
   void initState() {
     super.initState();
     _loadUserAiMode();
+
+    // ========== 新增：初始化 newsIdList ==========
+    if (widget.newsIdList != null && widget.newsIdList!.isNotEmpty) {
+      _newsIdList = widget.newsIdList!;
+      print('📋 已接收 newsIdList，共 ${_newsIdList.length} 個 ID');
+      print('📍 ID 列表: $_newsIdList');
+    } else {
+      print('⚠️ 未接收到 newsIdList，將使用當前新聞 ID');
+      // 如果沒有 ID 列表，至少加入當前新聞的 ID
+      final currentId = widget.newsData['id'];
+      if (currentId != null) {
+        _newsIdList = [currentId];
+      }
+    }
+
     _fetchNewsDetail();
     _checkBookmarkStatus();
     _cleanExpiredCache(); // ========== 新增：清理過期快取 ==========
@@ -130,7 +138,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
 
           // 查找是否已收藏此新聞
           final bookmark = bookmarks.firstWhere(
-            (b) => b['news_id'] == newsId,
+                (b) => b['news_id'] == newsId,
             orElse: () => null,
           );
 
@@ -253,6 +261,94 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
         _selectedAiMode = 1;
       });
       print('📱 未登入用戶,使用預設模式: 一般(1)');
+    }
+  }
+
+  // ========== 新增：從 API 獲取腳本數據 ==========
+  Future<void> _fetchScriptData() async {
+    try {
+      print('📡 呼叫 getScript API');
+      print('   使用 idList: $_newsIdList');
+
+      if (_newsIdList.isEmpty) {
+        print('❌ newsIdList 為空');
+        return;
+      }
+
+      final url = Uri.parse(
+        '${Config.apiBaseUrl}/script/general?idList=${json.encode(_newsIdList)}',
+      );
+
+      print('📡 API URL: $url');
+
+      final response = await http.get(url);
+
+      print('📡 API 響應狀態碼: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        print('✅ getScript API 呼叫成功');
+
+        // ========== 處理 SSE 格式 ==========
+        List<Map<String, dynamic>> scriptList = [];
+
+        final rawBody = response.body;
+
+        // 按行分割
+        final lines = rawBody.split('\n');
+        print('📄 總共 ${lines.length} 行');
+
+        for (var line in lines) {
+          line = line.trim();
+
+          // 跳過空行
+          if (line.isEmpty) continue;
+
+          // 處理 SSE 格式：data: {...}
+          if (line.startsWith('data: ')) {
+            final jsonStr = line.substring(6); // 移除 "data: " 前綴
+
+            try {
+              final jsonData = json.decode(jsonStr);
+
+              // 檢查類型
+              if (jsonData is Map) {
+                final type = jsonData['type'];
+
+                if (type == 'item') {
+                  // 這是一則新聞
+                  scriptList.add(Map<String, dynamic>.from(jsonData));
+                  print('✅ 解析新聞: ${jsonData['newsId']} - ${jsonData['title']}');
+                } else if (type == 'done') {
+                  // 結束標記
+                  print('✅ 收到結束標記');
+                }
+              }
+            } catch (e) {
+              print('❌ 解析 JSON 失敗: $e');
+            }
+          }
+        }
+
+        print('📋 接收到 ${scriptList.length} 則新聞腳本');
+
+        if (scriptList.isNotEmpty) {
+          setState(() {
+            _scriptList = scriptList;
+            _currentScriptIndex = 0;
+            _currentScript = _scriptList[0];
+          });
+
+          print('✅ 已設置 _currentScript');
+          print('📰 newsId: ${_currentScript?['newsId']}');
+          print('📰 title: ${_currentScript?['title']}');
+          print('📰 reporter 長度: ${_currentScript?['reporter']?.toString().length ?? 0}');
+          print('📰 chat 數量: ${(_currentScript?['chat'] as List?)?.length ?? 0}');
+        }
+      } else {
+        print('❌ getScript API 呼叫失敗: ${response.statusCode}');
+      }
+    } catch (error) {
+      print('❌ 呼叫 getScript API 發生錯誤: $error');
     }
   }
 
@@ -502,20 +598,283 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
     }
   }
 
-  Future<void> _startReading() async {
-    if (!mounted) return;
+  // ========== 新增：根據新聞 ID 獲取內文 ==========
+  Future<void> _fetchNewsBodyById(int newsId) async {
+    try {
+      print('📡 獲取新聞內文 - newsId: $newsId');
+
+      final url = Uri.parse('${Config.apiBaseUrl}/news/$newsId');
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        if (data['news_body'] != null) {
+          final newsBody = data['news_body'] as List;
+
+          // 清空並重新填充 generalPlaymodeTexts
+          generalPlaymodeTexts.clear();
+
+          for (var bodyPart in newsBody) {
+            if (bodyPart['text'] != null && bodyPart['text'].toString().isNotEmpty) {
+              generalPlaymodeTexts.add(bodyPart['text'].toString());
+            }
+          }
+
+          print('✅ 已獲取新聞內文，共 ${generalPlaymodeTexts.length} 段');
+        }
+      } else {
+        print('❌ 獲取新聞內文失敗: ${response.statusCode}');
+      }
+    } catch (error) {
+      print('❌ 獲取新聞內文錯誤: $error');
+    }
+  }
+
+  // ========== 新增：準備播放清單 ==========
+  void _preparePlaylist() {
+    _currentPlaylist.clear();
+    _currentTextIndex = 0;
+
+    if (_playMode == 0) {
+      // 一般模式：使用原本的 generalPlaymodeTexts（從新聞內文獲取）
+      // 這部分不需要從 _currentScript 獲取，因為已經在 _fetchNewsDetail 中填充
+      print('📝 一般模式：使用原本的新聞內文 TTS');
+      print('📝 generalPlaymodeTexts 長度: ${generalPlaymodeTexts.length}');
+      // 不需要修改 _currentPlaylist，直接使用 generalPlaymodeTexts
+    } else if (_playMode == 1) {
+      // 播報模式：播放 reporter
+      print('🎙️ 播報模式：準備播放 reporter 文本');
+      print('🎙️ _currentScript 是否為 null: ${_currentScript == null}');
+
+      if (_currentScript != null) {
+        final reporter = _currentScript?['reporter'];
+        print('🎙️ reporter 內容: $reporter');
+        print('🎙️ reporter 類型: ${reporter.runtimeType}');
+        print('🎙️ reporter 是否為空: ${reporter == null || reporter.toString().isEmpty}');
+
+        if (reporter != null && reporter.toString().isNotEmpty) {
+          _currentPlaylist.add(reporter.toString());
+          print('✅ 已添加 reporter 到播放清單');
+        } else {
+          print('⚠️ reporter 為空或 null');
+        }
+      } else {
+        print('⚠️ _currentScript 為 null，無法取得 reporter');
+      }
+
+      print('🎙️ _currentPlaylist 長度: ${_currentPlaylist.length}');
+    } else if (_playMode == 2) {
+      // 對話模式：播放 chat
+      print('🎭 對話模式：準備播放 chat');
+
+      if (_currentScript != null) {
+        final chatList = _currentScript?['chat'] as List?;
+        if (chatList != null && chatList.isNotEmpty) {
+          for (var chat in chatList) {
+            final speaker = chat['speaker'] ?? 'A';
+            final text = chat['text'] ?? '';
+            if (text.isNotEmpty) {
+              _currentPlaylist.add('$speaker:$text');
+            }
+          }
+        }
+      }
+      print('🎭 對話模式：準備播放 ${_currentPlaylist.length} 段對話');
+    }
+  }
+
+  // ========== 新增：播放下一則新聞 ==========
+  Future<void> _playNextNews() async {
+    print('⏭️ 點擊下一則按鈕');
+    print('   _scriptList 長度: ${_scriptList.length}');
+    print('   _currentScriptIndex: $_currentScriptIndex');
+
+    if (_scriptList.isEmpty) {
+      print('⚠️ 沒有新聞串列，嘗試獲取...');
+
+      // 顯示載入狀態
+      setState(() {
+        _isTtsLoading = true;
+      });
+
+      await _fetchScriptData();
+
+      // 檢查是否成功獲取
+      if (_scriptList.isEmpty) {
+        if (mounted) {
+          setState(() {
+            _isTtsLoading = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('無法載入新聞列表，請重試')),
+          );
+        }
+        return;
+      }
+    }
+
+    if (_currentScriptIndex >= _scriptList.length - 1) {
+      print('⚠️ 已經是最後一則新聞');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('已經是最後一則新聞')),
+        );
+      }
+      return;
+    }
+
+    // 停止當前播放
+    await _audioPlayer.stop();
+
+    // 移動到下一則
     setState(() {
-      _isPlayerVisible = true;
-      _isTtsLoading = true; // ========== 開始載入 ==========
+      _currentScriptIndex++;
+      _currentScript = _scriptList[_currentScriptIndex];
+      _isPlaying = false;
+      _isTtsLoading = true;
     });
 
-    if (_selectedAiMode == 1) {
-      await _playGeneralMode();
-    } else if (_selectedAiMode == 2) {
-      await _playReporterMode();
-    } else if (_selectedAiMode == 3) {
+    print('⏭️ 切換到下一則新聞: ${_currentScript?['title']}');
+    print('⏭️ 新聞 ID: ${_currentScript?['newsId']}');
+
+    // 如果是一般模式，需要獲取新新聞的內文
+    if (_playMode == 0) {
+      final nextNewsId = _currentScript?['newsId'];
+      if (nextNewsId != null) {
+        await _fetchNewsBodyById(nextNewsId);
+      }
+    }
+
+    // 準備新的播放清單
+    _preparePlaylist();
+
+    // 開始播放
+    await _startPlayingCurrentMode();
+  }
+
+  Future<void> _startReading() async {
+    if (!mounted) return;
+
+    // ========== 重要：每次點擊播放都要檢查並修正為當前頁面的新聞 ==========
+    final currentPageNewsId = widget.newsData['id'];
+    final playingNewsId = _currentScript?['newsId'];
+
+    print('🎯 檢查新聞 ID:');
+    print('   當前頁面新聞 ID: $currentPageNewsId');
+    print('   播放器新聞 ID: $playingNewsId');
+
+    // 如果播放器的新聞 ID 與當前頁面不同，需要重置
+    if (playingNewsId != currentPageNewsId) {
+      print('⚠️ 新聞 ID 不同，重置播放器...');
+
+      // 重置播放器狀態
+      setState(() {
+        _currentScriptIndex = 0;
+        _currentScript = null;
+        _isPlayerVisible = true;
+        _isTtsLoading = true;
+      });
+
+      // 重新獲取數據
+      await _fetchScriptData();
+
+      // 檢查是否成功獲取數據
+      if (_currentScript == null) {
+        // 如果是一般模式，即使沒有 scriptData 也可以繼續（只是沒有標題）
+        if (_playMode != 0) {
+          if (mounted) {
+            setState(() {
+              _isTtsLoading = false;
+              _isPlayerVisible = false;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('無法載入腳本數據，請稍後再試')),
+            );
+          }
+          return;
+        } else {
+          print('⚠️ 一般模式下無法獲取 scriptData，繼續播放但標題可能不正確');
+        }
+      }
+    } else if (_currentScript == null) {
+      // 如果 _currentScript 為 null，先獲取數據（任何模式都需要以顯示標題）
+      print('📡 _currentScript 為 null，先獲取數據...');
+
+      setState(() {
+        _isPlayerVisible = true;
+        _isTtsLoading = true;
+      });
+
+      await _fetchScriptData();
+
+      // 檢查是否成功獲取數據
+      if (_currentScript == null) {
+        // 如果是一般模式，即使沒有 scriptData 也可以繼續（只是沒有標題）
+        if (_playMode != 0) {
+          if (mounted) {
+            setState(() {
+              _isTtsLoading = false;
+              _isPlayerVisible = false;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('無法載入腳本數據，請稍後再試')),
+            );
+          }
+          return;
+        } else {
+          print('⚠️ 一般模式下無法獲取 scriptData，繼續播放但標題可能不正確');
+        }
+      }
+    } else {
+      print('✅ 新聞 ID 相同，繼續播放');
+    }
+
+    // 準備播放清單
+    _preparePlaylist();
+
+    // 檢查是否有可播放內容
+    if (_playMode == 0) {
+      // 一般模式：檢查 generalPlaymodeTexts
+      if (generalPlaymodeTexts.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('沒有可播放的內容')),
+          );
+        }
+        return;
+      }
+    } else {
+      // 播報和對話模式：檢查 _currentPlaylist
+      if (_currentPlaylist.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('沒有可播放的內容')),
+          );
+        }
+        return;
+      }
+    }
+
+    setState(() {
+      _isPlayerVisible = true;
+      _isTtsLoading = true;
+    });
+
+    await _startPlayingCurrentMode();
+  }
+
+  // ========== 新增：根據當前模式開始播放 ==========
+  Future<void> _startPlayingCurrentMode() async {
+    if (_playMode == 0) {
+      // 一般模式
+      await _playGeneralModeNew();
+    } else if (_playMode == 1) {
+      // 播報模式
+      await _playReporterModeNew();
+    } else if (_playMode == 2) {
       // 對話模式
-      await _playDialogueMode();
+      await _playDialogueModeNew();
     }
   }
 
@@ -539,65 +898,82 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
     }
   }
 
-  Future<void> _playGeneralMode() async {
+  // ========== 新增：取得播放模式名稱 ==========
+  String _getPlayModeName(int mode) {
+    switch (mode) {
+      case 0:
+        return '一般';
+      case 1:
+        return '播報';
+      case 2:
+        return '對話';
+      default:
+        return '一般';
+    }
+  }
+
+  // ========== 修改：一般模式（使用原本的 generalPlaymodeTexts）==========
+  Future<void> _playGeneralModeNew() async {
     if (generalPlaymodeTexts.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('沒有可朗讀的內容')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('沒有可朗讀的內容')),
+        );
       }
       _closePlayer();
       return;
     }
 
+    // 使用原本的方式：將所有文本合併後 TTS
     String fullText = generalPlaymodeTexts.join('\n\n');
-    await _playTextWithTTS(fullText);
+    await _playTextWithTTS(fullText, voiceId: '9lHjugDhwqoxA5MhX0az');
   }
 
-  Future<void> _playReporterMode() async {
-    if (reporterPlaymode.isEmpty) {
+  // ========== 新增：播報模式（使用 reporter）==========
+  Future<void> _playReporterModeNew() async {
+    if (_currentPlaylist.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('播報稿為空')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('播報稿為空')),
+        );
       }
       _closePlayer();
       return;
     }
 
-    await _playTextWithTTS(reporterPlaymode);
+    await _playTextWithTTS(_currentPlaylist[0], voiceId: '9lHjugDhwqoxA5MhX0az');
   }
 
-  // ========== 修改：使用前端快取的TTS播放 ==========
-
-  // ========== 新增：對話模式 - 播放對話列表 ==========
-  Future<void> _playDialogueMode() async {
-    if (dialoguePlaymode.isEmpty) {
+  // ========== 新增：對話模式（使用 chat 的 speaker 區分聲音）==========
+  Future<void> _playDialogueModeNew() async {
+    if (_currentPlaylist.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('對話稿為空')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('對話稿為空')),
+        );
       }
       _closePlayer();
       return;
     }
 
-    // 對話模式需要逐句處理,每句有不同的voiceId
-    await _playDialogueSequence();
+    await _playDialogueSequenceNew();
   }
 
-  // ========== 新增：播放對話序列 ==========
-  Future<void> _playDialogueSequence() async {
+  // 對話模式的當前播放索引
+  int _dialoguePlayIndex = 0;
+  List<String> _dialogueAudioPaths = [];
+
+  // ========== 新增：播放對話序列（新版 - 逐個播放）==========
+  Future<void> _playDialogueSequenceNew() async {
     try {
-      print('🎭 開始播放對話模式,共 ${dialoguePlaymode.length} 句');
+      print('🎭 開始播放對話模式，共 ${_currentPlaylist.length} 句');
 
-      // 檢查或生成所有對話片段的快取
-      List<String> audioFilePaths = [];
+      _dialogueAudioPaths = [];
+      _dialoguePlayIndex = 0;
 
-      for (int i = 0; i < dialoguePlaymode.length; i++) {
-        final dialogue = dialoguePlaymode[i];
+      for (int i = 0; i < _currentPlaylist.length; i++) {
+        final dialogue = _currentPlaylist[i];
 
-        // 解析對話 "A:文本" 或 "B:文本"
         if (!dialogue.contains(':')) {
           print('❌ 格式錯誤: $dialogue');
           continue;
@@ -612,21 +988,19 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
         // 選擇對應的 voiceId
         final voiceId = (speaker == 'A') ? voiceA : voiceB;
 
-        // 生成快取鍵值 (包含索引確保順序)
-        final newsId = widget.newsData['id'];
-        final cacheKey = 'tts_${newsId}_dialogue_${i}_${speaker}';
+        // 生成快取鍵值
+        final newsId = _currentScript?['newsId'] ?? widget.newsData['id'];
+        final cacheKey = 'tts_${newsId}_dialogue_${i}_$speaker';
 
         // 檢查快取
         final cachedPath = await _getCachedAudio(cacheKey);
 
         if (cachedPath != null) {
           print('✅ 使用快取[$i]: $speaker');
-          audioFilePaths.add(cachedPath);
+          _dialogueAudioPaths.add(cachedPath);
         } else {
           // 調用TTS API
-          print(
-            '📡 生成音訊[$i]: $speaker - ${text.substring(0, text.length > 20 ? 20 : text.length)}...',
-          );
+          print('📡 生成音訊[$i]: $speaker - ${text.substring(0, text.length > 20 ? 20 : text.length)}...');
 
           final response = await http.post(
             Uri.parse('${Config.apiBaseUrl}/tts'),
@@ -642,7 +1016,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
           if (response.statusCode == 200) {
             final bytes = response.bodyBytes;
             final savedPath = await _saveAudioToCache(cacheKey, bytes);
-            audioFilePaths.add(savedPath);
+            _dialogueAudioPaths.add(savedPath);
             print('💾 已儲存快取[$i]: $savedPath');
           } else {
             print('❌ TTS API 錯誤[$i]: ${response.statusCode}');
@@ -651,9 +1025,11 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
         }
       }
 
-      // 合併所有音訊檔案
-      if (audioFilePaths.isNotEmpty) {
-        await _playMergedDialogue(audioFilePaths);
+      print('🎵 準備播放 ${_dialogueAudioPaths.length} 段對話');
+
+      // 開始播放第一段
+      if (_dialogueAudioPaths.isNotEmpty) {
+        await _playNextDialogue();
       } else {
         throw Exception('沒有可播放的音訊');
       }
@@ -664,60 +1040,58 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
         _isTtsLoading = false;
       });
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('對話播放錯誤: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('對話播放錯誤: $e')),
+        );
       }
       _closePlayer();
     }
   }
 
-  // ========== 新增：合併並播放對話音訊 ==========
-  Future<void> _playMergedDialogue(List<String> audioFilePaths) async {
+  // ========== 新增：播放下一段對話 ==========
+  Future<void> _playNextDialogue() async {
+    if (_dialoguePlayIndex >= _dialogueAudioPaths.length) {
+      print('✅ 對話播放完成');
+      if (!mounted) return;
+      setState(() {
+        _isPlaying = false;
+        _isTtsLoading = false;
+      });
+      return;
+    }
+
     try {
-      print('🎵 準備播放 ${audioFilePaths.length} 段對話');
+      final audioPath = _dialogueAudioPaths[_dialoguePlayIndex];
+      print('🎵 播放對話[$_dialoguePlayIndex]: $audioPath');
 
-      // 讀取所有音訊bytes
-      List<int> mergedBytes = [];
-      for (final path in audioFilePaths) {
-        final file = File(path);
-        final bytes = await file.readAsBytes();
-        mergedBytes.addAll(bytes);
-      }
-
-      // 轉換為 base64 data URL
-      final String base64Audio = base64Encode(Uint8List.fromList(mergedBytes));
-      final String dataUrl = 'data:audio/mpeg;base64,$base64Audio';
-
-      print('🔄 對話總長度: ${mergedBytes.length} bytes');
-
-      // 播放
       await _audioPlayer.stop();
       await _audioPlayer.setPlaybackRate(_playbackSpeed);
-      await _audioPlayer.play(UrlSource(dataUrl));
+      await _audioPlayer.play(DeviceFileSource(audioPath));
 
       if (!mounted) return;
       setState(() {
         _isPlaying = true;
         _isTtsLoading = false;
       });
-
-      print('🎭 正在播放對話模式');
     } catch (e) {
-      print('❌ 合併播放錯誤: $e');
-      throw e;
+      print('❌ 播放對話錯誤: $e');
+      // 嘗試播放下一段
+      _dialoguePlayIndex++;
+      await _playNextDialogue();
     }
   }
 
-  Future<void> _playTextWithTTS(String text) async {
+  Future<void> _playTextWithTTS(String text, {String? voiceId}) async {
     try {
       print(
         '🎵 準備播放文本: ${text.substring(0, text.length > 50 ? 50 : text.length)}...',
       );
 
+      final useVoiceId = voiceId ?? '9lHjugDhwqoxA5MhX0az';
+
       // ========== 前端快取系統 ==========
-      final newsId = widget.newsData['id'];
-      final cacheKey = 'tts_${newsId}_mode${_selectedAiMode}';
+      final newsId = _currentScript?['newsId'] ?? widget.newsData['id'];
+      final cacheKey = 'tts_${newsId}_mode${_playMode}_${useVoiceId}';
 
       // 1. 檢查本地快取
       final cachedAudioPath = await _getCachedAudio(cacheKey);
@@ -735,7 +1109,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'text': text,
-          'voiceId': '9lHjugDhwqoxA5MhX0az',
+          'voiceId': useVoiceId,
           'stability': 0.5,
           'similarity_boost': 0.75,
         }),
@@ -824,9 +1198,9 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
 
   // ========== 新增：儲存音訊到快取 ==========
   Future<String> _saveAudioToCache(
-    String cacheKey,
-    Uint8List audioBytes,
-  ) async {
+      String cacheKey,
+      Uint8List audioBytes,
+      ) async {
     final cachePath = await _getCacheDirectory();
     final file = File('$cachePath/$cacheKey.mp3');
 
@@ -890,6 +1264,18 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
 
   void _onAudioComplete() {
     print('✅ 播放完成');
+
+    // 如果是對話模式，播放下一段
+    if (_playMode == 2 && _dialogueAudioPaths.isNotEmpty) {
+      _dialoguePlayIndex++;
+      if (_dialoguePlayIndex < _dialogueAudioPaths.length) {
+        print('⏭️ 自動播放下一段對話');
+        _playNextDialogue();
+        return;
+      }
+    }
+
+    // 其他模式或對話播放完成，關閉播放器
     _closePlayer();
   }
 
@@ -988,13 +1374,13 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                 MaterialPageRoute(
                   builder:
                       (context) => ChannelDetailPage(
-                        channelId: widget.newsData['channel_id'] ?? 1,
-                        channelName:
-                            _newsDetail?['channel_name'] ??
-                            widget.newsData['channel'] ??
-                            '新聞台',
-                        channelDescription: null,
-                      ),
+                    channelId: widget.newsData['channel_id'] ?? 1,
+                    channelName:
+                    _newsDetail?['channel_name'] ??
+                        widget.newsData['channel'] ??
+                        '新聞台',
+                    channelDescription: null,
+                  ),
                 ),
               );
             },
@@ -1265,23 +1651,23 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
           ],
         ),
         child:
-            showLabel
-                ? Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(icon, size: 24, color: Colors.black87),
-                    const SizedBox(height: 2),
-                    Text(
-                      label,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Colors.black87,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                )
-                : Icon(icon, size: 24, color: Colors.black87),
+        showLabel
+            ? Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 24, color: Colors.black87),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 11,
+                color: Colors.black87,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        )
+            : Icon(icon, size: 24, color: Colors.black87),
       ),
     );
   }
@@ -1381,7 +1767,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                       Text(
                         _isTtsLoading
                             ? '載入中...'
-                            : '${_getModeName(_selectedAiMode)}朗讀',
+                            : '${_getPlayModeName(_playMode)}朗讀',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
@@ -1392,7 +1778,8 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    _newsDetail?['news_title'] ??
+                    _currentScript?['title'] ??
+                        _newsDetail?['news_title'] ??
                         widget.newsData['title'] ??
                         '無標題',
                     style: const TextStyle(fontSize: 12, color: Colors.black87),
@@ -1406,14 +1793,52 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // 模式切換按鈕
                 GestureDetector(
                   onTap:
-                      _isTtsLoading
-                          ? null
-                          : () {
-                            int nextMode = (_selectedAiMode % 3) + 1;
-                            _switchAiMode(nextMode);
-                          },
+                  _isTtsLoading
+                      ? null
+                      : () async {
+                    // 切換模式
+                    final oldMode = _playMode;
+                    setState(() {
+                      _playMode = (_playMode + 1) % 3; // 0 -> 1 -> 2 -> 0
+                    });
+                    print('🔄 切換播放模式: ${_getPlayModeName(_playMode)}');
+
+                    // 停止當前音訊播放（但不關閉播放器）
+                    await _audioPlayer.stop();
+                    setState(() {
+                      _isPlaying = false;
+                      _isTtsLoading = true;
+                    });
+
+                    // 如果切換到播報或對話模式，且 _currentScript 為 null，先獲取數據
+                    if ((_playMode == 1 || _playMode == 2) && _currentScript == null) {
+                      print('📡 需要腳本數據，先獲取...');
+                      await _fetchScriptData();
+
+                      // 檢查是否成功獲取數據
+                      if (_currentScript == null) {
+                        if (mounted) {
+                          setState(() {
+                            _isTtsLoading = false;
+                            _playMode = oldMode; // 恢復原模式
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('無法載入腳本數據，請稍後再試')),
+                          );
+                        }
+                        return;
+                      }
+                    }
+
+                    // 重新準備播放清單
+                    _preparePlaylist();
+
+                    // 開始播放新模式
+                    await _startPlayingCurrentMode();
+                  },
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8,
@@ -1427,7 +1852,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
-                      _getModeName(_selectedAiMode),
+                      _getPlayModeName(_playMode),
                       style: TextStyle(
                         fontSize: 12,
                         color: _isTtsLoading ? Colors.grey : Colors.blue[700],
@@ -1439,18 +1864,90 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
 
                 const SizedBox(width: 8),
 
+                // 內文跳轉按鈕
                 IconButton(
                   onPressed:
-                      _isTtsLoading
-                          ? null
-                          : () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('內文跳轉功能開發中'),
-                                duration: Duration(seconds: 1),
+                  _isTtsLoading
+                      ? null
+                      : () async {
+                    // 取得當前播放中的新聞ID
+                    final currentNewsId = _currentScript?['newsId'] ?? widget.newsData['id'];
+
+                    print('📰 跳轉到新聞ID: $currentNewsId');
+
+                    // 停止播放
+                    await _audioPlayer.stop();
+                    setState(() {
+                      _isPlayerVisible = false;
+                      _isPlaying = false;
+                    });
+
+                    // 導航到該新聞的內頁
+                    if (mounted) {
+                      // 如果當前新聞ID與widget的新聞ID相同，不需要跳轉
+                      if (currentNewsId == widget.newsData['id']) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('已經在此新聞頁面'),
+                            duration: Duration(seconds: 1),
+                          ),
+                        );
+                      } else {
+                        // 需要跳轉到新的新聞頁面
+                        // 先找到對應的新聞資料
+                        Map<String, dynamic>? targetNewsData;
+
+                        // 從 scriptList 中尋找
+                        if (_scriptList.isNotEmpty) {
+                          for (var script in _scriptList) {
+                            if (script['newsId'] == currentNewsId) {
+                              // 構建新聞資料
+                              targetNewsData = {
+                                'id': script['newsId'],
+                                'title': script['title'],
+                                // 保留其他必要欄位
+                                'channel': widget.newsData['channel'],
+                                'channel_id': widget.newsData['channel_id'],
+                              };
+                              break;
+                            }
+                          }
+                        }
+
+                        if (targetNewsData != null) {
+                          // 重新構建 newsIdList，讓目標新聞 ID 在第一位
+                          List<int> newIdList = [currentNewsId];
+                          for (var id in _newsIdList) {
+                            if (id != currentNewsId) {
+                              newIdList.add(id);
+                            }
+                          }
+
+                          print('📋 重新構建 newsIdList:');
+                          print('   舊順序: $_newsIdList');
+                          print('   新順序: $newIdList');
+
+                          // 替換當前頁面，傳遞重新排序的 newsIdList
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ViewNewsContent(
+                                newsData: targetNewsData!,
+                                newsIdList: newIdList,
                               ),
-                            );
-                          },
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('找不到對應的新聞資料'),
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
+                        }
+                      }
+                    }
+                  },
                   icon: Icon(
                     Icons.article_outlined,
                     color: _isTtsLoading ? Colors.grey : Colors.black87,
@@ -1458,6 +1955,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                   iconSize: 24,
                 ),
 
+                // 倍速按鈕
                 GestureDetector(
                   onTap: _isTtsLoading ? null : _adjustPlaybackSpeed,
                   child: Container(
@@ -1483,6 +1981,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
 
                 const SizedBox(width: 8),
 
+                // 播放/暫停按鈕
                 IconButton(
                   onPressed: _isTtsLoading ? null : _togglePlayPause,
                   icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow),
@@ -1490,18 +1989,9 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                   color: _isTtsLoading ? Colors.grey : Colors.black87,
                 ),
 
+                // 下一則按鈕
                 IconButton(
-                  onPressed:
-                      _isTtsLoading
-                          ? null
-                          : () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('下一篇功能開發中'),
-                                duration: Duration(seconds: 1),
-                              ),
-                            );
-                          },
+                  onPressed: _isTtsLoading ? null : _playNextNews,
                   icon: Icon(
                     Icons.skip_next,
                     color: _isTtsLoading ? Colors.grey : Colors.black87,
@@ -1509,6 +1999,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                   iconSize: 24,
                 ),
 
+                // 關閉按鈕
                 IconButton(
                   onPressed: _closePlayer,
                   icon: const Icon(Icons.close),
@@ -1590,47 +2081,47 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                 // 留言列表
                 Expanded(
                   child:
-                      _isLoadingComments
-                          ? const Center(child: CircularProgressIndicator())
-                          : _comments.isEmpty
-                          ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.comment_outlined,
-                                  size: 64,
-                                  color: Colors.grey[400],
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  '還沒有留言',
-                                  style: TextStyle(
-                                    color: Colors.grey[600],
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  '成為第一個留言的人吧！',
-                                  style: TextStyle(
-                                    color: Colors.grey[500],
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                          : ListView.separated(
-                            padding: const EdgeInsets.all(16),
-                            itemCount: _comments.length,
-                            separatorBuilder:
-                                (context, index) => const SizedBox(height: 16),
-                            itemBuilder: (context, index) {
-                              final comment = _comments[index];
-                              return _buildCommentItem(comment);
-                            },
+                  _isLoadingComments
+                      ? const Center(child: CircularProgressIndicator())
+                      : _comments.isEmpty
+                      ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.comment_outlined,
+                          size: 64,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          '還沒有留言',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 16,
                           ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '成為第一個留言的人吧！',
+                          style: TextStyle(
+                            color: Colors.grey[500],
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                      : ListView.separated(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _comments.length,
+                    separatorBuilder:
+                        (context, index) => const SizedBox(height: 16),
+                    itemBuilder: (context, index) {
+                      final comment = _comments[index];
+                      return _buildCommentItem(comment);
+                    },
+                  ),
                 ),
                 // 留言輸入框
                 _buildCommentInput(),
