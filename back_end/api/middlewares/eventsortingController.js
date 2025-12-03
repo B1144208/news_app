@@ -32,6 +32,7 @@ async function searchEventsorting (req, res, next) {
             ON ed.eventsorting_id = eh.eventsorting_id
         LEFT JOIN eventsorting_vertical ev
             ON ed.eventsorting_id = ev.eventsorting_id
+        WHERE 1
         
     `;
     let params = [];
