@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 // 引入 TTS controller
-const { textToSpeech, getVoices } = require('../middlewares/ttsController');
+const { textToSpeech, getVoices, saveQuickPlay } = require('../middlewares/ttsController');
 
 /**
  * POST /api/tts
