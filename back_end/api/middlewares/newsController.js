@@ -115,7 +115,7 @@ async function searchNews(req, res, next) {
             SELECT nd.news_id
             FROM news_data nd
             JOIN news_group ng USING (news_id)
-            WHERE ng.group_${groupType}_id = ?
+            WHERE ng.group_${groupType}_id = ? AND is_chinese=1
         `;
         params = [groupId];
     }
@@ -165,7 +165,7 @@ async function searchNews(req, res, next) {
                 SELECT nd.news_id
                 FROM news_data nd
                 JOIN news_location nl USING (news_id)
-                WHERE ${whereClause}
+                WHERE ${whereClause}  AND is_chinese=1
                 ORDER BY nd.news_date DESC
             `;
         }
