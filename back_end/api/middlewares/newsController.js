@@ -58,11 +58,11 @@ async function searchNews(req, res, next) {
     else if ( groupId && groupType ) searchMode = "group";
     else if ( locationId && locationType) searchMode = "location";
     else if ( channel_id ) searchMode = "channel";
-    
+
     let idList = [];
     let sql = null;
     let params = [];
-    
+
     // 1. 統一查詢 idList
     // general : 直接查找 [ news 主頁 ]
     if ( searchMode == "general" ) {
@@ -72,7 +72,7 @@ async function searchNews(req, res, next) {
             WHERE 1
         `;
         params = [];
-        
+
     }
     // id : 直接查找 id
     if ( searchMode == "id" ) {
@@ -104,7 +104,7 @@ async function searchNews(req, res, next) {
             GROUP BY nd.news_id
             HAVING score > 0
             ORDER BY score DESC, MAX(nd.news_date) DESC
-            
+
         `;
         params = keyword.flatMap(k => {
             const v = `%${k}%`;
@@ -121,16 +121,55 @@ async function searchNews(req, res, next) {
         `;
         params = [groupId];
     }
-    // location : 查找 news_location
-    if ( searchMode == "location" ) {
-        sql = `
-            SELECT nd.news_id
-            FROM news_data nd
-            JOIN news_location nl USING (news_id)
-            WHERE nl.location_${locationType}_id = ?
-        `;
-        params = [locationId];
-    }
+    // 🚨 location : 查找 news_location (單一 ID 級聯查詢) - 基於地理層級的修正
+        if ( searchMode == "location" ) {
+            let whereClause = '';
+
+            if (locationType === 'region') {
+                // 查 Region (R1) 抓 {R1, R1下的所有 Country (C), R1下的所有 State (S)}
+                whereClause = `
+                    nl.location_region_id = ?
+                    OR nl.location_country_id IN (
+                        SELECT country_id FROM location_countries WHERE region_id = ?
+                    )
+                    OR nl.location_state_id IN (
+                        SELECT state_id FROM location_states WHERE country_id IN (
+                            SELECT country_id FROM location_countries WHERE region_id = ?
+                        )
+                    )
+                `;
+                // 需要傳入 locationId 三次
+                params = [locationId, locationId, locationId];
+            } else if (locationType === 'country') {
+                // 查 Country (C1) 抓 {C1, C1下的所有 State (S)}
+                whereClause = `
+                    nl.location_country_id = ?
+                    OR nl.location_state_id IN (
+                        SELECT state_id FROM location_states WHERE country_id = ?
+                    )
+                `;
+                // 需要傳入 locationId 兩次
+                params = [locationId, locationId];
+            } else if (locationType === 'state') {
+                // 查 State (S1) 只抓 {S1}
+                whereClause = `
+                    nl.location_state_id = ?
+                `;
+                // 需要傳入 locationId 一次
+                params = [locationId];
+            } else {
+                // 處理未定義的 locationType 情況 (保留原有邏輯)
+                whereClause = `nl.location_${locationType}_id = ?`;
+                params = [locationId];
+            }
+
+            sql = `
+                SELECT nd.news_id
+                FROM news_data nd
+                JOIN news_location nl USING (news_id)
+                WHERE ${whereClause}
+            `;
+        }
     // channel : 查找指定頻道的新聞
     if ( searchMode == "channel" ) {
         sql = `
@@ -167,12 +206,12 @@ async function searchNews(req, res, next) {
     if ( mode == "id" ) return res.apiSuccess({idList: idList}, "Search Success");
 
     // 2. 選擇 simple / complex , 用 idLList 查詢
-    
+
     // SIMPLE
     let simpleList = [];
     const ph = idList.map(() => '?').join(',');
     sql = `
-        SELECT 
+        SELECT
             nd.news_id   AS newsId,
             cd.channel_name AS channelName,
             id.image_origin_url AS coverImageUrl,
@@ -189,7 +228,7 @@ async function searchNews(req, res, next) {
     `;
     params = [...idList, ...idList];
     //params.push(idList);
-    
+
     // ORDER
     //if ( searchMode=="id" && ORDER_SQL ) sql += ( ORDER_SQL + '\n' );
 
@@ -205,10 +244,10 @@ async function searchNews(req, res, next) {
 
     // COMPLEX
     let complexList = simpleList;
-    
+
     // news_body
     sql = `
-        SELECT 
+        SELECT
             nb.news_id,
             nb.body_type,
             nb.body_text,
@@ -237,7 +276,7 @@ async function searchNews(req, res, next) {
 
     // news_location
     sql = `
-        SELECT 
+        SELECT
             nl.news_id,
             nl.location_region_id,
             lr.region_name_en AS region_name_en,
@@ -873,7 +912,7 @@ async function deleteNews(req, res, next) {
     } catch (err) {
         return next(err);
     }
-    
+
     if ( !news_id ) return res.apiSuccess({}, "Delete Success");
 
     // 已生成 news_id, 找 image_id 跟 relation_id
@@ -917,8 +956,8 @@ async function deleteNews(req, res, next) {
     }
 
     sql = `
-        DELETE FROM 
-            news_data 
+        DELETE FROM
+            news_data
         WHERE news_id = ?
     `;
     params = [ news_id ]
@@ -941,7 +980,7 @@ async function deleteNews(req, res, next) {
     } catch (err) {
         return next(err);
     }
-    
+
     return res.apiSuccess({}, "Delete Success");
 }
 

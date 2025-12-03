@@ -6,23 +6,72 @@ const { locationSearch } = require('../utils/stringHelper');
 // search
 async function searchLocation (req, res, next) {
 
-    let {name, type} = req.query?? {}
+    let {name, type, aggregationId, aggregationType} = req.query?? {} // 💡 1. 於 query 參數新增聚合參數
 
     // 檢查必要欄位 & 格式
     try {
-        [ name, type ] = await checkRequireField ([
+        [ name, type, aggregationId, aggregationType ] = await checkRequireField ([
             { field: 'name' , data: name , type: 'string' },
-            { field: 'type' , data: type , type: 'string', enum: ["regions", "countries", "states"] }
+            { field: 'type' , data: type , type: 'string', enum: ["regions", "countries", "states"] },
+            { field: 'aggregationId' , data: aggregationId , type: 'number' },
+            { field: 'aggregationType' , data: aggregationType , type: 'string', enum: ["region", "country"] }
         ], "middlewares-searchLocation()");
     } catch (err) {
         return next(err)
     }
-    
+
+    // 💡 2. 新增 location aggregation search 模式
+    // 讓前端可以透過 /location?aggregationId=...&aggregationType=... 來取得所有相關 ID 列表
+    if ( aggregationId && aggregationType ) {
+        let sql = `
+            SELECT
+                LR.region_id,
+                LC.country_id,
+                LS.state_id
+            FROM location_regions AS LR
+            NATURAL JOIN location_countries AS LC
+            NATURAL JOIN location_states AS LS
+            WHERE 1
+        `;
+        let params = [];
+
+        // 根據 aggregationType 篩選，選出所有相關 R-C-S 組合
+        if (aggregationType === 'region') {
+            sql += ` AND LR.region_id = ? `;
+            params.push(aggregationId);
+        } else if (aggregationType === 'country') {
+            sql += ` AND LC.country_id = ? `;
+            params.push(aggregationId);
+        } else {
+            return res.apiSuccess([], "Aggregation Success (Unsupported Type)")
+        }
+
+        try {
+            let [result] = await pool.query(sql, params);
+
+            // 使用 Set 確保 ID 不重複
+            let aggregatedIds = new Set();
+
+            result.forEach(row => {
+                // 將所有相關的 ID 納入集合，Set 會自動去重
+                if (row.region_id) aggregatedIds.add(row.region_id);
+                if (row.country_id) aggregatedIds.add(row.country_id);
+                if (row.state_id) aggregatedIds.add(row.state_id);
+            });
+
+            // 回傳所有相關的 ID 列表 (例如 [1, 10, 101, 102, ...])
+            return res.apiSuccess(Array.from(aggregatedIds), "Aggregation Success");
+
+        } catch (err){
+            err.desc = 'middlewares-searchLocation(): database search error (aggregation search)'
+            return next(err)
+        }
+    }
+
     // general search
     if ( !name && !type ) {
         let sql = `
-            SELECT * 
-            FROM location_regions
+            SELECT * FROM location_regions
             NATURAL JOIN location_countries
             NATURAL JOIN location_states
             WHERE 1
