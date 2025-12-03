@@ -176,6 +176,18 @@ async function getScript(req, res, next) {
     console.log(idList);
     console.log(typeof(idList));
 
+    if (typeof idList === 'string') {
+    try {
+        idList = JSON.parse(idList);   // 變成真正的陣列
+      } catch (e) {
+        // parse 失敗再看情況處理
+      }
+    }
+
+    console.log(idList);
+    console.log(typeof(idList));
+
+
     if (!Array.isArray(idList) || !idList.length) {
       return res.status(400).json({
         ok: false,
