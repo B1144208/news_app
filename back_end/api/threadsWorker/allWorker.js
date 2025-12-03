@@ -26,7 +26,7 @@ async function fetchPendingNewsIds(LIMIT) {
     JOIN news_data AS nd
       ON nd.news_id = nt.news_id
     ORDER BY
-      nd.publish_date DESC
+      nd.news_date DESC
     LIMIT ?;
   `;
 
