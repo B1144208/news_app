@@ -353,7 +353,7 @@ async function insertNewsTranslateForOneNews(originalNewsId, translate) {
         alt: null     // 你指定 alt = null
       },
       title: translate.title,       // 中文標題
-      publish_date: original.publishDate? String(original.publishDate).slice(0, 10): null,
+      publish_date: original.publishDate? `${String(original.publishDate).slice(0, 10)} 00:00:00`: null,
       detail: translate.content     // 中文內文
     };
     console.log("4. 情況二 : translate.content : \n ", JSON.stringify(translate.content, null, 2))
