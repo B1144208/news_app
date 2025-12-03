@@ -15,6 +15,10 @@ import 'SignupPage.dart'; // 新增
 import 'AdminPage.dart'; // 新增
 import 'MemberCenterPage.dart'; // 新增
 
+// 🟢 新增：SharedPreferences 快取鍵
+const String _kCacheEventsortingList = 'CACHE_EVENTSORTING_LIST';
+const String _kCacheMultiplePerspectivesList = 'CACHE_MULTIPLE_PERSPECTIVES_LIST';
+
 class AIPage extends StatefulWidget {
   const AIPage({super.key});
 
@@ -25,9 +29,11 @@ class AIPage extends StatefulWidget {
 class _AIPageState extends State<AIPage> {
   int? _currentUserId;
 
-  // 🟢 新增靜態快取：用於儲存列表資料
+  // 🟢 保留靜態 in-memory 快取 (用於應用程式運行時的快速存取)
   static List<dynamic>? _eventsortingCache;
   static List<dynamic>? _multiplePerspectivesCache;
+  // 🟢 新增 SharedPreferences Future
+  late Future<SharedPreferences> _prefsFuture;
 
   // true: 事件整理, false: 多方看法
   bool _isEventSortingMode = true;
@@ -57,11 +63,14 @@ class _AIPageState extends State<AIPage> {
   Map<int, int?> _multiplePerspectivesBookmarkIdStatus = {};
 
   // 後端 API 基礎 URL
-  final String _baseUrl = baseUrl;
+  final String _baseUrl = baseUrl; // 假設這個變量已在 config.dart 中定義
 
   @override
   void initState() {
     super.initState();
+    // 🟢 初始化 SharedPreferences Future
+    _prefsFuture = SharedPreferences.getInstance();
+
     // 🌟 修正點 3：將所有初始化邏輯放在一個 Future 中 🌟
     _loadingFuture = _loadUserId().then((_) {
       return _fetchData();
@@ -148,15 +157,23 @@ class _AIPageState extends State<AIPage> {
     };
   }
 
-  // 🟢 新增：清除所有列表快取
-  void _clearAllCache() {
+  // 🟢 修改 _clearAllCache：同時清除 in-memory 和 persistent 快取
+  void _clearAllCache() async {
+    // 1. 清除 in-memory 快取
     _eventsortingCache = null;
     _multiplePerspectivesCache = null;
-    // 快取清除後，重設狀態變量以便下次 _fetchData 時進行網路請求
+
+    // 2. 清除 persistent 快取
+    final prefs = await _prefsFuture;
+    await prefs.remove(_kCacheEventsortingList);
+    await prefs.remove(_kCacheMultiplePerspectivesList);
+
+    // 3. 清除當前狀態列表
     _eventsortingList = [];
     _multiplePerspectivesList = [];
     _filteredEventsortingList = [];
     _filteredMultiplePerspectivesList = [];
+    print('🚨 All list caches (in-memory & persistent) cleared.');
   }
 
   // 🌟 修正點 4：統一載入數據和收藏狀態 🌟
@@ -204,14 +221,8 @@ class _AIPageState extends State<AIPage> {
     }
   }
 
-  // 搜尋事件整理資料 (邏輯不變)
+  // 搜尋事件整理資料 (包含 combined cache 邏輯)
   Future<List<dynamic>> _searchEventsorting({int? id}) async {
-    // 🟢 1. 檢查快取：如果沒有 id 參數 (即列表頁載入)，並且快取有資料
-    if (id == null && _eventsortingCache != null) {
-      print('✅ Cache hit for eventsorting list');
-      return _eventsortingCache!;
-    }
-
     final Map<String, dynamic> queryParams = {};
     if (id != null) {
       queryParams['id'] = id.toString();
@@ -220,17 +231,59 @@ class _AIPageState extends State<AIPage> {
       '$_baseUrl/EventSorting',
     ).replace(queryParameters: queryParams);
 
+    // 1. 處理單個 ID 查詢 (不使用快取)
+    if (id != null) {
+      try {
+        final response = await http.get(uri);
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          return data['data'] ?? [];
+        } else {
+          throw Exception(
+            'Failed to load single eventsorting data: Status Code ${response.statusCode}',
+          );
+        }
+      } catch (e) {
+        throw Exception('Failed to connect to single eventsorting API: $e');
+      }
+    }
+
+    // 2. 列表查詢 (優先使用 in-memory 快取)
+    if (_eventsortingCache != null) {
+      print('✅ In-memory Cache hit for eventsorting list');
+      return _eventsortingCache!;
+    }
+
+    // 3. in-memory 快取未命中，檢查 Persistent 快取
+    final prefs = await _prefsFuture;
+    final cachedJson = prefs.getString(_kCacheEventsortingList);
+    if (cachedJson != null && cachedJson.isNotEmpty) {
+      try {
+        final cachedList = json.decode(cachedJson) as List<dynamic>;
+        // 載入到 in-memory 快取
+        _eventsortingCache = cachedList;
+        print('✅ Persistent Cache hit & loaded eventsorting list');
+        return cachedList;
+      } catch (e) {
+        print('Error decoding cached eventsorting data: $e. Clearing cache.');
+        await prefs.remove(_kCacheEventsortingList); // 清除無效快取
+      }
+    }
+
+    // 4. 快取皆未命中，進行網路請求
     try {
       final response = await http.get(uri);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        final List<dynamic> resultList = data['data'] ?? [];
 
-        // 🟢 2. 網路請求成功後，存入快取
-        if (id == null) {
-          _eventsortingCache = data['data'];
-        }
+        // 5. 網路請求成功後，存入 in-memory 和 Persistent 快取
+        _eventsortingCache = resultList;
+        final jsonToCache = json.encode(resultList);
+        await prefs.setString(_kCacheEventsortingList, jsonToCache);
+        print('💾 Saved eventsorting list to combined caches');
 
-        return data['data'];
+        return resultList;
       } else {
         throw Exception(
           'Failed to load eventsorting data: Status Code ${response.statusCode}',
@@ -241,14 +294,8 @@ class _AIPageState extends State<AIPage> {
     }
   }
 
-  // 搜尋多方看法資料 (邏輯不變)
+  // 搜尋多方看法資料 (包含 combined cache 邏輯)
   Future<List<dynamic>> _searchMultipleperspectives({int? id}) async {
-    // 🟢 1. 檢查快取：如果沒有 id 參數 (即列表頁載入)，並且快取有資料
-    if (id == null && _multiplePerspectivesCache != null) {
-      print('✅ Cache hit for multipleperspectives list');
-      return _multiplePerspectivesCache!;
-    }
-
     final Map<String, dynamic> queryParams = {};
     if (id != null) {
       queryParams['id'] = id.toString();
@@ -257,17 +304,59 @@ class _AIPageState extends State<AIPage> {
       '$_baseUrl/MultiplePerspectives',
     ).replace(queryParameters: queryParams);
 
+    // 1. 處理單個 ID 查詢 (不使用快取)
+    if (id != null) {
+      try {
+        final response = await http.get(uri);
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          return data['data'] ?? [];
+        } else {
+          throw Exception(
+            'Failed to load single multipleperspectives data: Status Code ${response.statusCode}',
+          );
+        }
+      } catch (e) {
+        throw Exception('Failed to connect to single multipleperspectives API: $e');
+      }
+    }
+
+    // 2. 列表查詢 (優先使用 in-memory 快取)
+    if (_multiplePerspectivesCache != null) {
+      print('✅ In-memory Cache hit for multipleperspectives list');
+      return _multiplePerspectivesCache!;
+    }
+
+    // 3. in-memory 快取未命中，檢查 Persistent 快取
+    final prefs = await _prefsFuture;
+    final cachedJson = prefs.getString(_kCacheMultiplePerspectivesList);
+    if (cachedJson != null && cachedJson.isNotEmpty) {
+      try {
+        final cachedList = json.decode(cachedJson) as List<dynamic>;
+        // 載入到 in-memory 快取
+        _multiplePerspectivesCache = cachedList;
+        print('✅ Persistent Cache hit & loaded multipleperspectives list');
+        return cachedList;
+      } catch (e) {
+        print('Error decoding cached multipleperspectives data: $e. Clearing cache.');
+        await prefs.remove(_kCacheMultiplePerspectivesList); // 清除無效快取
+      }
+    }
+
+    // 4. 快取皆未命中，進行網路請求
     try {
       final response = await http.get(uri);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        final List<dynamic> resultList = data['data'] ?? [];
 
-        // 🟢 2. 網路請求成功後，存入快取
-        if (id == null) {
-          _multiplePerspectivesCache = data['data'];
-        }
+        // 5. 網路請求成功後，存入 in-memory 和 Persistent 快取
+        _multiplePerspectivesCache = resultList;
+        final jsonToCache = json.encode(resultList);
+        await prefs.setString(_kCacheMultiplePerspectivesList, jsonToCache);
+        print('💾 Saved multipleperspectives list to combined caches');
 
-        return data['data'];
+        return resultList;
       } else {
         throw Exception(
           'Failed to load multipleperspectives data: Status Code ${response.statusCode}',
@@ -358,9 +447,7 @@ class _AIPageState extends State<AIPage> {
 
     final isEventsorting = dataType == 'eventsorting';
     final statusMap =
-    isEventsorting
-        ? _bookmarkIdStatus
-        : _multiplePerspectivesBookmarkIdStatus;
+    isEventsorting ? _bookmarkIdStatus : _multiplePerspectivesBookmarkIdStatus;
 
     // 檢查是否已收藏，並取出 bookmark_id
     final bookmarkId = statusMap[dataId];
@@ -444,7 +531,8 @@ class _AIPageState extends State<AIPage> {
                         ).then((_) {
                           // 登入後，強制清除快取並刷新頁面
                           setState(() {
-                            _loadingFuture = _loadUserId().then((__) => _fetchData(shouldClearCache: true));
+                            _loadingFuture =
+                                _loadUserId().then((__) => _fetchData(shouldClearCache: true));
                           });
                         });
                       },
@@ -463,37 +551,6 @@ class _AIPageState extends State<AIPage> {
                       ),
                       child: const Text('登入', style: TextStyle(fontSize: 12)),
                     ),
-                    // 移除註冊按鈕
-                    // const SizedBox(width: 8),
-                    // ElevatedButton(
-                    //   onPressed: () {
-                    //     Navigator.push(
-                    //       context,
-                    //       MaterialPageRoute(
-                    //         builder: (context) => const SignupPage(),
-                    //       ),
-                    //     ).then((_) {
-                    //       // 註冊後刷新頁面
-                    //       setState(() {
-                    //         _loadUserId().then((__) => _fetchData());
-                    //       });
-                    //     });
-                    //   },
-                    //   style: ElevatedButton.styleFrom(
-                    //     backgroundColor: const Color(0xFF60a5fa),
-                    //     foregroundColor: Colors.white,
-                    //     elevation: 0,
-                    //     padding: const EdgeInsets.symmetric(
-                    //       horizontal: 12,
-                    //       vertical: 6,
-                    //     ),
-                    //     minimumSize: const Size(60, 32),
-                    //     shape: RoundedRectangleBorder(
-                    //       borderRadius: BorderRadius.circular(6),
-                    //     ),
-                    //   ),
-                    //   child: const Text('註冊', style: TextStyle(fontSize: 12)),
-                    // ),
                   ],
                 )
               else
@@ -516,19 +573,20 @@ class _AIPageState extends State<AIPage> {
                                 ),
                               ).then((_) => setState(() {
                                 // 導航回頁面後，重新載入資料 (不清除快取，但可以重新載入收藏)
-                                _loadingFuture = _loadUserId().then((__) => _fetchData());
+                                _loadingFuture =
+                                    _loadUserId().then((__) => _fetchData());
                               }));
                             } else {
                               // 導向會員中心頁面
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder:
-                                      (context) => const MemberCenterPage(),
+                                  builder: (context) => const MemberCenterPage(),
                                 ),
                               ).then((_) => setState(() {
                                 // 導航回頁面後，重新載入資料
-                                _loadingFuture = _loadUserId().then((__) => _fetchData());
+                                _loadingFuture =
+                                    _loadUserId().then((__) => _fetchData());
                               }));
                             }
                           },
@@ -594,7 +652,8 @@ class _AIPageState extends State<AIPage> {
                     ).then(
                           (_) => setState(() {
                         // 登入後，強制清除快取並刷新頁面
-                        _loadingFuture = _loadUserId().then((__) => _fetchData(shouldClearCache: true));
+                        _loadingFuture =
+                            _loadUserId().then((__) => _fetchData(shouldClearCache: true));
                       }),
                     );
                     return;
@@ -666,8 +725,7 @@ class _AIPageState extends State<AIPage> {
         decoration: InputDecoration(
           hintText: _isEventSortingMode ? "搜尋事件整理" : "搜尋多方觀點",
           prefixIcon: const Icon(Icons.search, color: Colors.grey),
-          suffixIcon:
-          _currentSearchKeyword.isNotEmpty
+          suffixIcon: _currentSearchKeyword.isNotEmpty
               ? IconButton(
             icon: const Icon(Icons.clear, color: Colors.grey, size: 20),
             onPressed: () {
@@ -775,8 +833,7 @@ class _AIPageState extends State<AIPage> {
         ),
         const Divider(height: 1),
         Expanded(
-          child:
-          listToShow.isEmpty
+          child: listToShow.isEmpty
               ? Center(child: Text('找不到與 "$_currentSearchKeyword" 相關的事件'))
               : ListView.builder(
             itemCount: listToShow.length,
@@ -790,9 +847,8 @@ class _AIPageState extends State<AIPage> {
 
               final eventId = event['eventsorting_id'];
               // 收藏狀態判斷：檢查 _bookmarkIdStatus 中是否有非 null 的 bookmark_id
-              final isBookmarked =
-                  _bookmarkIdStatus.containsKey(eventId) &&
-                      _bookmarkIdStatus[eventId] != null;
+              final isBookmarked = _bookmarkIdStatus.containsKey(eventId) &&
+                  _bookmarkIdStatus[eventId] != null;
 
               return _buildNewsCard(
                 title: title,
@@ -800,15 +856,12 @@ class _AIPageState extends State<AIPage> {
                 // 根據要求，清掉 'details' 的內容
                 details: '', // <-- 修改點 1
                 isBookmarked: isBookmarked,
-                onBookmarkTap:
-                    () => _toggleBookmark(eventId, 'eventsorting'),
+                onBookmarkTap: () => _toggleBookmark(eventId, 'eventsorting'),
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder:
-                          (context) =>
-                          EventSortingDetailPage(id: eventId),
+                      builder: (context) => EventSortingDetailPage(id: eventId),
                     ),
                   );
                 },
@@ -845,8 +898,7 @@ class _AIPageState extends State<AIPage> {
         ),
         const Divider(height: 1),
         Expanded(
-          child:
-          listToShow.isEmpty
+          child: listToShow.isEmpty
               ? Center(child: Text('找不到與 "$_currentSearchKeyword" 相關的觀點'))
               : ListView.builder(
             itemCount: listToShow.length,
@@ -854,8 +906,7 @@ class _AIPageState extends State<AIPage> {
               final view = listToShow[index];
 
               // 💥 修正點 2: multipleperspectives_title 已移除，改用 eventsorting_title
-              final String title =
-                  view['eventsorting_title'] ?? '';
+              final String title = view['eventsorting_title'] ?? '';
               if (title.isEmpty) {
                 return const SizedBox.shrink();
               }
@@ -863,9 +914,7 @@ class _AIPageState extends State<AIPage> {
               final mpId = view['multipleperspectives_id'];
               // 收藏狀態判斷：檢查 _multiplePerspectivesBookmarkIdStatus 中是否有非 null 的 bookmark_id
               final isBookmarked =
-                  _multiplePerspectivesBookmarkIdStatus.containsKey(
-                    mpId,
-                  ) &&
+                  _multiplePerspectivesBookmarkIdStatus.containsKey(mpId) &&
                       _multiplePerspectivesBookmarkIdStatus[mpId] != null;
 
               return _buildNewsCard(
@@ -882,9 +931,7 @@ class _AIPageState extends State<AIPage> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder:
-                          (context) =>
-                          MultiplePerspectivesDetailPage(id: mpId),
+                      builder: (context) => MultiplePerspectivesDetailPage(id: mpId),
                     ),
                   );
                 },
