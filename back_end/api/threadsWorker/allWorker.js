@@ -26,7 +26,7 @@ async function fetchPendingNewsIds(LIMIT) {
     JOIN news_data AS nd
       ON nd.news_id = nt.news_id
     ORDER BY
-      nd.created_at DESC
+      nd.news_date DESC
     LIMIT ?;
   `;
 
@@ -533,7 +533,7 @@ async function runAllWorker(LIMIT = 100, idList = null) {
 
 
 // 啟動
-/*mainLoop().catch(err => {
+/*runAllWorker().catch(err => {
     console.error('[newsMainWorker] 無法啟動:', err);
     process.exit(1);
 });
@@ -551,5 +551,5 @@ process.on('SIGTERM', () => {
 
 
 module.exports = {
-  runAllWorker,
+  runAllWorker
 };
