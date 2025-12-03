@@ -1005,7 +1005,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                 color: const Color(0xFF2a3a5e), // 深藍背景
                 borderRadius: BorderRadius.circular(4),
                 border: Border.all(
-                  color: const Color(0xFF6366f1).withOpacity(0.3),
+                  color: const Color(0xFF6366f1),
                   width: 1,
                 ),
               ),
@@ -1092,13 +1092,13 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                   _formatDateTime(_newsDetail?['publish_date']),
                   style: TextStyle(
                     fontSize: 14,
-                    color: const Color(0xFF6366f1).withOpacity(0.7),
+                    color: const Color(0xFF6366f1),
                   ),
                 ),
               ],
             ),
           ),
-          Divider(height: 1, color: const Color(0xFF6366f1).withOpacity(0.2)),
+          Divider(height: 1, color: const Color(0xFF6366f1)),
           ..._buildNewsBodyContent(),
         ],
       ),
@@ -1164,7 +1164,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                     bodyItem['body_text'],
                     style: TextStyle(
                       fontSize: 14,
-                      color: const Color(0xFF6366f1).withOpacity(0.7),
+                      color: const Color(0xFF6366f1),
                       fontStyle: FontStyle.italic,
                     ),
                   ),
@@ -1188,13 +1188,13 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
           color: const Color(0xFF1a2a4e), // 星空深藍卡片
           border: Border(
             top: BorderSide(
-              color: const Color(0xFF6366f1).withOpacity(0.2),
+              color: const Color(0xFF6366f1),
               width: 1,
             ),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black,
               blurRadius: 8,
               offset: const Offset(0, -2),
             ),
@@ -1301,12 +1301,12 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
           color: const Color(0xFF2a3a5e), // 深藍背景
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: const Color(0xFF6366f1).withOpacity(0.3),
+            color: const Color(0xFF6366f1),
             width: 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black,
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
