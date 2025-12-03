@@ -243,7 +243,7 @@ async function checkImageFormat( img ) {
     return img;
 }
 
-function checkDateTimeFormat (input) {
+/*function checkDateTimeFormat (input) {
     if (typeof input !== 'string') throw new Error('Invalid input: not a string');
 
     // 1. 把斜線換成 dash
@@ -264,6 +264,53 @@ function checkDateTimeFormat (input) {
     }
 
     return str;
+}*/
+function checkDateTimeFormat (input) {
+  if (typeof input !== 'string') {
+    throw new Error('Invalid input: not a string');
+  }
+
+  // 去掉前後空白
+  let str = input.trim();
+
+  // 1. 先把斜線換成 dash
+  str = str.replace(/\//g, '-');
+
+  // 2. 如果是 ISO 8601 形式：2025-10-07T16:00:00.000Z
+  //   - 把後面的 .xxx 切掉
+  //   - 把最後的 Z 拿掉
+  //   - 把 T 換成空格
+  const isoWithZ = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})(?:\.\d+)?Z$/;
+  const isoNoZ  = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})(?:\.\d+)?$/;
+
+  let m;
+  if ((m = str.match(isoWithZ)) || (m = str.match(isoNoZ))) {
+    const datePart = m[1]; // YYYY-MM-DD
+    const timePart = m[2]; // HH:mm:ss
+    str = `${datePart} ${timePart}`;
+  } else {
+    // 3. 一般情況：如果中間有 T，改成空格
+    str = str.replace('T', ' ');
+
+    // 4. 如果有毫秒（例如 2025-10-07 16:00:00.123），把 .xxx 切掉
+    const fracMatch = str.match(/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\.\d+$/);
+    if (fracMatch) {
+      str = fracMatch[1];
+    }
+
+    // 5. 如果只到分鐘，自動補上秒數
+    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(str)) {
+      str += ':00';
+    }
+  }
+
+  // 6. 最終驗證格式
+  const dateTimeRegex = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
+  if (!dateTimeRegex.test(str)) {
+    throw new Error('Invalid datetime format. Expected: YYYY-MM-DD HH:mm:ss');
+  }
+
+  return str;
 }
 
 

@@ -342,7 +342,7 @@ async function insertNewsTranslateForOneNews(originalNewsId, translate) {
       return { targetNewsId: originalNewsId, newNewsId: null };
     }
 
-    console.log("3. 情況二 : 組字 ")
+    console.log("3. 情況二 : 組字 original : \n", JSON.stringify(original, null, 2))
 
     // 2) 組成新的中文新聞 payload
     const newNewsPayload = {
