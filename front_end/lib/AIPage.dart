@@ -380,7 +380,7 @@ class _AIPageState extends State<AIPage> {
           child: Row(
             children: [
               if (!isLoggedIn)
-              // 未登入狀態 - 顯示登入和註冊按鈕
+              // 未登入狀態 - 顯示登入按鈕 (已移除註冊按鈕)
                 Row(
                   children: [
                     ElevatedButton(
@@ -412,36 +412,37 @@ class _AIPageState extends State<AIPage> {
                       ),
                       child: const Text('登入', style: TextStyle(fontSize: 12)),
                     ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const SignupPage(),
-                          ),
-                        ).then((_) {
-                          // 註冊後刷新頁面
-                          setState(() {
-                            _loadUserId().then((__) => _fetchData());
-                          });
-                        });
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF60a5fa),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        minimumSize: const Size(60, 32),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                      ),
-                      child: const Text('註冊', style: TextStyle(fontSize: 12)),
-                    ),
+                    // 移除註冊按鈕
+                    // const SizedBox(width: 8),
+                    // ElevatedButton(
+                    //   onPressed: () {
+                    //     Navigator.push(
+                    //       context,
+                    //       MaterialPageRoute(
+                    //         builder: (context) => const SignupPage(),
+                    //       ),
+                    //     ).then((_) {
+                    //       // 註冊後刷新頁面
+                    //       setState(() {
+                    //         _loadUserId().then((__) => _fetchData());
+                    //       });
+                    //     });
+                    //   },
+                    //   style: ElevatedButton.styleFrom(
+                    //     backgroundColor: const Color(0xFF60a5fa),
+                    //     foregroundColor: Colors.white,
+                    //     elevation: 0,
+                    //     padding: const EdgeInsets.symmetric(
+                    //       horizontal: 12,
+                    //       vertical: 6,
+                    //     ),
+                    //     minimumSize: const Size(60, 32),
+                    //     shape: RoundedRectangleBorder(
+                    //       borderRadius: BorderRadius.circular(6),
+                    //     ),
+                    //   ),
+                    //   child: const Text('註冊', style: TextStyle(fontSize: 12)),
+                    // ),
                   ],
                 )
               else
@@ -735,8 +736,8 @@ class _AIPageState extends State<AIPage> {
               return _buildNewsCard(
                 title: title,
                 content: event['eventsorting_summary'] ?? '',
-                details:
-                '${event['eventsorting_background_count'] ?? 0}則事件背景',
+                // 根據要求，清掉 'details' 的內容
+                details: '', // <-- 修改點 1
                 isBookmarked: isBookmarked,
                 onBookmarkTap:
                     () => _toggleBookmark(eventId, 'eventsorting'),

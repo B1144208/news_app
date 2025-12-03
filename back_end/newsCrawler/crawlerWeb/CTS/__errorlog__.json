@@ -1,0 +1,9 @@
+{
+  "fn": [],
+  "data": {
+    "BASE_URL": "https://news.cts.com.tw",
+    "breakPage": 1,
+    "GROUP": "華視新聞首頁精選",
+    "CHANNEL": "CTS"
+  }
+}

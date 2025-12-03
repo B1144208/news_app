@@ -1,0 +1,262 @@
+{
+  "fn": [
+    "start_news_collection",
+    "extract_news_urls",
+    "get_news_information",
+    "start_news_collection",
+    "extract_news_urls",
+    "get_news_information",
+    "start_news_collection",
+    "extract_news_urls",
+    "get_news_information",
+    "start_news_collection",
+    "extract_news_urls",
+    "start_news_collection",
+    "extract_news_urls",
+    "get_news_information",
+    "start_news_collection",
+    "extract_news_urls",
+    "get_news_information",
+    "start_news_collection",
+    "extract_news_urls",
+    "get_news_information",
+    "start_news_collection",
+    "extract_news_urls",
+    "get_news_information",
+    "start_news_collection",
+    "extract_news_urls",
+    "get_news_information",
+    "start_news_collection",
+    "extract_news_urls",
+    "get_news_information",
+    "start_news_collection",
+    "extract_news_urls",
+    "get_news_information",
+    "start_news_collection",
+    "extract_news_urls",
+    "get_news_information",
+    "start_news_collection",
+    "extract_news_urls",
+    "get_news_information",
+    "start_news_collection",
+    "extract_news_urls",
+    "get_news_information",
+    "start_news_collection",
+    "extract_news_urls",
+    "get_news_information",
+    "start_news_collection",
+    "extract_news_urls",
+    "get_news_information",
+    "start_news_collection",
+    "extract_news_urls",
+    "get_news_information",
+    "start_news_collection",
+    "extract_news_urls",
+    "get_news_information",
+    "start_news_collection",
+    "extract_news_urls",
+    "get_news_information"
+  ],
+  "data": {
+    "BASE_URL": "https://www.usatoday.com",
+    "SUB_URL": [
+      {
+        "url": "https://www.usatoday.com",
+        "group": "USA Today 首頁"
+      }
+    ],
+    "limit": 150,
+    "GROUP": "USA Today 首頁",
+    "CHANNEL": "USA Today",
+    "NEWS_URLS": [
+      {
+        "url": "https://www.usatoday.com/story/entertainment/movies/2025/10/21/best-horror-movies-21st-century-ranked/86795261007",
+        "title": "Ranked: The 75 best horror films this century"
+      },
+      {
+        "url": "https://www.usatoday.com/story/graphics/2025/10/03/ultra-processed-foods-impact-health-walmart-rfk-maha/85374125007",
+        "title": "How do ultra-processed foods impact your health?"
+      },
+      {
+        "url": "https://www.usatoday.com/story/graphics/2025/10/20/orionid-meteor-shower-how-to-view/86803379007",
+        "title": "How to best view October's Orionid meteor shower"
+      },
+      {
+        "url": "https://www.usatoday.com/story/sports/nba/2025/10/21/warriors-lakers-updates-score-tv-channel-odds/86803123007",
+        "title": "Warriors down Lakers in opener despite Doncic's…"
+      },
+      {
+        "url": "https://www.usatoday.com/story/sports/ncaaf/sec/2025/10/21/florida-football-coaching-candidates-lane-kiffin-james-franklin-gators-hire/86822705007",
+        "title": "Nine Florida coaching candidates: Like it, love..."
+      },
+      {
+        "url": "https://www.usatoday.com/story/sports/nfl/columnist/nate-davis/2025/10/21/maxx-crosby-cowboys-trade-rumors-jerry-jones/86822754007",
+        "title": "Maxx Crosby to Dallas? It actually makes sense..."
+      },
+      {
+        "url": "https://www.usatoday.com/story/sports/ncaaf/big12/2025/10/21/deion-sanders-colorado-football-vs-utah-saw-turtle-elk-estes-park-bye-week/86820585007",
+        "title": "Deion Sanders spent bye week in the wild. Now can..."
+      },
+      {
+        "url": "https://www.usatoday.com/story/news/politics/2025/10/20/trump-china-trade-tariffs-rare-earths/86803021007",
+        "title": "Trump says 'fantastic' trade deal with China will..."
+      },
+      {
+        "url": "https://www.usatoday.com/story/news/politics/2025/10/21/rand-paul-donald-trump-white-house-reception-snub/86821783007",
+        "title": "Rand Paul pokes back at Trump after snub from..."
+      },
+      {
+        "url": "https://www.usatoday.com/story/news/politics/2025/10/21/pardoned-january-6-rioter-accused-threatening-hakeem-jeffries/86817179007",
+        "title": "'Terroristic': Freed Jan. 6 rioter accused of..."
+      },
+      {
+        "url": "https://www.usatoday.com/story/news/politics/2025/10/21/white-house-demolition-east-wing-watch-live/86819971007",
+        "title": "Watch live: Demolition work begins on the East…"
+      },
+      {
+        "url": "https://www.usatoday.com/story/pets-animals/2025/10/21/see-cat-hoisted-to-safety-from-train-tracks-in-harrowing-rescue/86808924007",
+        "title": "Hair-raising moment kitten saved from tracks"
+      },
+      {
+        "url": "https://www.usatoday.com/story/news/politics/2025/10/21/white-house-demolition-ballroom-east-wing-photos/86813888007",
+        "title": "See the scene as crews demolish part of The White…"
+      },
+      {
+        "url": "https://www.usatoday.com/story/pets-animals/2025/10/20/cat-and-bunny-share-the-sweetest-bond-and-daily-ritual/86806559007",
+        "title": "Watch bunny race to greet her cat best friend…"
+      },
+      {
+        "url": "https://www.usatoday.com/story/money/lottery/2025/10/21/mega-millions-winning-numbers-october-21-2025/86823597007",
+        "title": "Mega Millions winning numbers for Oct. 21 drawing…"
+      },
+      {
+        "url": "https://www.usatoday.com/story/money/2025/10/19/amazon-prime-subscription-settlement-payment/86792855007",
+        "title": "What to know about payments from Amazon's $2.5..."
+      },
+      {
+        "url": "https://www.usatoday.com/story/money/retail/2025/10/21/toys-r-us-opening-new-stores-2025/86814737007",
+        "title": "Toys 'R' Us opening 30 new stores for holidays..."
+      },
+      {
+        "url": "https://www.usatoday.com/story/money/2025/10/21/car-loans-underwater-negative-equity-delinquent-payments/86817162007",
+        "title": "More Americans are underwater on car loans..."
+      },
+      {
+        "url": "https://www.usatoday.com/story/money/personalfinance/real-estate/2025/10/17/luxury-homes-more-expensive/86757956007",
+        "title": "Luxury homes are over 60% more expensive than 10…"
+      },
+      {
+        "url": "https://www.usatoday.com/story/life/health-wellness/2025/10/21/peanut-allergies-decline-babies-exposure-study/86798833007",
+        "title": "Are peanut allergies going away? New advice is a…"
+      },
+      {
+        "url": "https://www.usatoday.com/story/life/health-wellness/2025/10/15/white-pumpkins-pregnancy-infant-loss/86706419007",
+        "title": "See a white pumpkin on someone's porch? It could..."
+      },
+      {
+        "url": "https://www.usatoday.com/story/life/health-wellness/2025/10/16/elaina-st-james-trad-wife-onlyfans-women-society/86713083007",
+        "title": "One 'trad wife in training' explains why she..."
+      },
+      {
+        "url": "https://www.usatoday.com/story/life/health-wellness/2025/10/20/character-ai-chatbot-relationships-teenagers/86745562007",
+        "title": "A mom says an AI bot had a relationship with her..."
+      },
+      {
+        "url": "https://www.usatoday.com/story/life/health-wellness/2025/10/21/what-are-hemorrhoids/86641890007",
+        "title": "Here's what really helps hemorrhoids—and what…"
+      },
+      {
+        "url": "https://www.usatoday.com/story/life/health-wellness/2025/10/20/how-long-to-train-for-a-half-marathon/86415077007",
+        "title": "Want to run a half marathon? Here's how long you..."
+      },
+      {
+        "url": "https://www.usatoday.com/story/entertainment/celebrities/2025/10/21/carrie-fisher-birthday-billie-lourd-grief/86825121007",
+        "title": "Billie Lourd on how she talks to her kids about…"
+      },
+      {
+        "url": "https://www.usatoday.com/story/entertainment/celebrities/2025/10/20/jessica-simpson-eric-johnson-split-dating-life/86798407007",
+        "title": "Jessica Simpson's post-separation dating vibe..."
+      },
+      {
+        "url": "https://www.usatoday.com/story/entertainment/celebrities/2025/10/20/dua-lipa-callum-turner-trust-hernan-diaz-book/86798095007",
+        "title": "How Dua Lipa really met her fiancé"
+      },
+      {
+        "url": "https://www.usatoday.com/story/entertainment/celebrities/2025/10/21/john-stamos-lori-loughlin-mossimo-giannulli-varsity-blues-scandal/86814056007",
+        "title": "John Stamos blames Lori Loughlin's ex for college..."
+      },
+      {
+        "url": "https://www.usatoday.com/story/travel/experience/national-parks/2025/10/21/government-shutdown-costing-national-parks-communities/86708055007",
+        "title": "Shutdown hits national park gateway towns as…"
+      },
+      {
+        "url": "https://www.usatoday.com/story/travel/airline-news/2025/10/17/alaska-airlines-passenger-hits-two-crew-members-forces-diversion/86749780007",
+        "title": "Woman hits two flight attendants on Alaska..."
+      },
+      {
+        "url": "https://www.usatoday.com/story/travel/2025/10/20/move-abroad-canada-mexico-from-us/86690845007",
+        "title": "What to know about moving to Mexico or Canada as..."
+      },
+      {
+        "url": "https://www.usatoday.com/story/travel/news/2025/10/16/hackers-political-message-harrisburg-airport/86732253007",
+        "title": "Hacker interrupts airport broadcast with..."
+      },
+      {
+        "url": "https://www.usatoday.com/story/news/nation/2025/10/22/nicholas-alahverdian-rossi-sentenced-utah-rape-case/86827898007",
+        "title": "US man accused of faking his death sentenced for…"
+      },
+      {
+        "url": "https://www.usatoday.com/story/news/nation/2025/10/21/marines-california-highway-investigation-live-artillery-gavin-newsom/86825334007",
+        "title": "US Marines probing firing of live artillery over..."
+      },
+      {
+        "url": "https://www.usatoday.com/story/news/nation/2025/10/20/atlanta-hartsfield-jackson-international-airport-arrest-family-tip/86809223007",
+        "title": "Man who planned to 'shoot up' Atlanta airport..."
+      },
+      {
+        "url": "https://www.usatoday.com/story/shopping/fall-layering-pieces/86036538007",
+        "title": "Cozy up with these fall layering essentials"
+      },
+      {
+        "url": "https://www.usatoday.com/story/tech/2025/10/21/aws-outage-today-update-cause/86813173007",
+        "title": "Is AWS still down? Outage impacted Snapchat…"
+      },
+      {
+        "url": "https://www.usatoday.com/story/tech/2025/10/20/how-to-spot-a-fake-video-ai/86803001007",
+        "title": "Is it real or AI? Put that online video to the..."
+      },
+      {
+        "url": "https://www.usatoday.com/story/tech/2025/10/20/is-amazon-alexa-down-aws-outage/86804925007",
+        "title": "AWS outage causes problems with Amazon Alexa on..."
+      },
+      {
+        "url": "https://www.usatoday.com/story/sports/mlb/columnist/gabe-lacques/2025/10/21/dan-wilson-mariners-world-series-manager-blue-jays/86811751007",
+        "title": "No World Series for Mariners after manager's Game 7 failure"
+      },
+      {
+        "url": "https://www.usatoday.com/story/travel/airline-news/2025/10/21/skywest-flight-emergency-landing-knock-cockpit-door/86814671007",
+        "title": "Flight makes emergency landing after crew knock on cockpit door"
+      },
+      {
+        "url": "https://www.usatoday.com/story/entertainment/tv/2025/10/21/vanna-white-pajamas-wheel-of-fortune/86824594007",
+        "title": "See Vanna White show up to 'Wheel of Fortune' in just pajamas"
+      },
+      {
+        "url": "https://www.usatoday.com/story/news/politics/2025/10/21/when-will-government-shutdown-end/86814877007",
+        "title": "10 key dates as government shutdown turns into one of the longest"
+      },
+      {
+        "url": "https://www.usatoday.com/story/money/2025/10/21/coca-cola-new-cane-sugar-soda-rollout-us-trump/86817992007",
+        "title": "Coca-Cola rolls out new Trump-promoted cane sugar soda in US"
+      },
+      {
+        "url": "https://www.usatoday.com/story/entertainment/celebrities/2025/10/21/alana-hadid-married-photos-gigi-bella-anwar/86821920007",
+        "title": "Gigi and Bella Hadid get glam for sister Alana's wedding"
+      },
+      {
+        "url": "https://www.usatoday.com/story/sports/nfl/2025/10/21/nfl-week-8-game-picks-predictions/86825590007",
+        "title": "NFL Week 8 predictions, picks for every matchup"
+      }
+    ]
+  }
+}

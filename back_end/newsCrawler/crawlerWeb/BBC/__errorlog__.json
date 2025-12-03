@@ -1,0 +1,19 @@
+{
+  "fn": [
+    "start_news_collection",
+    "extract_news_urls",
+    "get_news_information",
+    "start_news_collection",
+    "extract_news_urls",
+    "get_news_information",
+    "start_news_collection",
+    "extract_news_urls",
+    "get_news_information"
+  ],
+  "data": {
+    "BASE_URL": "https://www.bbc.com",
+    "breakPage": 1,
+    "GROUP": "BBC News 首頁精選",
+    "CHANNEL": "BBC"
+  }
+}
