@@ -1065,7 +1065,7 @@ class _MapPageState extends State<MapPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('地點新聞', style: TextStyle(color: Colors.white)),
+        title: const Text('地區新聞', style: TextStyle(color: Colors.white)),
         backgroundColor: _starSkyDeepBlue,
         actions: [
           // 地圖搜尋按鈕
