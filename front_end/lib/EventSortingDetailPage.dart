@@ -407,7 +407,7 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
       ),
     );
   }
-
+/*
   // 💥 由於我們不再依賴 image_id，此函式已不再用於 Timeline 圖片查找
   String _findImageUrlById(int imageId) {
     if (_allImages.isEmpty || imageId <= 0) {
@@ -424,7 +424,7 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
       return '';
     }
   }
-
+*/
   Future<void> _insertUserAction(
     String actionType,
     String dataType, {
