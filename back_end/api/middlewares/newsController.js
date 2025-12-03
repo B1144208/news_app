@@ -169,6 +169,7 @@ async function searchNews(req, res, next) {
                 ORDER BY nd.news_date DESC
             `;
         }
+
     // channel : 查找指定頻道的新聞
     if ( searchMode == "channel" ) {
         sql = `
