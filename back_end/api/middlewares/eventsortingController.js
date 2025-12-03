@@ -3,7 +3,6 @@ const { checkRequireField } = require('../utils/checkHelper');
 const { callAndCatchApiSuccess } = require('../utils/fakeHelper');
 
 // search
-// search
 async function searchEventsorting (req, res, next) {
     let id = req.query?.id;
 
@@ -22,13 +21,17 @@ async function searchEventsorting (req, res, next) {
     }
 
     // 透過 LEFT JOIN 連接 eventsorting_data, eventsorting_horizontal, 和 eventsorting_vertical
-    // 使用 GROUP_CONCAT 將多個相關 ID 彙集成單一欄位
+    // 💥 新增 JOIN 到 relation_data 以獲取 relation_data.total_heat
     let sql =  `
         SELECT
             ed.*,
             GROUP_CONCAT(DISTINCT eh.horizontal_id) AS horizontal_events,
-            GROUP_CONCAT(DISTINCT ev.news_id) AS vertical_news
+            GROUP_CONCAT(DISTINCT ev.news_id) AS vertical_news,
+            -- 💥 計算排序分數 (total_heat)
+            (COALESCE(rd.total_heat, 0) * 0.4 + COALESCE(ed.total_heat, 0) * 0.6) AS sorting_score
         FROM eventsorting_data ed
+        -- 假設 eventsorting_data.eventsorting_id 就是 relation_data.relation_id
+        LEFT JOIN relation_data rd ON ed.eventsorting_id = rd.relation_id
         LEFT JOIN eventsorting_horizontal eh ON ed.eventsorting_id = eh.eventsorting_id
         LEFT JOIN eventsorting_vertical ev ON ed.eventsorting_id = ev.eventsorting_id
         WHERE 1
@@ -41,6 +44,9 @@ async function searchEventsorting (req, res, next) {
 
     // GROUP BY 是必要的，因為使用了 GROUP_CONCAT 聚合函數
     sql += ` GROUP BY ed.eventsorting_id`;
+
+    // 💥 添加 ORDER BY 子句，根據計算出的 sorting_score 降序排列
+    sql += ` ORDER BY sorting_score DESC`;
 
     try {
         let [result] = await pool.query( sql, params);
