@@ -173,9 +173,6 @@ async function getScript(req, res, next) {
     // 1) 取得 idList
     let idList = req.query?.idList;
 
-    console.log(idList);
-    console.log(typeof(idList));
-
     if (typeof idList === 'string') {
     try {
         idList = JSON.parse(idList);   // 變成真正的陣列
@@ -183,10 +180,6 @@ async function getScript(req, res, next) {
         // parse 失敗再看情況處理
       }
     }
-
-    console.log(idList);
-    console.log(typeof(idList));
-
 
     if (!Array.isArray(idList) || !idList.length) {
       return res.status(400).json({
@@ -216,7 +209,10 @@ async function getScript(req, res, next) {
     try {
       // ⚠️ 依你實際的 getText 介面調整：
       //   如果是 getText(idList) 就這樣；如果是 getText({idList}) 就改。
-      baseList = await getText(idList);
+      fakeReq = {
+        query: {idList}
+      }
+      baseList = await callAndCatchApiSuccess(getText, fakeReq);
     } catch (err) {
       err.desc = 'getText() failed in getScript';
       throw err;
