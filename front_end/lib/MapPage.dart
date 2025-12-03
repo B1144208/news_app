@@ -1076,7 +1076,7 @@ class _MapPageState extends State<MapPage> {
           ),
           // 列表/下拉選單搜尋按鈕
           IconButton(
-            icon: const Icon(Icons.location_city, color: Colors.white),
+            icon: const Icon(Icons.search, color: Colors.white),
             onPressed: _showSearchDialog,
             tooltip: '列表搜尋',
           ),
