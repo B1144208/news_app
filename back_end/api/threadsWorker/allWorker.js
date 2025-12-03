@@ -378,7 +378,7 @@ async function insertNewsTranslateForOneNews(originalNewsId, translate) {
               translate_id = ?
           WHERE news_id = ?;
         `,
-        [relationId, originalNewsId, newNewsId]
+        [original.relationId, originalNewsId, newNewsId]
       );
     } catch (err) {
       console.warn('[newsAllWorker] insertNewsTranslateForOneNews: 更新新新聞 is_chinese/translate_id 失敗，新 news_id =', newNewsId, 'err =', err.message);
