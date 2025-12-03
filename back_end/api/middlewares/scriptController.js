@@ -382,7 +382,7 @@ async function getQuickScipt(req, res, next) {
 
   // searchNews 抓 10 筆資料
   let fakeReq = {
-    query: { mode: "id", order: "heat", limit: 10},
+    query: { mode: "id", limit: 10},  //, order: "heat"
     body: {}
   }
   try {
