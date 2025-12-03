@@ -26,15 +26,12 @@ async function searchEventsorting (req, res, next) {
         SELECT
             ed.*,
             GROUP_CONCAT(DISTINCT eh.horizontal_id) AS horizontal_events,
-            GROUP_CONCAT(DISTINCT ev.news_id) AS vertical_news,
-            -- 💥 計算排序分數 (total_heat)
-            (COALESCE(rd.total_heat, 0) * 0.4 + COALESCE(ed.total_heat, 0) * 0.6 + COALESCE(ed.total_news, 0) * 2) AS sorting_score
-        FROM eventsorting_data ed
-        -- 假設 eventsorting_data.eventsorting_id 就是 relation_data.relation_id
-        LEFT JOIN relation_data rd ON ed.eventsorting_id = rd.relation_id
-        LEFT JOIN eventsorting_horizontal eh ON ed.eventsorting_id = eh.eventsorting_id
-        LEFT JOIN eventsorting_vertical ev ON ed.eventsorting_id = ev.eventsorting_id
-        WHERE 1
+            GROUP_CONCAT(DISTINCT ev.news_id) AS vertical_news
+        FROM eventsorting_data AS ed
+        LEFT JOIN eventsorting_horizontal eh
+            ON ed.eventsorting_id = eh.eventsorting_id
+        LEFT JOIN eventsorting_vertical ev
+            ON ed.eventsorting_id = ev.eventsorting_id
         
     `;
     let params = [];
@@ -49,7 +46,7 @@ async function searchEventsorting (req, res, next) {
     sql += ` GROUP BY ed.eventsorting_id`;
 
     // 💥 添加 ORDER BY 子句，根據計算出的 sorting_score 降序排列
-    sql += ` ORDER BY sorting_score DESC`;
+    sql += ` ORDER BY ed.total_heat DESC;`;
 
 
     try {
