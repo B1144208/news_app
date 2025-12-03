@@ -48,6 +48,11 @@ async function searchEventsorting (req, res, next) {
     // 💥 添加 ORDER BY 子句，根據計算出的 sorting_score 降序排列
     sql += ` ORDER BY sorting_score DESC`;
 
+    // 🟢 根據需求，限制一次只載入 20 筆資料
+    if (id === undefined) {
+        sql += ` LIMIT 20`;
+    }
+
     try {
         let [result] = await pool.query( sql, params);
 

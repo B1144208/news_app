@@ -56,10 +56,10 @@ class News {
     final channelId = 1; // 預設值
     final commentsCount =
         int.tryParse(json['total_comment']?.toString() ?? '0') ??
-        0; // 後端未提供 total_comment
+            0; // 後端未提供 total_comment
 
     // 後端未提供 origin_url，使用預設值
-    final originUrl = json['origin_url'] ?? '#';
+    final originUrl = json['newsUrl'] ?? '#'; // 修正: 使用 newsUrl 作為 url
 
     return News(
       id: newsId,
@@ -102,7 +102,7 @@ class _MapPageState extends State<MapPage> {
   final TextEditingController _searchController = TextEditingController();
 
   static const String _kUnselectOption = '--- [未選取] ---';
-  static const LatLng _taiwanCenter = LatLng(23.6978, 120.9605);
+  // static const LatLng _taiwanCenter = LatLng(23.6978, 120.9605); // 不再需要
 
   int? _currentUserId;
   List<dynamic> _locations = []; // 所有地點資料
@@ -182,8 +182,8 @@ class _MapPageState extends State<MapPage> {
   // 💥 新增：載入預設新聞（台灣）
   void _loadDefaultNews() {
     final taiwanLocation = _locations.firstWhere(
-      (loc) =>
-          (loc['country_name_zh_tw'] as String? ?? '') == '台灣' ||
+          (loc) =>
+      (loc['country_name_zh_tw'] as String? ?? '') == '台灣' ||
           (loc['country_name_en'] as String? ?? '').toLowerCase() == 'taiwan',
       orElse: () => null,
     );
@@ -209,9 +209,9 @@ class _MapPageState extends State<MapPage> {
 
   // 💥 輔助函式：載入新聞並更新狀態 (從原 MapPage 移入)
   Future<void> _fetchNewsAndSetState(
-    String locationType,
-    int locationId,
-  ) async {
+      String locationType,
+      int locationId,
+      ) async {
     // 💥 這裡加上 isLoading 狀態，讓列表顯示載入中
     if (mounted) {
       setState(() {
@@ -248,9 +248,9 @@ class _MapPageState extends State<MapPage> {
         }
 
         final fetchedNews =
-            newsData
-                .map((json) => News.fromJson(json as Map<String, dynamic>))
-                .toList();
+        newsData
+            .map((json) => News.fromJson(json as Map<String, dynamic>))
+            .toList();
 
         if (mounted) {
           setState(() {
@@ -337,11 +337,13 @@ class _MapPageState extends State<MapPage> {
         );
         setState(() {
           _locations = data['data'];
+          // 確保只從有 region_name_zh_tw 的資料中提取並去重
           _regions =
               _locations
-                  .map((loc) => loc['region_name_zh_tw'] as String)
-                  .where((region) => region.isNotEmpty)
+                  .map((loc) => loc['region_name_zh_tw'] as String?)
+                  .where((region) => region != null && region.isNotEmpty)
                   .toSet()
+                  .cast<String>()
                   .toList();
           _regions.sort();
         });
@@ -385,14 +387,14 @@ class _MapPageState extends State<MapPage> {
         final data = json.decode(utf8.decode(response.bodyBytes));
         final List<dynamic> results = data['data'];
         final userData = results.firstWhere(
-          (user) => user['user_id'] == _currentUserId,
+              (user) => user['user_id'] == _currentUserId,
           orElse: () => null,
         );
         if (userData != null) {
           final int? countryId = _safeId('location_country_id', userData);
           if (countryId != null && countryId != 0) {
             final Map<String, dynamic>? targetLocation = _locations.firstWhere(
-              (loc) => _safeId('country_id', loc) == countryId,
+                  (loc) => _safeId('country_id', loc) == countryId,
               orElse: () => null,
             );
             if (targetLocation != null) {
@@ -434,9 +436,9 @@ class _MapPageState extends State<MapPage> {
 
   // 💥 新增：設置當前地點並獲取新聞
   void _setCurrentLocationAndFetchNews(
-    Map<String, dynamic> locationData,
-    String scope,
-  ) {
+      Map<String, dynamic> locationData,
+      String scope,
+      ) {
     final int? stateId = _safeId('state_id', locationData);
     final int? countryId = _safeId('country_id', locationData);
     final int? regionId = _safeId('region_id', locationData);
@@ -505,35 +507,36 @@ class _MapPageState extends State<MapPage> {
 
     final foundLocation =
         foundExactLocation ??
-        _locations.firstWhere((location) {
-          final zhTwMatch =
-              (location['country_name_zh_tw'] as String? ?? '').contains(
-                query,
-              ) ||
-              (location['state_name_zh_tw'] as String? ?? '').contains(query) ||
-              (location['region_name_zh_tw'] as String? ?? '').contains(query);
+            _locations.firstWhere((location) {
+              final zhTwMatch =
+                  (location['country_name_zh_tw'] as String? ?? '').contains(
+                    query,
+                  ) ||
+                      (location['state_name_zh_tw'] as String? ?? '').contains(query) ||
+                      (location['region_name_zh_tw'] as String? ?? '').contains(query);
 
-          final enCountryName =
+              final enCountryName =
               (location['country_name_en'] as String? ?? '').toLowerCase();
-          final enStateName =
+              final enStateName =
               (location['state_name_en'] as String? ?? '').toLowerCase();
 
-          final enMatch =
-              enCountryName.contains(lowerCaseQuery) ||
-              enStateName.contains(lowerCaseQuery);
+              final enMatch =
+                  enCountryName.contains(lowerCaseQuery) ||
+                      enStateName.contains(lowerCaseQuery);
 
-          return zhTwMatch || enMatch;
-        }, orElse: () => null);
+              return zhTwMatch || enMatch;
+            }, orElse: () => null);
 
     if (foundLocation != null) {
       // 預設以 State > Country > Region 的優先級定位，並獲取 Country 級新聞
       final String scopeToUse =
-          _safeId('state_id', foundLocation) != null
-              ? 'state'
-              : _safeId('country_id', foundLocation) != null
-              ? 'country'
-              : 'region';
+      _safeId('state_id', foundLocation) != null
+          ? 'state'
+          : _safeId('country_id', foundLocation) != null
+          ? 'country'
+          : 'region';
 
+      // 導航回主頁面後，使用地圖選中的地點來更新新聞列表
       _setCurrentLocationAndFetchNews(foundLocation, scopeToUse);
     } else {
       ScaffoldMessenger.of(
@@ -544,28 +547,29 @@ class _MapPageState extends State<MapPage> {
 
   // 💥 輔助函式：處理下拉選單搜尋 (從原 MapPage 移入)
   void _handleDropdownSearch() {
-    String? searchTarget;
+    // String? searchTarget; // 不再需要
     Map<String, dynamic>? targetLocation;
 
     if (_selectedState != null && _selectedState != _kUnselectOption) {
-      searchTarget = _selectedState;
+      // 搜尋 State
+      // 注意: 這裡需要確保國家名稱也匹配，因為 state_name_en 可能不唯一
       targetLocation = _locations.firstWhere(
-        (loc) =>
-            loc['state_name_en'] == _selectedState &&
+            (loc) =>
+        loc['state_name_en'] == _selectedState &&
             loc['country_name_zh_tw'] == _selectedCountry,
         orElse: () => null,
       );
     } else if (_selectedCountry != null &&
         _selectedCountry != _kUnselectOption) {
-      searchTarget = _selectedCountry;
+      // 搜尋 Country
       targetLocation = _locations.firstWhere(
-        (loc) => loc['country_name_zh_tw'] == _selectedCountry,
+            (loc) => loc['country_name_zh_tw'] == _selectedCountry,
         orElse: () => null,
       );
     } else if (_selectedRegion != null && _selectedRegion != _kUnselectOption) {
-      searchTarget = _selectedRegion;
+      // 搜尋 Region
       targetLocation = _locations.firstWhere(
-        (loc) => loc['region_name_zh_tw'] == _selectedRegion,
+            (loc) => loc['region_name_zh_tw'] == _selectedRegion,
         orElse: () => null,
       );
     } else {
@@ -573,6 +577,7 @@ class _MapPageState extends State<MapPage> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('地點已清除，定位至預設新聞。')));
+      Navigator.of(context).pop(); // 關閉對話框
       return;
     }
 
@@ -589,17 +594,17 @@ class _MapPageState extends State<MapPage> {
 
   // 💥 輔助函式：建立下拉選單 (從原 MapPage 移入)
   Widget _buildDropdown(
-    String hintText,
-    String? selectedValue,
-    List<String> items,
-    ValueChanged<String?> onChanged,
-    bool isEnabled,
-  ) {
+      String hintText,
+      String? selectedValue,
+      List<String> items,
+      ValueChanged<String?> onChanged,
+      bool isEnabled,
+      ) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
         decoration: BoxDecoration(
-          color: isEnabled ? Colors.white : const Color(0xFF1e3a8a),
+          color: isEnabled ? Colors.white : const Color(0xFFe5e7eb), // 修正: 使用更亮的顏色作為禁用背景
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: const Color.fromARGB(255, 2, 43, 110)),
         ),
@@ -611,15 +616,15 @@ class _MapPageState extends State<MapPage> {
             icon: const Icon(Icons.arrow_drop_down),
             onChanged: isEnabled ? onChanged : null,
             items:
-                items.map<DropdownMenuItem<String>>((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value, overflow: TextOverflow.ellipsis),
-                  );
-                }).toList(),
+            items.map<DropdownMenuItem<String>>((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Text(value, overflow: TextOverflow.ellipsis),
+              );
+            }).toList(),
             disabledHint: Text(
               hintText,
-              style: TextStyle(color: const Color(0xFFe5e7eb)),
+              style: TextStyle(color: const Color(0xFF94a3b8)), // 修正: 使用更柔和的顏色作為禁用提示文字
             ),
           ),
         ),
@@ -647,9 +652,10 @@ class _MapPageState extends State<MapPage> {
       _countries =
           _locations
               .where((loc) => loc['region_name_zh_tw'] == newRegion)
-              .map((loc) => loc['country_name_zh_tw'] as String)
-              .where((country) => country.isNotEmpty)
+              .map((loc) => loc['country_name_zh_tw'] as String?)
+              .where((country) => country != null && country.isNotEmpty)
               .toSet()
+              .cast<String>()
               .toList();
       _countries.sort();
     });
@@ -672,11 +678,13 @@ class _MapPageState extends State<MapPage> {
           _locations
               .where(
                 (loc) =>
-                    loc['country_name_zh_tw'] == newCountry &&
-                    (loc['state_name_en'] as String? ?? '').isNotEmpty,
-              )
-              .map((loc) => loc['state_name_en'] as String)
+            loc['country_name_zh_tw'] == newCountry &&
+                (loc['state_name_en'] as String? ?? '').isNotEmpty,
+          )
+              .map((loc) => loc['state_name_en'] as String?)
+              .where((state) => state != null && state.isNotEmpty)
               .toSet()
+              .cast<String>()
               .toList();
       _states.sort();
     });
@@ -698,21 +706,50 @@ class _MapPageState extends State<MapPage> {
 
   // 💥 新增：顯示搜尋/篩選器對話框
   void _showSearchDialog() {
+    // 確保每次打開對話框時，重置或同步下拉選單的狀態
+    String? dialogSelectedRegion = _selectedRegion;
+    String? dialogSelectedCountry = _selectedCountry;
+    String? dialogSelectedState = _selectedState;
+
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
-        // 使用 StateSetter 更新對話框內部的狀態 (用於下拉選單)
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setStateInDialog) {
-            // 由於下拉選單的狀態是在主 Widget 的 State 中，我們需要使用主 State 的值，
-            // 並將 onChanged 的 setState 呼叫包裝在 setStateInDialog 中。
 
-            // 💥 注意: 為了讓下拉選單在對話框中也能更新，需要將 `_onRegionChanged`, `_onCountryChanged`, `_onStateChanged`
-            // 的 `setState` 改為接受一個 `StateSetter` 參數。但為了簡化，我們直接在對話框內實現狀態更新。
+            // 由於 _countries, _states 的計算邏輯在主 State 中，我們在對話框內需要重新計算或使用主 State 的值
+            // 這裡使用主 State 的邏輯來確保篩選器正確工作
+            List<String> dialogCountries = _countries;
+            List<String> dialogStates = _states;
 
-            // 為了不影響主頁面的狀態，這裡暫時使用本地變數，但由於 _countries, _states 的計算邏輯在主 State 中，
-            // 這裡直接使用主 State 的 `_selectedRegion` 等變數和邏輯。
-            // 這樣做雖然有點不嚴謹，但在 Flutter 狀態樹上可以接受，因為對話框是主頁面的子級。
+            // 調整後的 onChanged 邏輯，會先在對話框內部更新，然後再更新主 State
+            void handleRegionChange(String? newRegion) {
+              setStateInDialog(() {
+                _onRegionChanged(newRegion);
+                // 必須同步到對話框的局部狀態
+                dialogSelectedRegion = _selectedRegion;
+                dialogSelectedCountry = _selectedCountry;
+                dialogSelectedState = _selectedState;
+                dialogCountries = _countries; // 更新用於對話框的列表
+                dialogStates = _states;
+              });
+            }
+
+            void handleCountryChange(String? newCountry) {
+              setStateInDialog(() {
+                _onCountryChanged(newCountry);
+                dialogSelectedCountry = _selectedCountry;
+                dialogSelectedState = _selectedState;
+                dialogStates = _states;
+              });
+            }
+
+            void handleStateChange(String? newState) {
+              setStateInDialog(() {
+                _onStateChanged(newState);
+                dialogSelectedState = _selectedState;
+              });
+            }
 
             return AlertDialog(
               title: const Text('搜尋地點並查看新聞'),
@@ -725,12 +762,13 @@ class _MapPageState extends State<MapPage> {
                       controller: _searchController,
                       decoration: InputDecoration(
                         hintText: '輸入地點名稱（中/英）搜尋...',
-                        prefixIcon: const Icon(Icons.search),
+                        prefixIcon: const Icon(Icons.search, color: Colors.grey),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
                         ),
                         filled: true,
-                        fillColor: const Color.fromARGB(255, 85, 127, 225),
+                        fillColor: const Color(0xFFe0f2f1), // 淡色背景
                       ),
                       onSubmitted: (query) {
                         _searchLocation(query);
@@ -745,18 +783,13 @@ class _MapPageState extends State<MapPage> {
                     const SizedBox(height: 10),
 
                     // --- 2. 下拉選單過濾器 ---
-                    // 這裡必須使用 setStateInDialog 來更新對話框內部的狀態，同時也要觸發主頁面的狀態更新邏輯
                     Row(
                       children: [
                         _buildDropdown(
                           '地區',
-                          _selectedRegion,
+                          dialogSelectedRegion,
                           _regionsForDropdown,
-                          (String? newRegion) => setState(() {
-                            setStateInDialog(() {
-                              _onRegionChanged(newRegion);
-                            });
-                          }),
+                          handleRegionChange,
                           true,
                         ),
                       ],
@@ -767,15 +800,11 @@ class _MapPageState extends State<MapPage> {
                       children: [
                         _buildDropdown(
                           '國家',
-                          _selectedCountry,
+                          dialogSelectedCountry,
                           _countriesForDropdown,
-                          (String? newCountry) => setState(() {
-                            setStateInDialog(() {
-                              _onCountryChanged(newCountry);
-                            });
-                          }),
-                          _selectedRegion != null &&
-                              _selectedRegion != _kUnselectOption,
+                          handleCountryChange,
+                          dialogSelectedRegion != null &&
+                              dialogSelectedRegion != _kUnselectOption,
                         ),
                       ],
                     ),
@@ -785,16 +814,12 @@ class _MapPageState extends State<MapPage> {
                       children: [
                         _buildDropdown(
                           '州/省',
-                          _selectedState,
+                          dialogSelectedState,
                           _statesForDropdown,
-                          (String? newState) => setState(() {
-                            setStateInDialog(() {
-                              _onStateChanged(newState);
-                            });
-                          }),
-                          _selectedCountry != null &&
-                              _selectedCountry != _kUnselectOption &&
-                              _states.isNotEmpty,
+                          handleStateChange,
+                          dialogSelectedCountry != null &&
+                              dialogSelectedCountry != _kUnselectOption &&
+                              dialogStates.isNotEmpty,
                         ),
                       ],
                     ),
@@ -810,11 +835,15 @@ class _MapPageState extends State<MapPage> {
                 ),
                 ElevatedButton(
                   onPressed:
-                      (_selectedRegion != null &&
-                              _selectedRegion != _kUnselectOption)
-                          ? _handleDropdownSearch
-                          : null,
+                  (dialogSelectedRegion != null &&
+                      dialogSelectedRegion != _kUnselectOption)
+                      ? _handleDropdownSearch
+                      : null,
                   child: const Text('定位並查看新聞'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _starSkyPurple,
+                    foregroundColor: Colors.white,
+                  ),
                 ),
               ],
             );
@@ -831,15 +860,18 @@ class _MapPageState extends State<MapPage> {
       MaterialPageRoute(
         builder:
             (context) => _FullMapSearchPage(
-              locations: _locations,
-              initialLocation: _currentNewsLocation,
-            ),
+          locations: _locations,
+          initialLocation: _currentNewsLocation,
+        ),
       ),
     );
 
     if (resultLocation != null) {
       // 導航回主頁面後，使用地圖選中的地點來更新新聞列表
-      _setCurrentLocationAndFetchNews(resultLocation, 'country');
+      final Map<String, dynamic> locationData = resultLocation['data'] as Map<String, dynamic>;
+      final String locationType = resultLocation['locationType'] as String;
+
+      _setCurrentLocationAndFetchNews(locationData, locationType);
     }
   }
 
@@ -859,34 +891,35 @@ class _MapPageState extends State<MapPage> {
 
     final String countryName =
         _currentNewsLocation!['country_name_zh_tw'] ?? '未知國家';
-    final String stateName = _currentNewsLocation!['state_name_en'] ?? '未提供';
+    final String? stateName = _currentNewsLocation!['state_name_zh_tw'] ?? _currentNewsLocation!['state_name_en'];
     final String regionName =
         _currentNewsLocation!['region_name_zh_tw'] ?? '未知地區';
 
     String scopeText;
     if (_currentNewsScope == 'country') {
       scopeText = '$countryName (國家級)';
-    } else if (_currentNewsScope == 'state') {
+    } else if (_currentNewsScope == 'state' && stateName != null) {
       scopeText = '$stateName (州/省級)';
-    } else {
+    } else if (_currentNewsScope == 'region') {
       scopeText = '$regionName (地區級)';
+    } else {
+      scopeText = '$countryName (國家級)'; // Fallback
     }
 
     final bool hasStateScope =
         _safeId('state_id', _currentNewsLocation!) != null;
     final bool hasRegionScope =
         _safeId('region_id', _currentNewsLocation!) != null;
-    final bool hasSubScope = hasStateScope || hasRegionScope;
 
     Widget buildScopeButtons() {
+      // 判斷是否有更細的層級可以切換
       if (_currentNewsScope == 'country') {
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (hasRegionScope)
               Padding(
-                // 修正 padding，因為不再需要為「往州/省新聞」按鈕預留空間
-                padding: const EdgeInsets.only(right: 0.0),
+                padding: const EdgeInsets.only(right: 8.0),
                 child: ElevatedButton(
                   onPressed: () => _toggleNewsScope(targetScope: 'region'),
                   style: ElevatedButton.styleFrom(
@@ -898,11 +931,20 @@ class _MapPageState extends State<MapPage> {
                   child: const Text('往地區新聞', style: TextStyle(fontSize: 12)),
                 ),
               ),
-
-            // 已移除 '往州/省新聞' 按鈕的區塊 (原 if (hasStateScope))
+            if (hasStateScope)
+              ElevatedButton(
+                onPressed: () => _toggleNewsScope(targetScope: 'state'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  minimumSize: const Size(0, 30),
+                  backgroundColor: _starSkyPurple,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('往州/省新聞', style: TextStyle(fontSize: 12)),
+              ),
           ],
         );
-      } else {
+      } else if (_currentNewsScope == 'region' || _currentNewsScope == 'state') {
         return ElevatedButton(
           onPressed: () => _toggleNewsScope(targetScope: 'country'),
           style: ElevatedButton.styleFrom(
@@ -913,6 +955,8 @@ class _MapPageState extends State<MapPage> {
           ),
           child: const Text('返回國家新聞', style: TextStyle(fontSize: 12)),
         );
+      } else {
+        return const SizedBox.shrink();
       }
     }
 
@@ -942,7 +986,7 @@ class _MapPageState extends State<MapPage> {
                       color: _starSkyTextSecondary,
                     ),
                   ),
-                  if (hasSubScope) buildScopeButtons(),
+                  buildScopeButtons(),
                 ],
               ),
               const Divider(color: _starSkyPurple, height: 1),
@@ -952,54 +996,54 @@ class _MapPageState extends State<MapPage> {
 
         Expanded(
           child:
-              _newsList.isEmpty
-                  ? const Center(child: Text('目前沒有相關新聞。'))
-                  : ListView.builder(
-                    itemCount: _newsList.length,
-                    itemBuilder: (context, index) {
-                      final news = _newsList[index];
-                      return Card(
-                        color: _starSkyCard,
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 16.0,
-                          vertical: 4.0,
-                        ),
-                        child: ListTile(
-                          textColor: _starSkyTextPrimary,
-                          subtitleTextStyle: const TextStyle(
-                            color: _starSkyTextSecondary,
-                          ),
-                          leading:
-                              news.coverImage != null
-                                  ? Image.network(
-                                    news.coverImage!,
-                                    width: 50,
-                                    height: 50,
-                                    fit: BoxFit.cover,
-                                    errorBuilder:
-                                        (context, error, stackTrace) =>
-                                            const Icon(
-                                              Icons.image,
-                                              color: _starSkyAccent,
-                                            ),
-                                  )
-                                  : const Icon(
-                                    Icons.article,
-                                    color: _starSkyAccent,
-                                  ),
-                          title: Text(
-                            news.title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          subtitle: Text(
-                            '${news.sourceName ?? '未知'} · ${news.publishDate ?? ''}',
-                          ),
-                          onTap: () => _navigateToNewsContentPage(news),
-                        ),
-                      );
-                    },
+          _newsList.isEmpty
+              ? const Center(child: Text('目前沒有相關新聞。'))
+              : ListView.builder(
+            itemCount: _newsList.length,
+            itemBuilder: (context, index) {
+              final news = _newsList[index];
+              return Card(
+                color: _starSkyCard,
+                margin: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                  vertical: 4.0,
+                ),
+                child: ListTile(
+                  textColor: Colors.white,
+                  subtitleTextStyle: const TextStyle(
+                    color: _starSkyAccent,
                   ),
+                  leading:
+                  news.coverImage != null
+                      ? Image.network(
+                    news.coverImage!,
+                    width: 50,
+                    height: 50,
+                    fit: BoxFit.cover,
+                    errorBuilder:
+                        (context, error, stackTrace) =>
+                    const Icon(
+                      Icons.image,
+                      color: _starSkyAccent,
+                    ),
+                  )
+                      : const Icon(
+                    Icons.article,
+                    color: _starSkyAccent,
+                  ),
+                  title: Text(
+                    news.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text(
+                    '${news.sourceName ?? '未知'} · ${news.publishDate ?? ''}',
+                  ),
+                  onTap: () => _navigateToNewsContentPage(news),
+                ),
+              );
+            },
+          ),
         ),
       ],
     );
@@ -1009,43 +1053,35 @@ class _MapPageState extends State<MapPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _starSkyBackground,
       appBar: AppBar(
-        backgroundColor: _starSkyCard,
-        title: const Text('地區新聞', style: TextStyle(color: _starSkyTextPrimary)),
+        title: const Text('地點新聞', style: TextStyle(color: Colors.white)),
+        backgroundColor: _starSkyDeepBlue,
         actions: [
-          // 💥 1. 搜尋按鈕：文字/選單搜尋
+          // 地圖搜尋按鈕
           IconButton(
-            icon: const Icon(Icons.search, color: _starSkyAccent),
-            onPressed: _showSearchDialog,
-            tooltip: '搜尋地點/篩選新聞',
-          ),
-          // 💥 2. 地圖按鈕：全螢幕地圖搜尋
-          IconButton(
-            icon: const Icon(Icons.map, color: _starSkyAccent),
+            icon: const Icon(Icons.map, color: Colors.white),
             onPressed: _navigateToFullMapSearch,
-            tooltip: '地圖選取地點',
+            tooltip: '地圖搜尋',
           ),
-          // 3. 書籤按鈕 (保留)
+          // 列表/下拉選單搜尋按鈕
           IconButton(
-            icon: const Icon(Icons.bookmark, color: _starSkyAccent),
-            onPressed: () {
-              // Navigator.push(
-              //   context,
-              //   MaterialPageRoute(builder: (context) => const BookmarkPage()),
-              // );
-            },
+            icon: const Icon(Icons.location_city, color: Colors.white),
+            onPressed: _showSearchDialog,
+            tooltip: '列表搜尋',
           ),
-          const SizedBox(width: 8),
         ],
       ),
-      body: _buildNewsList(), // 💥 主要內容為新聞列表
+      body: Container(
+        color: _starSkyBackground,
+        child: _buildNewsList(),
+      ),
     );
   }
 }
 
+
 // =========================================================================
-// 💥 新增類別：_FullMapSearchPage - 專門處理地圖搜尋和定位
+// 💥 獨立的地圖搜尋和定位頁面 (_FullMapSearchPage)
 // -------------------------------------------------------------------------
 class _FullMapSearchPage extends StatefulWidget {
   final List<dynamic> locations;
@@ -1073,7 +1109,7 @@ class _FullMapSearchPageState extends State<_FullMapSearchPage> {
     _initializeMap();
   }
 
-  // 💥 輔助函式：安全 ID 檢查 (從原 MapPage 移入)
+  // 輔助函式：安全 ID 檢查
   int? _safeId(String key, Map<String, dynamic> locationData) {
     final value = locationData[key];
     if (value == null) return null;
@@ -1088,7 +1124,7 @@ class _FullMapSearchPageState extends State<_FullMapSearchPage> {
     return null;
   }
 
-  // 💥 輔助函式：地圖初始化
+  // 輔助函式：地圖初始化
   void _initializeMap() {
     if (widget.initialLocation != null) {
       final loc = widget.initialLocation!;
@@ -1136,7 +1172,7 @@ class _FullMapSearchPageState extends State<_FullMapSearchPage> {
             height: 100,
             child: const Icon(
               Icons.location_on,
-              color: const Color(0xFF93c5fd),
+              color: Color(0xFF60a5fa),
               size: 50.0,
             ),
           ),
@@ -1153,8 +1189,8 @@ class _FullMapSearchPageState extends State<_FullMapSearchPage> {
     double targetZoom = 7;
 
     final taiwanLocation = widget.locations.firstWhere(
-      (loc) =>
-          (loc['country_name_zh_tw'] as String? ?? '') == '台灣' ||
+          (loc) =>
+      (loc['country_name_zh_tw'] as String? ?? '') == '台灣' ||
           (loc['country_name_en'] as String? ?? '').toLowerCase() == 'taiwan',
       orElse: () => null,
     );
@@ -1181,7 +1217,7 @@ class _FullMapSearchPageState extends State<_FullMapSearchPage> {
           height: 80,
           child: const Icon(
             Icons.location_on,
-            color: const Color(0xFFef4444),
+            color: Color(0xFFef4444),
             size: 40.0,
           ),
         ),
@@ -1204,7 +1240,7 @@ class _FullMapSearchPageState extends State<_FullMapSearchPage> {
     });
   }
 
-  // 💥 輔助函式：計算兩點距離 (從原 MapPage 移入)
+  // 輔助函式：計算兩點距離
   double _calculateHaversineDistance(LatLng start, LatLng end) {
     const R = 6371;
     final lat1Rad = start.latitude * pi / 180;
@@ -1217,13 +1253,13 @@ class _FullMapSearchPageState extends State<_FullMapSearchPage> {
 
     final a =
         pow(sin(dLat / 2), 2) +
-        cos(lat1Rad) * cos(lat2Rad) * pow(sin(dLon / 2), 2);
+            cos(lat1Rad) * cos(lat2Rad) * pow(sin(dLon / 2), 2);
     final c = 2 * atan2(sqrt(a), sqrt(1 - a));
 
     return R * c;
   }
 
-  // 💥 輔助函式：尋找最近地點 (從原 MapPage 移入)
+  // 輔助函式：尋找最近地點
   Map<String, dynamic>? _findNearestLocation(LatLng tapLatLng) {
     if (widget.locations.isEmpty) return null;
 
@@ -1266,7 +1302,7 @@ class _FullMapSearchPageState extends State<_FullMapSearchPage> {
     return nearestLocation;
   }
 
-  // 💥 輔助函式：處理地圖點擊 (從原 MapPage 移入)
+  // 輔助函式：處理地圖點擊
   void _handleMapTap(TapPosition tapPosition, LatLng latlng) {
     final nearestLocation = _findNearestLocation(latlng);
     if (nearestLocation != null) {
@@ -1321,7 +1357,7 @@ class _FullMapSearchPageState extends State<_FullMapSearchPage> {
             height: 100,
             child: const Icon(
               Icons.location_on,
-              color: const Color(0xFF93c5fd),
+              color: Color(0xFF60a5fa),
               size: 50.0,
             ),
           ),
@@ -1337,22 +1373,58 @@ class _FullMapSearchPageState extends State<_FullMapSearchPage> {
     }
   }
 
-  // 💥 地圖頁面的 build 方法
+  // 💥 輔助函式：確定回傳的地點 ID 和 Type
+  void _handleConfirmation() {
+    if (_selectedLocation == null) return;
+
+    // 使用現有的 _safeId 輔助函式來判斷 ID
+    final int? stateId = _safeId('state_id', _selectedLocation!);
+    final int? countryId = _safeId('country_id', _selectedLocation!);
+    final int? regionId = _safeId('region_id', _selectedLocation!);
+
+    String? finalLocationType;
+    int? finalLocationId;
+
+    // 優先順序: State (州/省) > Country (國家) > Region (地區)
+    if (stateId != null) {
+      finalLocationType = 'state';
+      finalLocationId = stateId;
+    } else if (countryId != null) {
+      finalLocationType = 'country';
+      finalLocationId = countryId;
+    } else if (regionId != null) {
+      finalLocationType = 'region';
+      finalLocationId = regionId;
+    }
+
+    if (finalLocationId != null && finalLocationType != null) {
+      // 傳回一個包含 locationId, locationType, 和原始地點資料的 Map
+      Navigator.pop(context, {
+        'locationId': finalLocationId,
+        'locationType': finalLocationType,
+        'data': _selectedLocation, // 傳回原始資料，以便上頁顯示名稱
+      });
+    } else {
+      // 如果點選地點沒有任何有效的 ID
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('選中的地點不包含有效的地理 ID。')),
+      );
+    }
+  }
+
+
+  // 地圖頁面的 build 方法
   @override
   Widget build(BuildContext context) {
     final displayCoordinates =
         '緯度: ${_currentCenter.latitude.toStringAsFixed(3)}, 經度: ${_currentCenter.longitude.toStringAsFixed(3)}';
 
     return Scaffold(
-      backgroundColor: _starSkyBackground,
       appBar: AppBar(
-        backgroundColor: _starSkyCard,
-        title: const Text(
-          '地圖選取地點',
-          style: TextStyle(color: _starSkyTextPrimary),
-        ),
+        title: const Text('地圖選取地點', style: TextStyle(color: Colors.white)),
+        backgroundColor: _starSkyDeepBlue,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: _starSkyAccent),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context), // 直接返回，不帶結果
         ),
       ),
@@ -1385,7 +1457,7 @@ class _FullMapSearchPageState extends State<_FullMapSearchPage> {
             children: [
               TileLayer(
                 urlTemplate:
-                    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
                 subdomains: const ['a', 'b', 'c'],
               ),
               MarkerLayer(markers: _markers),
@@ -1401,17 +1473,10 @@ class _FullMapSearchPageState extends State<_FullMapSearchPage> {
               decoration: BoxDecoration(
                 color: _starSkyCard,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: _starSkyPurple.withOpacity(0.3),
-                  width: 1,
-                ),
               ),
               child: Text(
                 displayCoordinates,
-                style: const TextStyle(
-                  color: _starSkyTextPrimary,
-                  fontSize: 14,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 14),
               ),
             ),
           ),
@@ -1426,6 +1491,7 @@ class _FullMapSearchPageState extends State<_FullMapSearchPage> {
                   heroTag: "mapZoomIn",
                   mini: true,
                   onPressed: _zoomIn,
+                  backgroundColor: _starSkyPurple,
                   child: const Icon(Icons.add, color: Colors.white),
                 ),
                 const SizedBox(height: 8),
@@ -1433,27 +1499,26 @@ class _FullMapSearchPageState extends State<_FullMapSearchPage> {
                   heroTag: "mapZoomOut",
                   mini: true,
                   onPressed: _zoomOut,
+                  backgroundColor: _starSkyPurple,
                   child: const Icon(Icons.remove, color: Colors.white),
                 ),
               ],
             ),
           ),
 
-          // 確定按鈕
+          // 確定按鈕 (修正後的邏輯)
           Positioned(
             left: 10,
             right: 10,
             bottom: 10,
             child: ElevatedButton.icon(
               onPressed:
-                  _selectedLocation != null
-                      ? () =>
-                          Navigator.pop(context, _selectedLocation) // 傳回選中的地點
-                      : null,
+              _selectedLocation != null ? _handleConfirmation : null,
               icon: const Icon(Icons.check, color: Colors.white),
               label: Text(
                 _selectedLocation != null
-                    ? '確定選擇: ${_selectedLocation!['country_name_zh_tw'] ?? '未知地點'}'
+                // 修正點：優先顯示 state_name_zh_tw，fallback 到 country_name_zh_tw
+                    ? '確定選擇: ${_selectedLocation!['state_name_zh_tw'] ?? _selectedLocation!['country_name_zh_tw'] ?? '未知地點'}'
                     : '請點擊地圖選擇地點',
                 overflow: TextOverflow.ellipsis,
               ),
