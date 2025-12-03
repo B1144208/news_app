@@ -352,11 +352,11 @@ async function insertNewsTranslateForOneNews(originalNewsId, translate) {
         src: original.coverImageUrl || '',
         alt: null     // 你指定 alt = null
       },
-      title: translate.title,      // 中文標題
+      title: translate.title,       // 中文標題
       publish_date: original.publishDate,
-      detail: translate.text       // 中文內文（你原本系統是 text，不是 content）
+      detail: translate.content     // 中文內文
     };
-
+    console.log("4. 情況二 : translate.content : \n ", JSON.stringify(translate.content, null, 2))
     console.log("4. 情況二 : 組好字 newNewsPayload : \n ", JSON.stringify(newNewsPayload, null, 2))
 
     const fakeReqForInsert = { body: newNewsPayload };
