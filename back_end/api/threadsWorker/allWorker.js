@@ -349,6 +349,7 @@ async function insertNewsTranslateForOneNews(originalNewsId, translate) {
     : null;
 
     console.log("original.publishDate: ", original.publishDate);
+    console.log("iso: ", iso);
     console.log("publishDate: ", publishDate);
 
     // 2) 組成新的中文新聞 payload
