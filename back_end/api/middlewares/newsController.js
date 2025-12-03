@@ -69,7 +69,8 @@ async function searchNews(req, res, next) {
         sql = `
             SELECT nd.news_id
             FROM news_data nd
-            WHERE 1
+            where reporter_script is not null
+                  and is_chinese=1;
         `;
         params = [];
         
