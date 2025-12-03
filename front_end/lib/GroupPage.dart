@@ -564,30 +564,13 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
   }
 
   @override
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0a1428),
       appBar: AppBar(
-        title: Text(
-          widget.groupName,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.5,
-          ),
-        ),
-        backgroundColor: const Color(0xFF1a2a4e),
+        title: Text(widget.groupName),
+        backgroundColor: Colors.teal,
         foregroundColor: Colors.white,
-        elevation: 0,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(
-            color: const Color(0xFF6366f1).withOpacity(0.1),
-            height: 1,
-          ),
-        ),
+        elevation: 2,
       ),
       body: Column(
         children: [
@@ -596,17 +579,13 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
             margin: const EdgeInsets.all(16),
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: const Color(0xFF1a2a4e),
+              color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: const Color(0xFF6366f1).withOpacity(0.3),
-                width: 1,
-              ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF6366f1).withOpacity(0.1),
-                  spreadRadius: 0,
-                  blurRadius: 12,
+                  color: Colors.grey.withOpacity(0.1),
+                  spreadRadius: 1,
+                  blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),
               ],
@@ -614,18 +593,13 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
             child: Row(
               children: [
                 Container(
-                  width: 56,
-                  height: 56,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        const Color(0xFF6366f1),
-                        const Color(0xFF60a5fa),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(14),
+                    color: Colors.teal.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.group, color: Colors.white, size: 28),
+                  child: const Icon(Icons.group, color: Colors.teal, size: 24),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -636,43 +610,32 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
                         widget.groupName,
                         style: const TextStyle(
                           fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                          letterSpacing: 0.3,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       Text(
                         '群組 ID: ${widget.groupId}',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[400],
-                          fontWeight: FontWeight.w500,
-                        ),
+                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                       ),
                     ],
                   ),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
+                    horizontal: 12,
+                    vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        const Color(0xFF6366f1),
-                        const Color(0xFF60a5fa),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.teal,
+                    borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
                     '${details.length} 個項目',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
+                      color: Colors.teal[700],
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
@@ -685,17 +648,13 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
             margin: const EdgeInsets.symmetric(horizontal: 16),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFF1a2a4e),
+              color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: const Color(0xFF6366f1).withOpacity(0.2),
-                width: 1,
-              ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF6366f1).withOpacity(0.08),
-                  spreadRadius: 0,
-                  blurRadius: 8,
+                  color: Colors.grey.withOpacity(0.1),
+                  spreadRadius: 1,
+                  blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),
               ],
@@ -705,108 +664,42 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
                 Expanded(
                   child: TextField(
                     controller: _addDetailController,
-                    style: const TextStyle(color: Colors.white, fontSize: 15),
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       hintText: "輸入細項名稱新增",
-                      hintStyle: TextStyle(
-                        color: Colors.grey[400],
-                        fontSize: 14,
-                      ),
-                      prefixIcon: Container(
-                        margin: const EdgeInsets.all(10),
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF6366f1).withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.add_circle_outline,
-                          color: Color(0xFF60a5fa),
-                          size: 20,
-                        ),
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: const Color(0xFF6366f1).withOpacity(0.3),
-                          width: 1,
-                        ),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: const Color(0xFF6366f1).withOpacity(0.3),
-                          width: 1,
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                          color: Color(0xFF6366f1),
-                          width: 2,
-                        ),
-                      ),
-                      filled: true,
-                      fillColor: const Color(0xFF0a1428),
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.add_circle_outline),
                     ),
                     enabled: !isLoading,
                   ),
                 ),
                 const SizedBox(width: 12),
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        const Color(0xFF6366f1),
-                        const Color(0xFF60a5fa),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF6366f1).withOpacity(0.3),
-                        blurRadius: 8,
-                      ),
-                    ],
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap:
-                          isLoading
-                              ? null
-                              : () {
-                                final name = _addDetailController.text.trim();
-                                if (name.isNotEmpty) addGroupDetail(name);
-                              },
-                      borderRadius: BorderRadius.circular(12),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 12,
-                        ),
-                        child:
-                            isLoading
-                                ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white,
-                                    ),
-                                  ),
-                                )
-                                : const Text(
-                                  '新增',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                      ),
+                ElevatedButton(
+                  onPressed:
+                      isLoading
+                          ? null
+                          : () {
+                            final name = _addDetailController.text.trim();
+                            if (name.isNotEmpty) addGroupDetail(name);
+                          },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
                     ),
                   ),
+                  child:
+                      isLoading
+                          ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                          : const Text('新增'),
                 ),
               ],
             ),
@@ -819,17 +712,13 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: const Color(0xFF1a2a4e),
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: const Color(0xFF6366f1).withOpacity(0.2),
-                  width: 1,
-                ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF6366f1).withOpacity(0.08),
-                    spreadRadius: 0,
-                    blurRadius: 8,
+                    color: Colors.grey,
+                    spreadRadius: 1,
+                    blurRadius: 4,
                     offset: const Offset(0, 2),
                   ),
                 ],
@@ -840,25 +729,17 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF6366f1).withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(
-                                Icons.list_alt,
-                                size: 48,
-                                color: Colors.grey[400],
-                              ),
+                            Icon(
+                              Icons.list_alt,
+                              size: 64,
+                              color: Colors.grey[400],
                             ),
                             const SizedBox(height: 16),
-                            const Text(
+                            Text(
                               '此群組暫無項目',
                               style: TextStyle(
                                 fontSize: 16,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
+                                color: Colors.grey[600],
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -866,7 +747,7 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
                               '使用上方輸入框新增第一個項目',
                               style: TextStyle(
                                 fontSize: 14,
-                                color: Colors.grey[400],
+                                color: Colors.grey[500],
                               ),
                             ),
                           ],
@@ -877,58 +758,35 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
                         itemCount: details.length,
                         itemBuilder: (context, index) {
                           final detail = details[index];
-                          return Container(
+                          return Card(
+                            elevation: 1,
                             margin: const EdgeInsets.only(bottom: 12),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF0a1428),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: const Color(0xFF6366f1).withOpacity(0.2),
-                                width: 1,
-                              ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
                             ),
                             child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                              leading: Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      const Color(0xFF6366f1),
-                                      const Color(0xFF60a5fa),
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    '${index + 1}',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 16,
-                                    ),
+                              leading: CircleAvatar(
+                                backgroundColor: Colors.teal,
+                                radius: 20,
+                                child: Text(
+                                  '${index + 1}',
+                                  style: TextStyle(
+                                    color: Colors.teal[700],
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ),
                               title: Text(
                                 detail['name'],
                                 style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                               subtitle: Text(
                                 'ID: ${detail['id']}',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Colors.grey[400],
-                                  fontWeight: FontWeight.w500,
+                                  color: Colors.grey[600],
                                 ),
                               ),
                               onTap: () {
