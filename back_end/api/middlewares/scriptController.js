@@ -96,6 +96,8 @@ function isMostlyChinese(str) {
   return han >= latin;
 }
 
+
+
 /**
  * 從 DB 裡補上 reporter_script & news_chat
  * @param {number[]} idList
@@ -169,7 +171,7 @@ async function loadReporterAndChatForIds(idList, scriptById) {
 async function getScript(req, res, next) {
   try {
     // 1) 取得 idList
-    let { idList } = req.body || {};
+    let idList = req.query?.idList;
 
     if (!Array.isArray(idList) || !idList.length) {
       return res.status(400).json({
@@ -361,6 +363,88 @@ async function getScript(req, res, next) {
     } catch (_) {}
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // 從 DB 拿一筆腳本（你自己調 schema）
 /*async function getScriptRowFromDb(newsId) {
