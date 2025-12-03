@@ -4,7 +4,8 @@ const { getText, getScript, reporterMake, chatMake,  callAskScript } = require('
 
 // general mode
 router.get('/text', getText);
-router.get('/get', getScript);
+router.get('/general', getScript);
+router.get('/quick', getScript);
 
 // reporter mode
 //router.get('/reporter_fast', reporterScriptFast);
