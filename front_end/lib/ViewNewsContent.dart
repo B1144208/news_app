@@ -1767,7 +1767,7 @@ class _ViewNewsContentState extends State<ViewNewsContent> {
                       Text(
                         _isTtsLoading
                             ? '載入中...'
-                            : '${_getPlayModeName(_playMode)}朗讀',
+                            : '${_getPlayModeName(_playMode)}模式',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
