@@ -244,7 +244,7 @@ async function checkImageFormat( img ) {
     return img;
 }
 
-/*function checkDateTimeFormat (input) {
+function checkDateTimeFormat (input) {
     if (typeof input !== 'string') throw new Error('Invalid input: not a string');
 
     // 1. 把斜線換成 dash
@@ -265,8 +265,8 @@ async function checkImageFormat( img ) {
     }
 
     return str;
-}*/
-function checkDateTimeFormat (input) {
+}
+/*function checkDateTimeFormat (input) {
     console.log("checkDateTimeFormat - input: ", input)
 
     if (typeof input !== 'string') {
@@ -315,7 +315,7 @@ function checkDateTimeFormat (input) {
     }
     console.log("checkDateTimeFormat - str: ", str)
     return str;
-}
+}*/
 
 
 module.exports = { checkRequireField, checkImageFormat, checkDateTimeFormat };
