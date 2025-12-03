@@ -331,18 +331,13 @@ async function insertNewsTranslateForOneNews(originalNewsId, translate) {
 
     const original = searchRes?.complexList?.[0];
     if (!original) {
-      console.warn(
-        '[newsAllWorker] insertNewsTranslateForOneNews: searchNews 找不到對應新聞，news_id =',
-        originalNewsId
-      );
-      // 找不到就只好 fallback 回原本 newsId
+      console.warn('[newsAllWorker] insertNewsTranslateForOneNews: searchNews 找不到對應新聞，news_id =', originalNewsId);
       return { targetNewsId: originalNewsId, newNewsId: null };
     }
 
     const iso = String(original.publishDate); 
     const d = new Date(iso);
     const pad2 = (n) => String(n).padStart(2, '0');
-
     const publishDate =
     `${d.getFullYear()}/` +
     `${pad2(d.getMonth() + 1)}/` +
@@ -365,18 +360,11 @@ async function insertNewsTranslateForOneNews(originalNewsId, translate) {
     };
 
     const fakeReqForInsert = { body: newNewsPayload };
-
-    const insertRes = await callAndCatchApiSuccessInGeneralFunction(
-      insertNews,
-      fakeReqForInsert
-    );
-
+    const insertRes = await callAndCatchApiSuccessInGeneralFunction(insertNews, fakeReqForInsert);
     const newNewsId = insertRes?.insertId;
+    console.log("insertId: ", newNewsId);
     if (!newNewsId) {
-      console.warn(
-        '[newsAllWorker] insertNewsTranslateForOneNews: insertNews 沒有回傳 insertId，news_id =',
-        originalNewsId
-      );
+      console.warn('[newsAllWorker] insertNewsTranslateForOneNews: insertNews 沒有回傳 insertId，news_id =',originalNewsId);
       return { targetNewsId: originalNewsId, newNewsId: null };
     }
 
@@ -385,32 +373,23 @@ async function insertNewsTranslateForOneNews(originalNewsId, translate) {
       await pool.query(
         `
           UPDATE news_data
-          SET is_chinese = 1,
+          SET relation_id = ?,
+              is_chinese = 1,
               translate_id = ?
           WHERE news_id = ?;
         `,
-        [originalNewsId, newNewsId]
+        [relationId, originalNewsId, newNewsId]
       );
     } catch (err) {
-      console.warn(
-        '[newsAllWorker] insertNewsTranslateForOneNews: 更新新新聞 is_chinese/translate_id 失敗，新 news_id =',
-        newNewsId,
-        'err =',
-        err.message
-      );
+      console.warn('[newsAllWorker] insertNewsTranslateForOneNews: 更新新新聞 is_chinese/translate_id 失敗，新 news_id =', newNewsId, 'err =', err.message);
     }
 
     // 後面 group/location/keyword... 都寫到 newNewsId 上
-    return { targetNewsId: newNewsId, newNewsId };
-  } catch (err) {
-    console.warn(
-      '[newsAllWorker] insertNewsTranslateForOneNews: 流程發生錯誤，fallback 原新聞，news_id =',
-      originalNewsId,
-      'err =',
-      err.message
-    );
-    return { targetNewsId: originalNewsId, newNewsId: null };
-  }
+        return { targetNewsId: newNewsId, newNewsId };
+    } catch (err) {
+        console.warn('[newsAllWorker] insertNewsTranslateForOneNews: 流程發生錯誤，fallback 原新聞，news_id =', originalNewsId, 'err =', err.message);
+        return { targetNewsId: originalNewsId, newNewsId: null };
+    }
 }
 
 /* ---------- 將 news_task 三個欄位都設為完成 ---------- */
