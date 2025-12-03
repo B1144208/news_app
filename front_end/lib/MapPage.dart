@@ -13,6 +13,16 @@ import 'BookmarkPage.dart';
 // 💥 1. 新增：引入 ViewNewsContent 頁面
 import 'ViewNewsContent.dart';
 
+// ========== 星空主題顏色常數 ==========
+// 允許在此處快速調整應用程式的主題顏色
+const Color _starSkyBackground = Color(0xFF000814); // 星空深藍背景
+const Color _starSkyCard = Color(0xFF1e3a8a); // 深藍卡片
+const Color _starSkyDeepBlue = Color(0xFF0f172a); // 深藍
+const Color _starSkyTextPrimary = Color.fromARGB(255, 8, 13, 30); // 淡灰文字
+const Color _starSkyTextSecondary = Color(0xFF818cf8); // 紫藍文字
+const Color _starSkyAccent = Color(0xFF93c5fd); // 淺藍強調
+const Color _starSkyPurple = Color(0xFF818cf8); // 紫藍
+
 // 新聞資料模型 (保持不變)
 class News {
   // 💥 2. 欄位調整：保留 ViewNewsContent 需要的欄位，但更新註釋
@@ -589,9 +599,9 @@ class _MapPageState extends State<MapPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
         decoration: BoxDecoration(
-          color: isEnabled ? Colors.white : const Color(0xFF1a2a4e),
+          color: isEnabled ? Colors.white : const Color(0xFF1e3a8a),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF3b82f6)),
+          border: Border.all(color: const Color.fromARGB(255, 2, 43, 110)),
         ),
         child: DropdownButtonHideUnderline(
           child: DropdownButton<String>(
@@ -720,7 +730,7 @@ class _MapPageState extends State<MapPage> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         filled: true,
-                        fillColor: const Color(0xFF1a2a4e),
+                        fillColor: const Color.fromARGB(255, 85, 127, 225),
                       ),
                       onSubmitted: (query) {
                         _searchLocation(query);
@@ -836,7 +846,7 @@ class _MapPageState extends State<MapPage> {
   // 💥 新增：構建主要的新聞列表介面
   Widget _buildNewsList() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(child: CircularProgressIndicator(color: _starSkyAccent));
     }
 
     if (_error != null) {
@@ -882,7 +892,7 @@ class _MapPageState extends State<MapPage> {
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                     minimumSize: const Size(0, 30),
-                    backgroundColor: const Color(0xFF60a5fa),
+                    backgroundColor: _starSkyPurple,
                     foregroundColor: Colors.white,
                   ),
                   child: const Text('往地區新聞', style: TextStyle(fontSize: 12)),
@@ -890,7 +900,6 @@ class _MapPageState extends State<MapPage> {
               ),
 
             // 已移除 '往州/省新聞' 按鈕的區塊 (原 if (hasStateScope))
-
           ],
         );
       } else {
@@ -899,7 +908,7 @@ class _MapPageState extends State<MapPage> {
           style: ElevatedButton.styleFrom(
             padding: const EdgeInsets.symmetric(horizontal: 10),
             minimumSize: const Size(0, 30),
-            backgroundColor: const Color(0xFF0a1428),
+            backgroundColor: const Color.fromARGB(255, 25, 84, 202),
             foregroundColor: Colors.white,
           ),
           child: const Text('返回國家新聞', style: TextStyle(fontSize: 12)),
@@ -919,6 +928,7 @@ class _MapPageState extends State<MapPage> {
                 '🌏 ${countryName} - 新聞列表',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
+                  color: _starSkyTextPrimary,
                 ),
               ),
               const SizedBox(height: 4),
@@ -929,13 +939,13 @@ class _MapPageState extends State<MapPage> {
                     '目前顯示範圍: $scopeText',
                     style: const TextStyle(
                       fontSize: 14,
-                      color: const Color(0xFFe5e7eb),
+                      color: _starSkyTextSecondary,
                     ),
                   ),
                   if (hasSubScope) buildScopeButtons(),
                 ],
               ),
-              const Divider(),
+              const Divider(color: _starSkyPurple, height: 1),
             ],
           ),
         ),
@@ -949,11 +959,16 @@ class _MapPageState extends State<MapPage> {
                     itemBuilder: (context, index) {
                       final news = _newsList[index];
                       return Card(
+                        color: _starSkyCard,
                         margin: const EdgeInsets.symmetric(
                           horizontal: 16.0,
                           vertical: 4.0,
                         ),
                         child: ListTile(
+                          textColor: _starSkyTextPrimary,
+                          subtitleTextStyle: const TextStyle(
+                            color: _starSkyTextSecondary,
+                          ),
                           leading:
                               news.coverImage != null
                                   ? Image.network(
@@ -965,12 +980,12 @@ class _MapPageState extends State<MapPage> {
                                         (context, error, stackTrace) =>
                                             const Icon(
                                               Icons.image,
-                                              color: const Color(0xFFe5e7eb),
+                                              color: _starSkyAccent,
                                             ),
                                   )
                                   : const Icon(
                                     Icons.article,
-                                    color: const Color(0xFF60a5fa),
+                                    color: _starSkyAccent,
                                   ),
                           title: Text(
                             news.title,
@@ -994,24 +1009,26 @@ class _MapPageState extends State<MapPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: _starSkyBackground,
       appBar: AppBar(
-        title: const Text('地區新聞'),
+        backgroundColor: _starSkyCard,
+        title: const Text('地區新聞', style: TextStyle(color: _starSkyTextPrimary)),
         actions: [
           // 💥 1. 搜尋按鈕：文字/選單搜尋
           IconButton(
-            icon: const Icon(Icons.search),
+            icon: const Icon(Icons.search, color: _starSkyAccent),
             onPressed: _showSearchDialog,
             tooltip: '搜尋地點/篩選新聞',
           ),
           // 💥 2. 地圖按鈕：全螢幕地圖搜尋
           IconButton(
-            icon: const Icon(Icons.map),
+            icon: const Icon(Icons.map, color: _starSkyAccent),
             onPressed: _navigateToFullMapSearch,
             tooltip: '地圖選取地點',
           ),
           // 3. 書籤按鈕 (保留)
           IconButton(
-            icon: const Icon(Icons.bookmark),
+            icon: const Icon(Icons.bookmark, color: _starSkyAccent),
             onPressed: () {
               // Navigator.push(
               //   context,
@@ -1119,7 +1136,7 @@ class _FullMapSearchPageState extends State<_FullMapSearchPage> {
             height: 100,
             child: const Icon(
               Icons.location_on,
-              color: const Color(0xFF60a5fa),
+              color: const Color(0xFF93c5fd),
               size: 50.0,
             ),
           ),
@@ -1304,7 +1321,7 @@ class _FullMapSearchPageState extends State<_FullMapSearchPage> {
             height: 100,
             child: const Icon(
               Icons.location_on,
-              color: const Color(0xFF60a5fa),
+              color: const Color(0xFF93c5fd),
               size: 50.0,
             ),
           ),
@@ -1327,10 +1344,15 @@ class _FullMapSearchPageState extends State<_FullMapSearchPage> {
         '緯度: ${_currentCenter.latitude.toStringAsFixed(3)}, 經度: ${_currentCenter.longitude.toStringAsFixed(3)}';
 
     return Scaffold(
+      backgroundColor: _starSkyBackground,
       appBar: AppBar(
-        title: const Text('地圖選取地點'),
+        backgroundColor: _starSkyCard,
+        title: const Text(
+          '地圖選取地點',
+          style: TextStyle(color: _starSkyTextPrimary),
+        ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back, color: _starSkyAccent),
           onPressed: () => Navigator.pop(context), // 直接返回，不帶結果
         ),
       ),
@@ -1377,12 +1399,19 @@ class _FullMapSearchPageState extends State<_FullMapSearchPage> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: const Color(0xFFe5e7eb),
+                color: _starSkyCard,
                 borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: _starSkyPurple.withOpacity(0.3),
+                  width: 1,
+                ),
               ),
               child: Text(
                 displayCoordinates,
-                style: const TextStyle(color: Colors.white, fontSize: 14),
+                style: const TextStyle(
+                  color: _starSkyTextPrimary,
+                  fontSize: 14,
+                ),
               ),
             ),
           ),
@@ -1397,14 +1426,14 @@ class _FullMapSearchPageState extends State<_FullMapSearchPage> {
                   heroTag: "mapZoomIn",
                   mini: true,
                   onPressed: _zoomIn,
-                  child: const Icon(Icons.add),
+                  child: const Icon(Icons.add, color: Colors.white),
                 ),
                 const SizedBox(height: 8),
                 FloatingActionButton(
                   heroTag: "mapZoomOut",
                   mini: true,
                   onPressed: _zoomOut,
-                  child: const Icon(Icons.remove),
+                  child: const Icon(Icons.remove, color: Colors.white),
                 ),
               ],
             ),
@@ -1421,7 +1450,7 @@ class _FullMapSearchPageState extends State<_FullMapSearchPage> {
                       ? () =>
                           Navigator.pop(context, _selectedLocation) // 傳回選中的地點
                       : null,
-              icon: const Icon(Icons.check),
+              icon: const Icon(Icons.check, color: Colors.white),
               label: Text(
                 _selectedLocation != null
                     ? '確定選擇: ${_selectedLocation!['country_name_zh_tw'] ?? '未知地點'}'
@@ -1430,7 +1459,7 @@ class _FullMapSearchPageState extends State<_FullMapSearchPage> {
               ),
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 50),
-                backgroundColor: const Color(0xFF10b981),
+                backgroundColor: _starSkyPurple,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
