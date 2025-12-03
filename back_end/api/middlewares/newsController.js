@@ -352,7 +352,7 @@ async function insertNews(req, res, next) {
             { field: 'channel'      , data: channel     , type: 'string'    , other: ['non_null'] },
             { field: 'cover_img'    , data: cover_img   , type: 'image'     , other: ['lth' ]     },
             { field: 'title'        , data: title       , type: 'string'    , other: ['non_null'] },
-            { field: 'publish_date' , data: publish_date, type: 'datetime'  , other: ['non_null'] },
+            { field: 'publish_date' , data: publish_date, type: 'datetime'  , other: ['lth'] },
             { field: 'detail'       , data: detail      , type: 'object'    , other: ['non_null', 'news_detail'] },
             { field: 'group'        , data: group       , type: 'array'     , other: ['string_into_array']  , array_filter: 'string' },
             { field: 'location'     , data: location    , type: 'array'     , other: ['string_into_array']  , array_filter: 'string' },
@@ -366,6 +366,22 @@ async function insertNews(req, res, next) {
             err.desc = "middlewares-insertNews(): Missing or Invalid required fields";
             return next(err);
         }
+
+        // 如果沒有 publish_date，就用現在時間
+        function getNowDateTime() {
+            const d = new Date();
+            const pad2 = (n) => String(n).padStart(2, '0');
+
+            return (
+                d.getFullYear() + '-' +
+                pad2(d.getMonth() + 1) + '-' +
+                pad2(d.getDate()) + ' ' +
+                pad2(d.getHours()) + ':' +
+                pad2(d.getMinutes()) + ':' +
+                pad2(d.getSeconds())
+            );
+        }
+        if (!publish_date) publish_date = getNowDateTime();
 
         // 失敗時，刪除 news
         async function callDeleteNews ( news_id = null, image_id = null, relation_id = null ) {
