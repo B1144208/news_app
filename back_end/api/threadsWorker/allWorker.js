@@ -343,10 +343,20 @@ async function insertNewsTranslateForOneNews(originalNewsId, translate) {
     }
 
     console.log("3. 情況二 : 組字 original : \n", JSON.stringify(original, null, 2))
-    const iso = String(original.publishDate);
-    const publishDate = iso
-    ? String(original.publishDate).slice(0, 19).replace('T', ' ').replace(/-/g, '/') 
-    : null;
+    const iso = String(original.publishDate); 
+    // 這裡的 iso 現在是 "Wed Oct 08 2025 00:00:00 GMT+0800 (台北標準時間)"
+
+    const d = new Date(iso); // 或 new Date(original.publishDate) 也可以
+
+    const pad2 = (n) => String(n).padStart(2, '0');
+
+    const publishDate =
+    `${d.getFullYear()}/` +
+    `${pad2(d.getMonth() + 1)}/` +
+    `${pad2(d.getDate())} ` +
+    `${pad2(d.getHours())}:` +
+    `${pad2(d.getMinutes())}:` +
+    `${pad2(d.getSeconds())}`;
 
     console.log("original.publishDate: ", original.publishDate);
     console.log("iso: ", iso);
