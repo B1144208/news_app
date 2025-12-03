@@ -25,6 +25,10 @@ class AIPage extends StatefulWidget {
 class _AIPageState extends State<AIPage> {
   int? _currentUserId;
 
+  // 🟢 新增靜態快取：用於儲存列表資料
+  static List<dynamic>? _eventsortingCache;
+  static List<dynamic>? _multiplePerspectivesCache;
+
   // true: 事件整理, false: 多方看法
   bool _isEventSortingMode = true;
 
@@ -144,10 +148,27 @@ class _AIPageState extends State<AIPage> {
     };
   }
 
+  // 🟢 新增：清除所有列表快取
+  void _clearAllCache() {
+    _eventsortingCache = null;
+    _multiplePerspectivesCache = null;
+    // 快取清除後，重設狀態變量以便下次 _fetchData 時進行網路請求
+    _eventsortingList = [];
+    _multiplePerspectivesList = [];
+    _filteredEventsortingList = [];
+    _filteredMultiplePerspectivesList = [];
+  }
+
   // 🌟 修正點 4：統一載入數據和收藏狀態 🌟
-  Future<void> _fetchData() async {
+  // 💥 加入 shouldClearCache 參數，用於強制刷新
+  Future<void> _fetchData({bool shouldClearCache = false}) async {
+    if (shouldClearCache) {
+      _clearAllCache();
+    }
+
     try {
       // 1. 同時開始載入內容數據
+      // 💥 這裡會調用包含快取邏輯的 _searchEventsorting / _searchMultipleperspectives
       final eventFuture = _searchEventsorting();
       final mpFuture = _searchMultipleperspectives();
 
@@ -171,6 +192,11 @@ class _AIPageState extends State<AIPage> {
       if (_currentUserId != null) {
         await _fetchBookmarks(); // 這裡會更新 _bookmarkIdStatus 並調用內部的 setState
       }
+
+      // 💥 確保在所有資料和狀態都更新後，觸發一次 setState
+      if (mounted) {
+        setState(() {});
+      }
     } catch (e) {
       print('Error during initial data fetch: $e');
       // 為了讓 FutureBuilder 顯示錯誤，可以重新拋出異常
@@ -180,6 +206,12 @@ class _AIPageState extends State<AIPage> {
 
   // 搜尋事件整理資料 (邏輯不變)
   Future<List<dynamic>> _searchEventsorting({int? id}) async {
+    // 🟢 1. 檢查快取：如果沒有 id 參數 (即列表頁載入)，並且快取有資料
+    if (id == null && _eventsortingCache != null) {
+      print('✅ Cache hit for eventsorting list');
+      return _eventsortingCache!;
+    }
+
     final Map<String, dynamic> queryParams = {};
     if (id != null) {
       queryParams['id'] = id.toString();
@@ -192,6 +224,12 @@ class _AIPageState extends State<AIPage> {
       final response = await http.get(uri);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+
+        // 🟢 2. 網路請求成功後，存入快取
+        if (id == null) {
+          _eventsortingCache = data['data'];
+        }
+
         return data['data'];
       } else {
         throw Exception(
@@ -205,6 +243,12 @@ class _AIPageState extends State<AIPage> {
 
   // 搜尋多方看法資料 (邏輯不變)
   Future<List<dynamic>> _searchMultipleperspectives({int? id}) async {
+    // 🟢 1. 檢查快取：如果沒有 id 參數 (即列表頁載入)，並且快取有資料
+    if (id == null && _multiplePerspectivesCache != null) {
+      print('✅ Cache hit for multipleperspectives list');
+      return _multiplePerspectivesCache!;
+    }
+
     final Map<String, dynamic> queryParams = {};
     if (id != null) {
       queryParams['id'] = id.toString();
@@ -217,6 +261,12 @@ class _AIPageState extends State<AIPage> {
       final response = await http.get(uri);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+
+        // 🟢 2. 網路請求成功後，存入快取
+        if (id == null) {
+          _multiplePerspectivesCache = data['data'];
+        }
+
         return data['data'];
       } else {
         throw Exception(
@@ -297,8 +347,9 @@ class _AIPageState extends State<AIPage> {
         MaterialPageRoute(builder: (context) => const LoginPage()),
       ).then((_) async {
         await _loadUserId();
+        // 💥 登入後，強制清除快取並重新載入資料和收藏狀態
         if (_currentUserId != null) {
-          await _fetchData();
+          await _fetchData(shouldClearCache: true);
         }
       });
 
@@ -391,9 +442,9 @@ class _AIPageState extends State<AIPage> {
                             builder: (context) => const LoginPage(),
                           ),
                         ).then((_) {
-                          // 登入後刷新頁面
+                          // 登入後，強制清除快取並刷新頁面
                           setState(() {
-                            _loadUserId().then((__) => _fetchData());
+                            _loadingFuture = _loadUserId().then((__) => _fetchData(shouldClearCache: true));
                           });
                         });
                       },
@@ -463,7 +514,10 @@ class _AIPageState extends State<AIPage> {
                                 MaterialPageRoute(
                                   builder: (context) => const AdminPage(),
                                 ),
-                              ).then((_) => setState(() {}));
+                              ).then((_) => setState(() {
+                                // 導航回頁面後，重新載入資料 (不清除快取，但可以重新載入收藏)
+                                _loadingFuture = _loadUserId().then((__) => _fetchData());
+                              }));
                             } else {
                               // 導向會員中心頁面
                               Navigator.push(
@@ -472,7 +526,10 @@ class _AIPageState extends State<AIPage> {
                                   builder:
                                       (context) => const MemberCenterPage(),
                                 ),
-                              ).then((_) => setState(() {}));
+                              ).then((_) => setState(() {
+                                // 導航回頁面後，重新載入資料
+                                _loadingFuture = _loadUserId().then((__) => _fetchData());
+                              }));
                             }
                           },
                           child: Container(
@@ -536,7 +593,8 @@ class _AIPageState extends State<AIPage> {
                       ),
                     ).then(
                           (_) => setState(() {
-                        _loadUserId().then((__) => _fetchData());
+                        // 登入後，強制清除快取並刷新頁面
+                        _loadingFuture = _loadUserId().then((__) => _fetchData(shouldClearCache: true));
                       }),
                     );
                     return;
@@ -547,7 +605,10 @@ class _AIPageState extends State<AIPage> {
                     MaterialPageRoute(
                       builder: (context) => const BookmarkPage(),
                     ),
-                  );
+                  ).then((_) => setState(() {
+                    // 從收藏頁面返回後，重新載入收藏狀態
+                    _loadingFuture = _loadUserId().then((__) => _fetchBookmarks());
+                  }));
                 },
                 child: Container(
                   width: 40,
