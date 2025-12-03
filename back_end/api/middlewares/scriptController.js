@@ -1,12 +1,13 @@
 const pool = require('../connect_db');
+const axios = require('axios');
 const { checkRequireField } = require('../utils/checkHelper');
 const { callAndCatchApiSuccess } = require('../utils/fakeHelper');
 const { shortenArticle, cleanNewsScript } = require('../utils/scriptHelper');
 const { execFile } = require('child_process');
 const path = require('path');
 const { searchNews } = require('./newsController');
-const axios = require('axios');
 const { getEmbedding } = require('../utils/embeddingHelper');
+const { runAllWorker } = require('../threadsWorker/allWorker')
 
 
 const OLLAMA_URL = 'http://localhost:11434/api/generate';
