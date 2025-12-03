@@ -356,7 +356,7 @@ async function insertNewsTranslateForOneNews(originalNewsId, translate) {
       },
       title: translate.title,       // 中文標題
       publish_date: publishDate,
-      detail: translate.content     // 中文內文
+      detail: translate.content     // 中文內文 
     };
 
     const fakeReqForInsert = { body: newNewsPayload };
