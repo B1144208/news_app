@@ -36,6 +36,9 @@ class _ChannelDetailPageState extends State<ChannelDetailPage> {
   String updateFrequency = "每日更新";
   String? channelBackgroundImage;
 
+  // ✅ 新增：追踪"显示全部"展开状态
+  bool _isNewsListExpanded = false;
+
   // 新增:圖片代理函數
   String _getProxiedImageUrl(String? originalUrl) {
     if (originalUrl == null || originalUrl.isEmpty) return '';
@@ -147,6 +150,7 @@ class _ChannelDetailPageState extends State<ChannelDetailPage> {
                   'news_id': news['newsId'] ?? news['id'] ?? 0,
                   'title': news['newsTitle'] ?? news['title'] ?? '無標題',
                   'channel': news['channelName'] ?? news['channel'] ?? '未知頻道',
+                  'channel_id': news['channel_id'] ?? 0, // ✅ 新增：保存 channel_id
                   'publish_date': _formatDate(
                     news['publishDate'] ?? news['news_date'],
                   ),
@@ -161,9 +165,27 @@ class _ChannelDetailPageState extends State<ChannelDetailPage> {
                 };
               }).toList();
 
+          // ✅ 新增：驗證所有新聞屬於當前頻道
+          List<Map<String, dynamic>> validNewsList =
+              processedNews.where((news) {
+                final newsChannelId = news['channel_id'] as int?;
+                if (newsChannelId != widget.channelId) {
+                  print(
+                    '⚠️ 警告：新聞 ${news['news_id']} 不屬於頻道 ${widget.channelId}（actual: $newsChannelId）',
+                  );
+                  return false; // 過濾掉不匹配的新聞
+                }
+                return true;
+              }).toList();
+
           setState(() {
-            channelNews = processedNews;
-            print('✅ 載入 ${channelNews.length} 篇新聞');
+            channelNews = validNewsList;
+            print('✅ 載入 ${channelNews.length} 篇有效新聞');
+            if (validNewsList.length < processedNews.length) {
+              print(
+                '⚠️ 過濾掉 ${processedNews.length - validNewsList.length} 篇不匹配的新聞',
+              );
+            }
           });
         } else {
           print('⚠️ API 返回異常: ${data['message']}');
@@ -546,6 +568,34 @@ class _ChannelDetailPageState extends State<ChannelDetailPage> {
 
   // 新聞列表區域
   Widget _buildNewsSection() {
+    // ✅ 決定顯示多少條新聞
+    int itemsToShow = _isNewsListExpanded ? channelNews.length : 3;
+
+    // 如果沒有新聞，顯示提示
+    if (channelNews.isEmpty) {
+      return Container(
+        margin: EdgeInsets.symmetric(horizontal: 16),
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Text(
+            '目前沒有新聞',
+            style: TextStyle(color: Colors.grey, fontSize: 14),
+          ),
+        ),
+      );
+    }
+
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 16),
       padding: EdgeInsets.all(16),
@@ -559,41 +609,56 @@ class _ChannelDetailPageState extends State<ChannelDetailPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(Icons.article, color: Colors.deepPurple, size: 20),
-              SizedBox(width: 8),
-              Text(
-                '新聞',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+          // ✅ 修改：顯示全部按鈕改為可點擊
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _isNewsListExpanded = !_isNewsListExpanded;
+              });
+              print(
+                '📰 新聞列表已${_isNewsListExpanded ? '展開' : '折疊'}，顯示 $itemsToShow 篇',
+              );
+            },
+            child: Row(
+              children: [
+                Icon(Icons.article, color: Colors.deepPurple, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  '新聞',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
                 ),
-              ),
-              Spacer(),
-              TextButton(
-                onPressed: () {
-                  // TODO: 導航到完整新聞列表
-                },
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('顯示全部', style: TextStyle(color: Colors.deepPurple)),
-                    Icon(
-                      Icons.arrow_forward_ios,
-                      size: 14,
-                      color: Colors.deepPurple,
-                    ),
-                  ],
+                Spacer(),
+                Text(
+                  '${channelNews.length} 篇 ',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
-              ),
-            ],
+                Text(
+                  _isNewsListExpanded ? '收起' : '顯示全部',
+                  style: TextStyle(
+                    color: Colors.deepPurple,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Icon(
+                  _isNewsListExpanded
+                      ? Icons.arrow_drop_up
+                      : Icons.arrow_forward_ios,
+                  size: 14,
+                  color: Colors.deepPurple,
+                ),
+              ],
+            ),
           ),
 
           SizedBox(height: 16),
 
-          ...channelNews.take(3).map((news) => _buildNewsItem(news)),
+          // ✅ 修改：根據展開狀態決定顯示多少條新聞
+          ...channelNews.take(itemsToShow).map((news) => _buildNewsItem(news)),
         ],
       ),
     );
