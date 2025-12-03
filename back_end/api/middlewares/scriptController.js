@@ -173,6 +173,9 @@ async function getScript(req, res, next) {
     // 1) 取得 idList
     let idList = req.query?.idList;
 
+    console.log(idList);
+    console.log(typeof(idList));
+
     if (!Array.isArray(idList) || !idList.length) {
       return res.status(400).json({
         ok: false,
