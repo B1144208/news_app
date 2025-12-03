@@ -533,7 +533,7 @@ async function runAllWorker(LIMIT = 100, idList = null) {
 
 
 // 啟動
-/*mainLoop().catch(err => {
+mainLoop().catch(err => {
     console.error('[newsMainWorker] 無法啟動:', err);
     process.exit(1);
 });
@@ -547,7 +547,7 @@ process.on('SIGINT', () => {
 process.on('SIGTERM', () => {
     console.log('\n[newsMainWorker] 收到 SIGTERM，準備結束');
     process.exit(0);
-});*/
+});
 
 
 module.exports = {
