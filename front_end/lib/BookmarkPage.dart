@@ -425,7 +425,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
                 color: const Color(0xFF2a3a5e), // 深藍
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: const Color(0xFF6366f1).withOpacity(0.3),
+                  color: const Color(0xFF6366f1),
                   width: 1,
                 ),
               ),
@@ -483,7 +483,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF6366f1).withOpacity(0.7), // 淡紫
+                color: const Color(0xFF6366f1), // 淡紫
                 spreadRadius: 1,
                 blurRadius: 2,
               ),
@@ -509,7 +509,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
         color: const Color(0xFF1a2a4e), // 深藍
         borderRadius: BorderRadius.circular(25),
         border: Border.all(
-          color: const Color(0xFF6366f1).withOpacity(0.3),
+          color: const Color(0xFF6366f1),
           width: 1,
         ),
       ),
@@ -739,7 +739,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF6366f1).withOpacity(0.7), // 淡紫
+            color: const Color(0xFF6366f1), // 淡紫
             spreadRadius: 1,
             blurRadius: 3,
           ),
@@ -799,7 +799,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
-                      color: Colors.black,
+                      color: Colors.white,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -883,7 +883,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF6366f1).withOpacity(0.7), // 淡紫
+            color: const Color(0xFF6366f1), // 淡紫
             spreadRadius: 1,
             blurRadius: 3,
           ),
@@ -1020,7 +1020,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF6366f1).withOpacity(0.7), // 淡紫
+            color: const Color(0xFF6366f1), // 淡紫
             spreadRadius: 1,
             blurRadius: 3,
           ),

@@ -627,7 +627,10 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
             padding: EdgeInsets.symmetric(horizontal: 16.0),
             child: Text(
               '相關事件：',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
           ),
           // 呼叫原有的卡片 Widget
@@ -653,11 +656,11 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
-          color: Colors.blue.withOpacity(0.95),
+          color: Colors.blue,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black,
               blurRadius: 5,
               offset: const Offset(0, 3),
             ),
@@ -697,7 +700,10 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
           const SizedBox(width: 8),
           Text(
             '${_averageScore.toStringAsFixed(1)} / 5.0',
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: const TextStyle(fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
           ),
           const SizedBox(width: 16),
           Text(
@@ -767,7 +773,10 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
         children: [
           const Text(
             '新聞脈絡整理',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
           ),
           const SizedBox(height: 16),
           if (items.isEmpty)
@@ -967,7 +976,7 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black,
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),
@@ -1045,7 +1054,7 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
           border: Border.all(color: const Color(0xFF6366f1), width: 1),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black,
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
