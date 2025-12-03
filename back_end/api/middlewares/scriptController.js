@@ -56,8 +56,313 @@ async function getText (req, res, next) {
     }
 }
 
+/**
+ * 從 news/text 結構中生出 blocks
+ * 目前假設：
+ * - news.text 是 [{text}, {img:{src,alt}}, ...]
+ * - 或 news.content 是同樣格式
+ * - 如果只是純字串 content，就包成 [{text: content}]
+ */
+function normalizeBlocksFromNews(news) {
+  if (Array.isArray(news?.text)) return news.text;
+  if (Array.isArray(news?.content)) return news.content;
+
+  const s = (news?.content ?? '').toString().trim();
+  if (!s) return [];
+  return [{ text: s }];
+}
+
+/** 把 blocks 攤平成純文字（給 LLM 用） */
+function flattenBlocksToPlainText(blocks) {
+  if (!Array.isArray(blocks)) return '';
+  return blocks
+    .map(b => {
+      if (!b || typeof b !== 'object') return '';
+      if (typeof b.text === 'string') return b.text;
+      if (b.img && typeof b.img.alt === 'string') return b.img.alt;
+      return '';
+    })
+    .filter(Boolean)
+    .join('\n');
+}
+
+/** 判斷字串是否「主要是中文」：中文字 >= 英文字母就算中文 */
+function isMostlyChinese(str) {
+  if (!str) return false;
+  const han   = (str.match(/[\u4E00-\u9FFF]/g) || []).length;
+  const latin = (str.match(/[A-Za-z]/g) || []).length;
+  if (han === 0 && latin === 0) return false;
+  return han >= latin;
+}
+
+/**
+ * 從 DB 裡補上 reporter_script & news_chat
+ * @param {number[]} idList
+ * @param {Map<number, Object>} scriptById  // id -> {id,title,general,reporter,chat}
+ */
+async function loadReporterAndChatForIds(idList, scriptById) {
+  if (!Array.isArray(idList) || !idList.length) return;
+
+  const ph = idList.map(() => '?').join(',');
+  const params = idList;
+
+  // 1) reporter_script
+  const sqlReporter = `
+    SELECT news_id, reporter_script
+    FROM news_data
+    WHERE news_id IN (${ph})
+      AND reporter_script IS NOT NULL
+      AND reporter_script <> ''
+  `;
+  const [rowsReporter] = await pool.query(sqlReporter, params);
+
+  for (const row of rowsReporter) {
+    const entry = scriptById.get(row.news_id);
+    if (entry && !entry.reporter) {
+      entry.reporter = row.reporter_script;
+    }
+  }
+
+  // 2) news_chat
+  const sqlChat = `
+    SELECT
+      news_id,
+      chat_speaker AS speaker,
+      chat_text    AS text,
+      chat_order
+    FROM news_chat
+    WHERE news_id IN (${ph})
+    ORDER BY news_id, chat_order
+  `;
+  const [rowsChat] = await pool.query(sqlChat, params);
+
+  const chatGrouped = new Map();
+  for (const row of rowsChat) {
+    if (!chatGrouped.has(row.news_id)) {
+      chatGrouped.set(row.news_id, []);
+    }
+    chatGrouped.get(row.news_id).push({
+      speaker: row.speaker,
+      text: row.text
+    });
+  }
+
+  for (const [newsId, chatArr] of chatGrouped) {
+    const entry = scriptById.get(newsId);
+    if (entry && (!entry.chat || !entry.chat.length)) {
+      entry.chat = chatArr;
+    }
+  }
+}
+
+/**
+ * SSE：一個一個把 {id,title,general,reporter,chat} 丟給前端
+ * 流程：
+ * 1. 從 body 取 idList
+ * 2. 用 getText 拿 {id,title,general}
+ * 3. 查 DB 拿 reporter_script & news_chat，組成 scriptMap
+ * 4. 沒有 reporter/chat 的再組一個 pendingIds 丟給 runAllWorker(idList)
+ * 5. 從 scriptMap 第一筆開始找「已經完整」的，遇到缺的就停，每 3 秒重查 DB
+ * 6. 一旦某筆補齊就立刻 res.write 丟出去
+ */
+async function getScript(req, res, next) {
+  try {
+    // 1) 取得 idList
+    let { idList } = req.body || {};
+
+    if (!Array.isArray(idList) || !idList.length) {
+      return res.status(400).json({
+        ok: false,
+        error: 'idList is required and must be a non-empty array'
+      });
+    }
+
+    // 整理成整數 & 去重
+    idList = Array.from(
+      new Set(
+        idList
+          .map(x => Number(x))
+          .filter(x => Number.isInteger(x) && x > 0)
+      )
+    );
+
+    if (!idList.length) {
+      return res.status(400).json({
+        ok: false,
+        error: 'idList is empty after normalization'
+      });
+    }
+
+    // 2) getText 取得基本 script（假設回傳 [{id,title,general}, ...]）
+    let baseList;
+    try {
+      // ⚠️ 依你實際的 getText 介面調整：
+      //   如果是 getText(idList) 就這樣；如果是 getText({idList}) 就改。
+      baseList = await getText(idList);
+    } catch (err) {
+      err.desc = 'getText() failed in getScript';
+      throw err;
+    }
+
+    // 建立 scriptMap & map 索引：保持 idList 的順序
+    const scriptMap = [];
+    const scriptById = new Map();
+
+    for (const id of idList) {
+      const base = Array.isArray(baseList)
+        ? baseList.find(x => Number(x.id) === id)
+        : null;
+
+      const entry = {
+        id,
+        title: base?.title || '',
+        general: base?.general || '',
+        reporter: null,
+        chat: null
+      };
+
+      scriptMap.push(entry);
+      scriptById.set(id, entry);
+    }
+
+    // 3) 先查一次 DB，補上已經有的 reporter_script / news_chat
+    await loadReporterAndChatForIds(idList, scriptById);
+
+    // 4) 找出還缺 reporter 或 chat 的 idList
+    const pendingIds = scriptMap
+      .filter(it => !it.reporter || !it.chat || !it.chat.length)
+      .map(it => it.id);
+
+    // 5) 把 pendingIds 丟給 runAllWorker（背景慢慢跑，負責寫 DB）
+    if (pendingIds.length) {
+      // 不 await，讓它在背景跑
+      runAllWorker(0, pendingIds).catch(err => {
+        console.error('runAllWorker error in getScript:', err);
+      });
+    }
+
+    // ========= 設定 SSE / chunked response =========
+    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    if (res.flushHeaders) res.flushHeaders();
+
+    let currentIndex = 0;
+    let timer = null;
+    let ended = false;
+
+    function sendItem(entry) {
+      const payload = {
+        type: 'item',
+        newsId: entry.id,
+        title: entry.title,
+        general: entry.general,
+        reporter: entry.reporter,
+        chat: entry.chat
+      };
+      res.write(`data: ${JSON.stringify(payload)}\n\n`);
+    }
+
+    function sendDone() {
+      if (ended) return;
+      ended = true;
+      res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+      res.end();
+      if (timer) clearInterval(timer);
+    }
+
+    // 檢查 scriptMap[currentIndex..]，把「連續 ready 的」通通丟出去
+    async function tryFlushReady() {
+      while (currentIndex < scriptMap.length) {
+        const item = scriptMap[currentIndex];
+        const ready =
+          item &&
+          item.reporter &&
+          item.reporter.toString().trim() &&
+          Array.isArray(item.chat) &&
+          item.chat.length > 0;
+
+        if (!ready) break;
+
+        sendItem(item);
+        currentIndex++;
+      }
+
+      if (currentIndex >= scriptMap.length) {
+        // 全部送完
+        sendDone();
+        return true;
+      }
+      return false;
+    }
+
+    // 先試著 flush 一次（有些可能一開始就已經有 script 了）
+    const finishedInitially = await tryFlushReady();
+    if (finishedInitially) {
+      return;
+    }
+
+    // 6) 每 3 秒重查 DB：只查還沒 ready、而且 index 之後的那幾筆
+    timer = setInterval(async () => {
+      if (ended || res.writableEnded) {
+        clearInterval(timer);
+        return;
+      }
+
+      // 還沒送出的 & 不完整的 idList
+      const needIds = scriptMap
+        .slice(currentIndex)
+        .filter(
+          it =>
+            !it.reporter ||
+            !it.reporter.toString().trim() ||
+            !Array.isArray(it.chat) ||
+            !it.chat.length
+        )
+        .map(it => it.id);
+
+      if (!needIds.length) {
+        // 可能只是前面還沒 flush 完，試一次
+        const done = await tryFlushReady();
+        if (done) return;
+        return;
+      }
+
+      // 再從 DB 補一次資料
+      try {
+        await loadReporterAndChatForIds(needIds, scriptById);
+      } catch (err) {
+        console.error('loadReporterAndChatForIds in timer error:', err);
+        // 這裡先不直接結束，下一輪再試
+      }
+
+      // 補完後再試著 flush
+      const done = await tryFlushReady();
+      if (done) return;
+    }, 3000);
+
+    // 如果前端關掉連線（例如按「中止」），就停止 timer
+    req.on('close', () => {
+      if (!ended) {
+        console.log('client closed getScript connection');
+        if (timer) clearInterval(timer);
+        ended = true;
+      }
+    });
+  } catch (err) {
+    console.error('getScript fatal error:', err);
+    if (!res.headersSent) {
+      return next(err);
+    }
+    // headers 已送出就只能結束連線
+    try {
+      res.end();
+    } catch (_) {}
+  }
+}
+
 // 從 DB 拿一筆腳本（你自己調 schema）
-async function getScriptRowFromDb(newsId) {
+/*async function getScriptRowFromDb(newsId) {
   const sql = `
     SELECT news_id, reporter_script, chat_script
     FROM news_data
@@ -81,7 +386,7 @@ async function getScript(req, res, next) {
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
-  res.flushHeaders && res.flushHeaders(); // 有些框架需要呼叫一下
+  res.flushHeaders && res.flushHeaders();
 
   // 小工具：送一筆 event 給前端
   function sendEvent(data) {
@@ -140,7 +445,7 @@ async function getScript(req, res, next) {
     }
     next(err);
   }
-}
+}*/
 
 /*async function getReporterChatText(idList) {
   // 若沒有 id，直接回傳空陣列

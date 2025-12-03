@@ -475,64 +475,60 @@ async function handleOneNews(newsItem) {
 
 /* ---------- 主流程 ---------- */
 
-async function runAllWorker(LIMIT) {
-  console.log('[newsAllWorker] 啟動');
-
-  try {
-    const idList = await fetchPendingNewsIds(LIMIT);
-
-    console.log('[newsAllWorker] 抓取 idList =', idList);
-
-    if (idList.length === 0) {
-      console.log('[newsAllWorker] 目前沒有待處理的任務');
-      return;
-    }
-
-    let newsTextList;
+async function runAllWorker(LIMIT, idList = null) {
+    console.log('[newsAllWorker] 啟動');
+        
     try {
-      const fakeReqForGetText = {
-        query: { idList: idList, origin_body: '' },
-      };
+        if (!idList)
+            idList = await fetchPendingNewsIds(LIMIT);
 
-      newsTextList = await callAndCatchApiSuccessInGeneralFunction(
-        getText,
-        fakeReqForGetText
-      );
+        console.log('[newsAllWorker] 抓取 idList =', idList);
 
-      if (!Array.isArray(newsTextList)) {
-        console.warn('[newsAllWorker] getText 回傳不是陣列，實際：', newsTextList);
-        newsTextList = [];
-      }
+        if (idList.length === 0) {
+            console.log('[newsAllWorker] 目前沒有待處理的任務');
+            return;
+        }
+
+        let newsTextList;
+        try {
+            const fakeReqForGetText = {
+                query: { idList: idList, origin_body: '' },
+            };
+
+            newsTextList = await callAndCatchApiSuccessInGeneralFunction(
+                getText,
+                fakeReqForGetText
+            );
+
+            if (!Array.isArray(newsTextList)) {
+                console.warn('[newsAllWorker] getText 回傳不是陣列，實際：', newsTextList);
+                newsTextList = [];
+            }
+        } catch (err) {
+            console.error('[newsAllWorker] 呼叫 getText 發生錯誤：', err);
+            await sleep(30 * 1000);
+            return;
+        }
+
+        for (const newsItem of newsTextList) {
+            console.log(
+                `=============== news_id = ${newsItem.id} ===============`
+            );
+
+            if (!newsItem || typeof newsItem.id === 'undefined') {
+                console.warn('[newsAllWorker] newsItem 格式不正確，略過：', newsItem);
+                continue;
+            }
+
+            try {
+                await handleOneNews(newsItem);
+            } catch (err) {
+                console.error('[newsAllWorker] 處理 news_id =', newsItem.id, '時發生錯誤：', err);
+            }
+        }
     } catch (err) {
-      console.error('[newsAllWorker] 呼叫 getText 發生錯誤：', err);
-      await sleep(30 * 1000);
-      return;
+        console.error('[newsAllWorker] 主流程發生錯誤：', err);
     }
-
-    for (const newsItem of newsTextList) {
-      console.log(
-        `=============== news_id = ${newsItem.id} ===============`
-      );
-
-      if (!newsItem || typeof newsItem.id === 'undefined') {
-        console.warn('[newsAllWorker] newsItem 格式不正確，略過：', newsItem);
-        continue;
-      }
-
-      try {
-        await handleOneNews(newsItem);
-      } catch (err) {
-        console.error(
-          '[newsAllWorker] 處理 news_id =',
-          newsItem.id,
-          '時發生錯誤：',
-          err
-        );
-      }
-    }
-  } catch (err) {
-    console.error('[newsAllWorker] 主流程發生錯誤：', err);
-  }
 }
 
 
