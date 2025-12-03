@@ -343,6 +343,12 @@ async function insertNewsTranslateForOneNews(originalNewsId, translate) {
     }
 
     console.log("3. 情況二 : 組字 original : \n", JSON.stringify(original, null, 2))
+    const publishDate = original.publishDate
+    ? String(original.publishDate)          // "2025-10-07T16:00:00.000Z"
+        .slice(0, 19)                      // -> "2025-10-07T16:00:00"
+        .replace('T', ' ')                 // -> "2025-10-07 16:00:00"
+        .replace(/-/g, '/')                // -> "2025/10/07 16:00:00"
+    : null;
 
     // 2) 組成新的中文新聞 payload
     const newNewsPayload = {
@@ -353,7 +359,7 @@ async function insertNewsTranslateForOneNews(originalNewsId, translate) {
         alt: null     // 你指定 alt = null
       },
       title: translate.title,       // 中文標題
-      publish_date: original.publishDate? `${String(original.publishDate).slice(0, 10)} 00:00:00`: null,
+      publish_date: publishDate,
       detail: translate.content     // 中文內文
     };
     console.log("4. 情況二 : translate.content : \n ", JSON.stringify(translate.content, null, 2))
