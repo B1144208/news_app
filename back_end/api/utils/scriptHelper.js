@@ -5,6 +5,18 @@
  * 3. 以句號/問號/驚嘆號切句
  * 4. 先保留開頭 1～2 句，再優先保留含關鍵資訊的句子，最後補其他句子
  */
+
+
+function hasFullScript(entry) {
+  const hasReporter =
+    entry.reporter &&
+    entry.reporter.toString().trim().length > 0;
+  const hasChat =
+    Array.isArray(entry.chat) &&
+    entry.chat.length > 0;
+  return hasReporter && hasChat;
+}
+
 function shortenArticle(text, maxChars = 600) {
   if (!text) return '';
 
@@ -109,6 +121,7 @@ function cleanNewsScript(raw) {
 
 
 module.exports = {
+    hasFullScript,
     shortenArticle,
     cleanNewsScript
 };

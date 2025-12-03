@@ -1,12 +1,13 @@
 const pool = require('../connect_db');
+const axios = require('axios');
 const { checkRequireField } = require('../utils/checkHelper');
 const { callAndCatchApiSuccess } = require('../utils/fakeHelper');
 const { shortenArticle, cleanNewsScript } = require('../utils/scriptHelper');
 const { execFile } = require('child_process');
 const path = require('path');
 const { searchNews } = require('./newsController');
-const axios = require('axios');
 const { getEmbedding } = require('../utils/embeddingHelper');
+const { runAllWorker } = require('../threadsWorker/allWorker')
 
 
 const OLLAMA_URL = 'http://localhost:11434/api/generate';
@@ -96,6 +97,8 @@ function isMostlyChinese(str) {
   return han >= latin;
 }
 
+
+
 /**
  * 從 DB 裡補上 reporter_script & news_chat
  * @param {number[]} idList
@@ -169,7 +172,15 @@ async function loadReporterAndChatForIds(idList, scriptById) {
 async function getScript(req, res, next) {
   try {
     // 1) 取得 idList
-    let { idList } = req.body || {};
+    let idList = req.query?.idList;
+
+    if (typeof idList === 'string') {
+    try {
+        idList = JSON.parse(idList);   // 變成真正的陣列
+      } catch (e) {
+        // parse 失敗再看情況處理
+      }
+    }
 
     if (!Array.isArray(idList) || !idList.length) {
       return res.status(400).json({
@@ -199,7 +210,10 @@ async function getScript(req, res, next) {
     try {
       // ⚠️ 依你實際的 getText 介面調整：
       //   如果是 getText(idList) 就這樣；如果是 getText({idList}) 就改。
-      baseList = await getText(idList);
+      fakeReq = {
+        query: {idList}
+      }
+      baseList = await callAndCatchApiSuccess(getText, fakeReq);
     } catch (err) {
       err.desc = 'getText() failed in getScript';
       throw err;
@@ -361,6 +375,88 @@ async function getScript(req, res, next) {
     } catch (_) {}
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // 從 DB 拿一筆腳本（你自己調 schema）
 /*async function getScriptRowFromDb(newsId) {
