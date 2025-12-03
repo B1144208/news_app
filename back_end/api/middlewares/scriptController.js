@@ -11,6 +11,7 @@ const { getEmbedding } = require('../utils/embeddingHelper');
 
 const OLLAMA_URL = 'http://localhost:11434/api/generate';
 const OLLAMA_MODEL = 'qwen2.5:1.5b';
+const QUICK_SCRIPT_MODEL = 'quick-script'; // 快速播放專用 model
 
 /*
 @ general, reporter, chat: 給予一個 List {"id", "title", "text"}
@@ -374,7 +375,7 @@ async function getScript(req, res, next) {
 
 // SSE：一個一個送腳本
 async function getScript(req, res, next) {
-  let query 
+  let query
   let clientClosed = false;
 
   // 前端關掉連線就不要再寫資料了
@@ -546,7 +547,7 @@ async function getScript(req, res, next) {
 
   let general = await getText(idList);
   let reporterchat = await getReporterChatText(idList);
-  
+
   // 先把兩組資料轉成 Map，方便用 id 找
   const generalMap = new Map(general.map(g => [g.id, g]));
   const reporterMap = new Map(reporterchat.map(r => [r.id, r]));
@@ -644,7 +645,7 @@ async function getScript(req, res, next) {
       err.desc = "middlewares-reporterScript(): call generalScript error";
         return next(err);
     }
-    
+
     try {
     // 2️⃣ 取得裡面的陣列：可能是 result 或 result.list
     const items = Array.isArray(generalScriptResult)
@@ -700,7 +701,7 @@ async function getScript(req, res, next) {
       err.desc = "middlewares-reporterScript(): call generalScript error";
         return next(err);
     }
-    
+
     try {
     // 2️⃣ 取得裡面的陣列：可能是 result 或 result.list
     const items = Array.isArray(generalScriptResult)
@@ -774,10 +775,145 @@ async function getScript(req, res, next) {
 }
 
 // ---- quick ----
+// ========== 快速播放功能 ==========
+// 引入 TTS 控制器的內部函數
+const { textToSpeechAndSaveInternal } = require('./ttsController');
+
+/**
+ * 快速播放腳本生成 API
+ * 從資料庫獲取熱門新聞 → 生成播報稿 → 轉換為 MP3
+ */
 async function quickScript(req, res, next) {
-    // 用熱度高id直接生成一組id
-    return;
-}*/
+    let { limit } = req.query ?? {};
+
+    try {
+      [ limit ] = await checkRequireField ([
+        { field: 'limit'  , data: limit   , type: 'number'  , other: ['non_null'] , default: 10}
+      ]);
+    } catch (err) {
+      err.desc = "middlewares-quickScript(): Missing or Invalid required fields";
+      return next(err);
+    }
+
+    // 1️⃣ 從 searchNews 按熱度排序抓前 N 筆
+    let fakeReq = {
+      query: { mode: "complex", order: "heat", limit: limit },
+      body: {}
+    };
+
+    let newsResult;
+    try {
+      newsResult = await callAndCatchApiSuccess(searchNews, fakeReq);
+    } catch (err) {
+      err.desc = "middlewares-quickScript(): call searchNews error";
+      return next(err);
+    }
+
+    // 2️⃣ 提取新聞內容
+    const items = newsResult.complexList || [];
+
+    if (items.length === 0) {
+      return res.apiSuccess({ scripts: [] }, "No news found");
+    }
+
+    // 3️⃣ 對每一筆新聞呼叫本地 Ollama 生成 quick-script
+    let quickScripts;
+    try {
+      quickScripts = await Promise.all(
+        items.map((item) => {
+          const bodyText = (item.newsBody || [])
+            .filter(part => typeof part.text === 'string' && part.text.trim() !== '')
+            .map(part => part.text.trim())
+            .join('\n');
+
+          return callOllamaQuickScript({
+            id: item.newsId,
+            title: item.newsTitle,
+            text: shortenArticle(bodyText)
+          });
+        })
+      );
+    } catch (err) {
+      err.desc = 'middlewares-quickScript(): call ollama quick-script error';
+      return next(err);
+    }
+
+    // 4️⃣ 將生成的播報稿轉換為 MP3 並儲存
+    console.log(`[QuickScript] 開始批次 TTS 轉換 ${quickScripts.length} 個播報稿`);
+
+    let audioFiles;
+    try {
+      audioFiles = await Promise.all(
+        quickScripts.map((script) =>
+          textToSpeechAndSaveInternal(script.id, script.text)
+        )
+      );
+    } catch (err) {
+      console.error('[QuickScript] TTS 轉換錯誤:', err);
+      err.desc = 'middlewares-quickScript(): TTS conversion error';
+      return next(err);
+    }
+
+    // 5️⃣ 組合返回結果
+    const results = quickScripts.map((script, index) => ({
+      id: script.id,
+      title: script.title,
+      text: script.text,
+      audioFile: audioFiles[index].filename,
+      audioPath: audioFiles[index].filepath,
+      audioSize: audioFiles[index].fileSize
+    }));
+
+    console.log(`[QuickScript] 完成: 生成 ${results.length} 個播報稿及音訊檔案`);
+
+    return res.apiSuccess({ scripts: results }, "Quick Script Generated with Audio");
+}
+
+/**
+ * 呼叫本地 Ollama 的 quick-script model
+ */
+async function callOllamaQuickScript({ id, title, text }) {
+  const prompt =
+    '標題：' + title + '\n' +
+    '內容：' + text + '\n\n' +
+    '請依照 quick-script 的規則產生簡短的新聞播報稿。';
+
+  const start = Date.now();
+  const payload = {
+    model: QUICK_SCRIPT_MODEL,
+    prompt,
+    stream: false,
+    options: {
+      num_predict: 150
+    },
+  };
+
+  let resp;
+  try {
+    resp = await axios.post(OLLAMA_URL, payload, {
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 10000, // 10秒超時
+    });
+  } catch (err) {
+    if (err.code === 'ECONNABORTED') {
+      console.error(`Ollama timeout: quickScript id=${id}`);
+    } else {
+      console.error(`Ollama error: quickScript id=${id}`, err.message);
+    }
+    throw err;
+  }
+
+  let script = resp.data?.response || '';
+  script = cleanNewsScript(script);
+
+  console.log(`quick-script latency(ms) for id ${id}:`, Date.now() - start);
+
+  return {
+    id,
+    title,
+    text: script,
+  };
+}
 
 
 
@@ -797,9 +933,9 @@ async function quickScript(req, res, next) {
     '【標題】\n' + title + '\n\n' +
     '【內文】\n' + text + '\n\n' +
     '【請開始撰寫播報稿】';
-  
 
-  const system = 
+
+  const system =
     '你是一位電視新聞台的專業播報記者，只負責把輸入的新聞改寫成播報稿。\n' +
     '規則：\n' +
     '1. 每次輸出一段 80~100 個字的中文播報稿。\n' +
@@ -808,7 +944,7 @@ async function quickScript(req, res, next) {
     '4. 不得出現「我是AI」「身為AI」「如果您有任何問題」等類似字句。\n' +
     '5. 不得加上標題、說明文字或「播報稿：」「新聞內容：」等提示語。\n' +
     '若違反以上任一條規則，視為錯誤回答。';
-  const prompt = 
+  const prompt =
     title + '\n' +
     text + '\n\n' +
     '請依規則產生播報稿。';
@@ -819,7 +955,7 @@ async function quickScript(req, res, next) {
     '【標題】\n' + title + '\n\n' +
     '【內文】\n' + text + '\n\n' +
     '請直接輸出播報稿內容。';
-  
+
   const start = Date.now();
   const payload = {
     model: OLLAMA_MODEL,
@@ -888,5 +1024,6 @@ async function callAskScript(req, res, next) {
 module.exports = {
   getText,
   getScript,
+  quickScript,  // 新增：快速播放功能
   callAskScript
 };
