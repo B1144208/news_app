@@ -35,9 +35,6 @@ async function searchEventsorting (req, res, next) {
         LEFT JOIN eventsorting_horizontal eh ON ed.eventsorting_id = eh.eventsorting_id
         LEFT JOIN eventsorting_vertical ev ON ed.eventsorting_id = ev.eventsorting_id
         WHERE 1
-        GROUP BY
-            ed.eventsorting_id  -- 💡 關鍵修正：確保所有非聚合欄位都被涵蓋
-        ORDER BY ed.total_news desc;
     `;
     let params = [];
     if ( id ) {
