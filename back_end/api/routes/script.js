@@ -8,10 +8,6 @@ router.get('/script', getScript);
 
 // reporter mode
 //router.get('/reporter_fast', reporterScriptFast);
-router.get('/reporter', reporterMake);
-
-// chat mode
-router.get('/chat/:id', chatMake);
 
 router.post("/ask", callAskScript);
 

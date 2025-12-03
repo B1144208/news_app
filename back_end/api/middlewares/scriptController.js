@@ -24,16 +24,6 @@ async function getText (req, res, next) {
     let { idList } = req.query ?? {}
     const origin_body = req.query?.origin_body !== undefined;
 
-    /*try {
-      [ id, idList ] = await checkRequireField ([
-        { field: 'id'     , data: id      , type: 'number'  , other: ['lth'] },
-        { field: 'idList' , data: idList  , type: 'array'   , other: ['lth'], array_filter: 'number' }
-      ]);
-    } catch (err) {
-      err.desc = "middlewares-updateGroupOrder(): Missing or Invalid required fields";
-      return next(err);
-    }*/
-
     fakeReq = {
       query: { mode: "complex" },
       body: { id: idList}
@@ -66,7 +56,93 @@ async function getText (req, res, next) {
     }
 }
 
-async function getReporterChatText(idList) {
+// 從 DB 拿一筆腳本（你自己調 schema）
+async function getScriptRowFromDb(newsId) {
+  const sql = `
+    SELECT news_id, reporter_script, chat_script
+    FROM news_data
+    WHERE news_id = ?
+  `;
+  const [rows] = await pool.query(sql, [newsId]);
+  return rows[0] || null;
+}
+
+// SSE：一個一個送腳本
+async function getScript(req, res, next) {
+  let query 
+  let clientClosed = false;
+
+  // 前端關掉連線就不要再寫資料了
+  req.on('close', () => {
+    clientClosed = true;
+  });
+
+  // 設定 SSE header
+  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders && res.flushHeaders(); // 有些框架需要呼叫一下
+
+  // 小工具：送一筆 event 給前端
+  function sendEvent(data) {
+    if (clientClosed) return;
+    // SSE 格式：data: ...\n\n
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  }
+
+  try {
+    // 1. 先拿到 idList（你可以改成從 body/param 拿）
+    const idList = await searchNews(req, res, next); // 假設回傳 Array<number>
+    // 如果你的 searchNews 直接回 res，就改成別的 helper，重點是拿到 idList
+
+    // 2. 逐一處理每個 newsId
+    for (const newsId of idList) {
+      if (clientClosed) break;
+
+      // 2-1 先查 DB 有沒有腳本
+      let row = await getScriptRowFromDb(newsId);
+
+      // 2-2 如果沒有，就呼叫外部函式幫你產生腳本 + 寫回 DB
+      if (!row) {
+        try {
+          await runAllWorker(newsId); // 你自己實作：去叫 LLM / 更新 DB
+          row = await getScriptRowFromDb(newsId);
+        } catch (err) {
+          // 產生失敗也可以先丟一個錯誤事件給前端
+          sendEvent({ type: 'item-error', newsId, error: err.message || 'buildScript failed' });
+          continue; // 換下一筆
+        }
+      }
+
+      if (!row) {
+        // 真的還是沒拿到資料
+        sendEvent({ type: 'item-missing', newsId });
+      } else {
+        // 2-3 有資料就送一筆
+        // 這邊你想送什麼欄位就自己挑
+        sendEvent({
+          type: 'item',
+          newsId: row.news_id,
+          reporterScript: row.reporter_script,
+          chatScript: row.chat_script
+        });
+      }
+    }
+
+    // 3. 全部結束，通知前端 done
+    sendEvent({ type: 'done' });
+    res.end();
+  } catch (err) {
+    // 出錯時可以丟一個 error 事件，然後交給 next
+    if (!clientClosed) {
+      sendEvent({ type: 'error', message: err.message || 'unknown error' });
+      res.end();
+    }
+    next(err);
+  }
+}
+
+/*async function getReporterChatText(idList) {
   // 若沒有 id，直接回傳空陣列
   if (!Array.isArray(idList) || idList.length === 0) {
     return [];
@@ -132,10 +208,10 @@ async function getReporterChatText(idList) {
     console.error('[getReporterChatText] database search error:', err);
     throw err;
   }
-}
+}*/
 
 
-async function getIdList() {
+/*async function getIdList() {
   let sql = `
     SELECT DISTINCT nd.news_id
     FROM news_data AS nd
@@ -150,11 +226,10 @@ async function getIdList() {
   } catch (err) {
     console.error("[getIdList] database search error")
   }
-}
-
+}*/
 
 // 取得 一般朗讀 + 新聞播報 + 聊天對白 腳本
-async function getScript(req, res, next) {
+/*async function getScript(req, res, next) {
 
   // 取得播放順序
   let idList;
@@ -187,19 +262,7 @@ async function getScript(req, res, next) {
 
   // 如果需要回傳：
   return res.apiSuccess(result, "get scripts success");
-}
-
-// 製作 新聞播報 腳本
-async function reporterMake(req, res, next) {
-  
-
-}
-
-// 製作 聊天對白 腳本
-async function chatMake(req, res, next) {
-  
-
-}
+}*/
 
 /*async function generalScript(req, res, next) {
     let { id, idList, times, limit } = req.query ?? {}
@@ -414,10 +477,10 @@ async function quickScript(req, res, next) {
 
 
 
-async function callDeepseekReporterScript({ id, title, text }) {
+/*async function callDeepseekReporterScript({ id, title, text }) {
 
   // 組 prompt：請 DeepSeek 幫忙改寫成 80~100 字的播報稿
-  /*const prompt =
+  const prompt =
     '你是一位台灣電視新聞台的記者，請根據以下新聞標題與全文內容，' +
     '撰寫一段約 80 到 100 字的中文播報稿。\n\n' +
     '要求：\n' +
@@ -429,7 +492,7 @@ async function callDeepseekReporterScript({ id, title, text }) {
     '【標題】\n' + title + '\n\n' +
     '【內文】\n' + text + '\n\n' +
     '【請開始撰寫播報稿】';
-  */
+  
 
   const system = 
     '你是一位電視新聞台的專業播報記者，只負責把輸入的新聞改寫成播報稿。\n' +
@@ -444,13 +507,13 @@ async function callDeepseekReporterScript({ id, title, text }) {
     title + '\n' +
     text + '\n\n' +
     '請依規則產生播報稿。';
-  /*const prompt =
+  const prompt =
     '將下列新聞改寫成約 60 到 80 字的中文電視新聞播報稿。' +
     '口語化、第三人稱，只保留關鍵事實與數字，不新增資訊或評論，' +
     '不要加標題或說明文字，也不要提到自己或 AI 身分。\n\n' +
     '【標題】\n' + title + '\n\n' +
     '【內文】\n' + text + '\n\n' +
-    '請直接輸出播報稿內容。';*/
+    '請直接輸出播報稿內容。';
   
   const start = Date.now();
   const payload = {
@@ -493,52 +556,7 @@ async function callDeepseekReporterScript({ id, title, text }) {
     title,
     text: script,
   };
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+}*/
 
 // ---- call ask.sh ----
 async function callAskScript(req, res, next) {
@@ -565,8 +583,5 @@ async function callAskScript(req, res, next) {
 module.exports = {
   getText,
   getScript,
-  reporterMake,
-  chatMake,
-//quickScript,
   callAskScript
 };

@@ -10,8 +10,6 @@ const { searchNews, insertNews } = require('../middlewares/newsController');
 const { getText } = require('../middlewares/scriptController');
 const { callAndCatchApiSuccessInGeneralFunction } = require('../utils/fakeHelper');
 
-const LIMIT = 100;
-
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -28,7 +26,7 @@ async function fetchPendingNewsIds(LIMIT) {
     JOIN news_data AS nd
       ON nd.news_id = nt.news_id
     ORDER BY
-      nd.created_at
+      nd.created_at DESC
     LIMIT ?;
   `;
 
@@ -477,7 +475,7 @@ async function handleOneNews(newsItem) {
 
 /* ---------- 主流程 ---------- */
 
-async function mainLoop() {
+async function runAllWorker(LIMIT) {
   console.log('[newsAllWorker] 啟動');
 
   try {
@@ -539,7 +537,7 @@ async function mainLoop() {
 
 
 // 啟動
-mainLoop().catch(err => {
+/*mainLoop().catch(err => {
     console.error('[newsMainWorker] 無法啟動:', err);
     process.exit(1);
 });
@@ -553,9 +551,9 @@ process.on('SIGINT', () => {
 process.on('SIGTERM', () => {
     console.log('\n[newsMainWorker] 收到 SIGTERM，準備結束');
     process.exit(0);
-});
+});*/
 
 
-/*module.exports = {
+module.exports = {
   runAllWorker,
-};*/
+};

@@ -8,7 +8,7 @@ const { runKeywordWorker }  = require('./newsKeywordWorker');
 
 const SLEEP_IF_IDLE_MS = 60 * 60 * 1000; // 1 小時
 const SLEEP_IF_REST_MS = 5 * 60 * 1000;  // 5 分鐘
-const IDLE_THRESHOLD_MS = 20 * 1000;     // 20 秒
+const IDLE_THRESHOLD_MS = 3 * 1000;     // 20 秒
 
 const LIMIT = 50;
 
@@ -23,31 +23,16 @@ async function mainLoop() {
     while (true) {
 
         const loopStart = Date.now();
-        
-        // 1. ) newsGroup
-        try { await runGroupWorker(LIMIT); } 
-        catch (err) { console.warn('[newsMainWorker] group error, news_id =', err.message); }
+
+        try { await runAllWorker(LIMIT); } 
+        catch (err) { console.warn('[newsMainWorker] all-worker error, news_id =', err.message); }
         await sleep(SLEEP_IF_REST_MS);
-
-        // 2. ) newsLocation
-        try { await runLocationWorker(LIMIT); }
-        catch (err) { console.warn('[newsMainWorker] location error, news_id =', err.message); }
-        await sleep(SLEEP_IF_REST_MS);
-
-        // 3. ) newsKeyword
-        try { await runKeywordWorker(LIMIT); }
-        catch (err) { console.warn('[newsMainWorker] keyword error, news_id =', err.message); }
-        await sleep(SLEEP_IF_REST_MS);
-
-        // 4. )
-
-        // 5. )
         
         const loopEnd = Date.now();
         const elapsedMs = loopEnd - loopStart;
         const elapsedSec = (elapsedMs / 1000).toFixed(2);
 
-        // 如果整圈跑完的時間「不超過 20 秒」，代表現在大概沒 backlog → 睡一小時
+        
         if (elapsedMs <= IDLE_THRESHOLD_MS) {
           const sleepMinutes = SLEEP_IF_IDLE_MS / 1000 / 60;
           console.log(`[newsMainWorker] 本輪只花 ${elapsedSec}s，判定為空閒狀態，sleep ${sleepMinutes} 分鐘...`);
