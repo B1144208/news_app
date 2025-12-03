@@ -1,17 +1,20 @@
 // back_end/api/threadsWorker/eventsortingWorker.js
+// 這是事件整理的主 Worker，負責排程、DB 操作，並呼叫 LLM 服務進行摘要和 Embedding。
 
-// 假設 connect_db.js 在 '../connect_db'
+// 修正路徑: 從 'threadsWorker/' 回溯一級到 'api/'，找到 connect_db.js
 const pool = require('../connect_db');
-// 引入 Ollama 摘要服務
-const { ollamaSummarize } = require('../utils/event_ollama_client');
-// 假設 embeddingHelper.js 在 '../utils/embeddingHelper'
+// 變更: 引入 OpenAI 摘要服務 (新檔案)
+const { openaiSummarize } = require('../utils/event_openai_client');
+// 維持不變: 引入您現有的 Embedding 輔助函式 (假設路徑正確且功能不變)
 const { getEmbedding, findSimilarEvents } = require('../utils/embeddingHelper');
 
 // --- 配置與任務狀態 ---
 const POLLING_INTERVAL_MS = 10000;
+const DATABASE_RETRY_INTERVAL_MS = 5000;
 const TASK_STATUS_COMPLETED = 1;
 const TASK_STATUS_FAILED = 2;
-const MODEL_NAME = 'eventsorting-curation'; // 使用您的 Ollama Modelfile 名稱
+// 變更: 使用 OpenAI 模型名稱
+const MODEL_NAME = 'gpt-4o-mini';
 
 // ========================================================
 // I. 內部定義資料庫輔助函式
@@ -29,7 +32,7 @@ async function getPendingRelationIds() {
 async function getNewsIdsByRelationId(relationId) {
     const sql = `
         SELECT news_id
-        FROM news_data 
+        FROM news_data
         WHERE relation_id = ?
         ORDER BY news_date ASC
     `;
@@ -134,17 +137,12 @@ function analyzeChronology(newsIds) {
 
 /** 處理單一 relation_task 的事件整理工作 */
 async function processTask(relationId) {
-    let connection;
     try {
-        connection = await pool.getConnection();
-
         console.log(`\n[START] 處理事件 ID: ${relationId}`);
 
         const newsIds = await getNewsIdsByRelationId(relationId);
         if (newsIds.length === 0) {
             console.warn(`事件 ${relationId} 未連結任何新聞，標記為完成 (無內容)。`);
-            // 注意：單次模式下不一定需要更新 relation_task 狀態，但在常駐模式下需要。
-            // 為了保持功能完整性，我們仍執行更新。
             await updateRelationTaskStatus(relationId, TASK_STATUS_COMPLETED);
             return;
         }
@@ -152,22 +150,22 @@ async function processTask(relationId) {
         const newsTexts = await getNewsTextsByIds(newsIds);
         const combinedNewsText = newsTexts.join('\n\n--- [新聞分隔線] ---\n\n');
 
-        // ==== 摘要指令 (保持嚴格要求) ====
+        // ==== 摘要指令 ====
         const instruction = `請根據以下多篇新聞內容，創作一個簡潔、清晰且不超過400字的事件摘要(eventsorting_summary)，以及一個包含關鍵資訊但不超過30字的標題(eventsorting_title)。你的輸出必須是原創的、濃縮的內容，禁止直接複製貼上任何一篇新聞的原文。`;
         const promptWithInstruction = `${instruction}\n\n--- [新聞內容開始] ---\n\n${combinedNewsText}`;
 
-        // 呼叫 Ollama 模型
-        console.log(`[Ollama] 呼叫模型 ${MODEL_NAME} 進行摘要...`);
+        // 呼叫 OpenAI 模型 (摘要)
+        console.log(`[OpenAI] 呼叫模型 ${MODEL_NAME} 進行摘要...`);
 
-        const { title = '', summary = '' } = await ollamaSummarize(MODEL_NAME, promptWithInstruction) || {};
+        const { title = '', summary = '' } = await openaiSummarize(MODEL_NAME, promptWithInstruction) || {};
 
         if (title.length < 5 || summary.length < 10) {
-            console.error(`[Ollama Error] 事件 ID ${relationId}: 模型返回摘要內容不足 (Title: ${title.length}, Summary: ${summary.length})，標記為失敗。`);
+            console.error(`[OpenAI Error] 事件 ID ${relationId}: 模型返回摘要內容不足 (Title: ${title.length}, Summary: ${summary.length})，標記為失敗。`);
             await updateRelationTaskStatus(relationId, TASK_STATUS_FAILED);
             return;
         }
 
-        // 取得 Embedding 向量
+        // 取得 Embedding 向量 (使用您現有的 getEmbedding 函式)
         const embedding = await getEmbedding(title + ' ' + summary);
 
         if (!embedding || embedding.length === 0) {
@@ -192,6 +190,7 @@ async function processTask(relationId) {
 
         // 儲存 Horizontal (相關事件連結)
         const threshold = 0.7;
+        // 使用您現有的 findSimilarEvents 函式
         const relatedIds = await findSimilarEvents(embedding, relationId, threshold);
         await saveEventsortingHorizontal(relationId, relatedIds.map(id => ({ related_eventsorting_id: id })));
 
@@ -200,20 +199,40 @@ async function processTask(relationId) {
         console.log(`[SUCCESS] 事件 ID: ${relationId} 處理完成，eventsoring_text 設為 1。`);
 
     } catch (error) {
+        // 確保捕獲任何來自 LLM 服務或資料庫的錯誤
         console.error(`[FATAL] 處理事件 ID ${relationId} 時發生嚴重錯誤:`, error.message);
         await updateRelationTaskStatus(relationId, TASK_STATUS_FAILED);
-    } finally {
-        if (connection) {
-             connection.release();
-             // console.log(`[DB] 連線已釋放。`);
+    }
+}
+
+
+/** 等待資料庫連線成功 */
+async function waitForDatabaseConnection() {
+    while (true) {
+        let connection;
+        try {
+            console.log('[DB Check] 嘗試獲取資料庫連線...');
+            connection = await pool.getConnection();
+            console.log('✅ [DB Check] 資料庫連線成功！');
+            connection.release();
+            return;
+        } catch (error) {
+            console.error(`❌ [DB Error] 資料庫連線失敗: ${error.message}. 請確認 MySQL 服務已啟動且設定正確。將在 ${DATABASE_RETRY_INTERVAL_MS / 1000} 秒後重試...`);
+        } finally {
+            if (connection) {
+                connection.release();
+            }
         }
+        await new Promise(resolve => setTimeout(resolve, DATABASE_RETRY_INTERVAL_MS));
     }
 }
 
 
 /** 核心執行緒主循環 (Main Loop) */
 async function mainLoop() {
-    console.log("--- 事件整理背景服務啟動 (常駐模式) ---");
+    await waitForDatabaseConnection();
+
+    console.log(`--- 事件整理背景服務啟動 (常駐模式 - 使用 ${MODEL_NAME} 進行摘要) ---`);
     while (true) {
         try {
             const pendingTasks = await getPendingRelationIds();
@@ -245,15 +264,21 @@ if (targetId && !isNaN(parseInt(targetId))) {
     const eventId = parseInt(targetId);
     console.log(`\n[MODE] 單次執行模式: 處理事件 ID ${eventId}`);
 
-    processTask(eventId)
-        .catch(err => {
-            console.error(`單次任務執行失敗:`, err.message);
-        })
-        .finally(() => {
-            // 確保單次任務完成後程序退出
-            console.log(`[DONE] ID ${eventId} 處理完畢，程序退出。`);
-            process.exit(0);
-        });
+    // 單次執行模式也需要先檢查資料庫連線
+    waitForDatabaseConnection().then(() => {
+        processTask(eventId)
+            .catch(err => {
+                console.error(`單次任務執行失敗:`, err.message);
+            })
+            .finally(() => {
+                console.log(`[DONE] ID ${eventId} 處理完畢，程序退出。`);
+                process.exit(0);
+            });
+    }).catch(err => {
+        console.error(`無法連線到資料庫，單次任務無法啟動:`, err.message);
+        process.exit(1);
+    });
+
 } else {
     // 沒有提供有效的 ID，進入常駐循環模式
     mainLoop();
