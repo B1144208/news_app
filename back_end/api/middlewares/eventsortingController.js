@@ -48,7 +48,7 @@ async function searchEventsorting (req, res, next) {
 
     // 💥 添加 ORDER BY 子句，根據計算出的 sorting_score 降序排列
     sql += ` ORDER BY ed.total_heat DESC
-             LIMIT 1000;`;
+             LIMIT 500;`;
 
 
     try {
