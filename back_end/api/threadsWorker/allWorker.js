@@ -298,7 +298,6 @@ async function insertNewsTranslateForOneNews(originalNewsId, translate) {
   // --------- 情況一：沒有 translate（本來就中文）---------
   if (!translate) {
 
-    console.log("1. 情況一 ")
     try {
       await pool.query(
         'UPDATE news_data SET is_chinese = 1 WHERE news_id = ?;',
@@ -316,8 +315,6 @@ async function insertNewsTranslateForOneNews(originalNewsId, translate) {
     // 沒有新新聞，後面就直接對原 newsId 寫 group/location/keyword...
     return { targetNewsId: originalNewsId, newNewsId: null };
   }
-
-  console.log("2. 情況二 ")
 
   // --------- 情況二：有 translate，要產生一筆新的「中文新聞」---------
   try {
@@ -342,12 +339,8 @@ async function insertNewsTranslateForOneNews(originalNewsId, translate) {
       return { targetNewsId: originalNewsId, newNewsId: null };
     }
 
-    console.log("3. 情況二 : 組字 original : \n", JSON.stringify(original, null, 2))
     const iso = String(original.publishDate); 
-    // 這裡的 iso 現在是 "Wed Oct 08 2025 00:00:00 GMT+0800 (台北標準時間)"
-
-    const d = new Date(iso); // 或 new Date(original.publishDate) 也可以
-
+    const d = new Date(iso);
     const pad2 = (n) => String(n).padStart(2, '0');
 
     const publishDate =
@@ -357,10 +350,6 @@ async function insertNewsTranslateForOneNews(originalNewsId, translate) {
     `${pad2(d.getHours())}:` +
     `${pad2(d.getMinutes())}:` +
     `${pad2(d.getSeconds())}`;
-
-    console.log("original.publishDate: ", original.publishDate);
-    console.log("iso: ", iso);
-    console.log("publishDate: ", publishDate);
 
     // 2) 組成新的中文新聞 payload
     const newNewsPayload = {
@@ -374,8 +363,6 @@ async function insertNewsTranslateForOneNews(originalNewsId, translate) {
       publish_date: publishDate,
       detail: translate.content     // 中文內文
     };
-    console.log("4. 情況二 : translate.content : \n ", JSON.stringify(translate.content, null, 2))
-    console.log("4. 情況二 : 組好字 newNewsPayload : \n ", JSON.stringify(newNewsPayload, null, 2))
 
     const fakeReqForInsert = { body: newNewsPayload };
 
@@ -383,8 +370,6 @@ async function insertNewsTranslateForOneNews(originalNewsId, translate) {
       insertNews,
       fakeReqForInsert
     );
-
-    console.log("5. 情況二 : insertNews - insertRes : \n ", insertRes)
 
     const newNewsId = insertRes?.insertId;
     if (!newNewsId) {
@@ -394,8 +379,6 @@ async function insertNewsTranslateForOneNews(originalNewsId, translate) {
       );
       return { targetNewsId: originalNewsId, newNewsId: null };
     }
-
-    console.log("5. 情況二 : insertNews - newNewsId : ", newNewsId)
 
     // 3) 更新新新聞：is_chinese = 1, translate_id = 原本 newsId
     try {
@@ -416,8 +399,6 @@ async function insertNewsTranslateForOneNews(originalNewsId, translate) {
         err.message
       );
     }
-
-    console.log("5. 情況二 : 更新新新聞 is_chinese : ")
 
     // 後面 group/location/keyword... 都寫到 newNewsId 上
     return { targetNewsId: newNewsId, newNewsId };
@@ -466,7 +447,7 @@ async function handleOneNews(newsItem) {
       newsAllClassifier,
       fakeReq
     );
-    console.log('[newsAllWorker] classifier result:', result);
+    //console.log('[newsAllWorker] classifier result:', result);
 
     if (!result) {
       console.warn(

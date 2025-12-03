@@ -87,7 +87,6 @@ async function checkRequireField ( requireFields, funcName="Unknown Function" ) 
                     break;
                 case 'datetime':
                     validType = (typeof changeData === 'string' || changeData.trim() !== '');
-                    console.log("check-changeData & validType: ", changeData, validType)
                     if ( validType ) {
                         try {
                             !nonChange && ( changeData = checkDateTimeFormat(changeData.trim()) );
