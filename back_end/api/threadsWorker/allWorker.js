@@ -301,6 +301,8 @@ async function insertNewsTranslateForOneNews(originalNewsId, translate) {
     typeof translate.title !== 'string' ||
     typeof translate.text !== 'string'
   ) {
+
+    console.log("1. 情況一 ")
     try {
       await pool.query(
         'UPDATE news_data SET is_chinese = 1 WHERE news_id = ?;',
@@ -318,6 +320,8 @@ async function insertNewsTranslateForOneNews(originalNewsId, translate) {
     // 沒有新新聞，後面就直接對原 newsId 寫 group/location/keyword...
     return { targetNewsId: originalNewsId, newNewsId: null };
   }
+
+  console.log("2. 情況二 ")
 
   // --------- 情況二：有 translate，要產生一筆新的「中文新聞」---------
   try {
@@ -342,6 +346,8 @@ async function insertNewsTranslateForOneNews(originalNewsId, translate) {
       return { targetNewsId: originalNewsId, newNewsId: null };
     }
 
+    console.log("3. 情況二 : 組字 ")
+
     // 2) 組成新的中文新聞 payload
     const newNewsPayload = {
       url: '原網址: ' + (original.newsUrl || ''),
@@ -355,12 +361,16 @@ async function insertNewsTranslateForOneNews(originalNewsId, translate) {
       detail: translate.text       // 中文內文（你原本系統是 text，不是 content）
     };
 
+    console.log("4. 情況二 : 組好字 newNewsPayload : \n ", JSON.stringify(newNewsPayload, null, 2))
+
     const fakeReqForInsert = { body: newNewsPayload };
 
     const insertRes = await callAndCatchApiSuccessInGeneralFunction(
       insertNews,
       fakeReqForInsert
     );
+
+    console.log("5. 情況二 : insertNews - insertRes : \n ", insertRes)
 
     const newNewsId = insertRes?.insertId;
     if (!newNewsId) {
@@ -370,6 +380,8 @@ async function insertNewsTranslateForOneNews(originalNewsId, translate) {
       );
       return { targetNewsId: originalNewsId, newNewsId: null };
     }
+
+    console.log("5. 情況二 : insertNews - newNewsId : ", newNewsId)
 
     // 3) 更新新新聞：is_chinese = 1, translate_id = 原本 newsId
     try {
@@ -390,6 +402,8 @@ async function insertNewsTranslateForOneNews(originalNewsId, translate) {
         err.message
       );
     }
+
+    console.log("5. 情況二 : 更新新新聞 is_chinese : ")
 
     // 後面 group/location/keyword... 都寫到 newNewsId 上
     return { targetNewsId: newNewsId, newNewsId };
