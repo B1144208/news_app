@@ -296,11 +296,7 @@ async function insertNewsChatForOneNews(newsId, chatList) {
 
 async function insertNewsTranslateForOneNews(originalNewsId, translate) {
   // --------- 情況一：沒有 translate（本來就中文）---------
-  if (
-    !translate ||
-    typeof translate.title !== 'string' ||
-    typeof translate.text !== 'string'
-  ) {
+  if (!translate) {
 
     console.log("1. 情況一 ")
     try {
