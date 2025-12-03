@@ -475,7 +475,7 @@ async function handleOneNews(newsItem) {
 
 /* ---------- 主流程 ---------- */
 
-async function runAllWorker(LIMIT, idList = null) {
+async function runAllWorker(LIMIT = 100, idList = null) {
     console.log('[newsAllWorker] 啟動');
         
     try {
