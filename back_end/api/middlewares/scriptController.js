@@ -393,8 +393,8 @@ async function getQuickScipt(req, res, next) {
     err.desc = "middlewares-scriptController(): searchNews error";
     return next(err);
   }*/
-  news ={
-          "data": [
+  news =
+        [
             {
               "url": "https://www.ettoday.net/news/20251203/3077535.htm",
               "group": "國際",
@@ -788,8 +788,8 @@ async function getQuickScipt(req, res, next) {
           ],
           "comment": []
         }
-          ]
-        }
+          ];
+        
 
   const result = await quickScriptModel(news);
   return res.apiSuccess(result);
