@@ -529,7 +529,8 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
           },
         ),
         actions: [
-          Switch(
+          // 模式切換開關 - 已註解
+          /* Switch(
             value: !_isEventSortingMode,
             onChanged: (bool value) {
               if (value) {
@@ -547,7 +548,7 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
             inactiveTrackColor: Colors.grey.shade300,
             inactiveThumbColor: Colors.white,
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 16), */
         ],
       ),
       body: FutureBuilder<Map<String, dynamic>>(
@@ -956,125 +957,116 @@ class _EventSortingDetailPageState extends State<EventSortingDetailPage> {
     );
   }
 
-  Widget _buildCommentAndRatingButton() {
-    return InkWell(
-      onTap: _navigateToCommentsPage,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.grey[300]!),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.chat_bubble_outline, size: 20, color: Colors.grey[600]),
-            const SizedBox(width: 8),
-            Text(
-              '${_commentCount}則',
-              style: TextStyle(color: Colors.grey[600], fontSize: 14),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFloatingActionRobotButton() {
-    return InkWell(
-      onTap: () {
-        if (_currentUserId != null) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('點擊了聊天機器人，待實作導航')));
-        } else {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('請先登入以使用聊天機器人')));
-        }
-      },
-      child: Container(
-        width: 48,
-        height: 48,
-        decoration: const BoxDecoration(
-          color: Colors.blue,
-          shape: BoxShape.circle,
-        ),
-        child: const Icon(Icons.smart_toy, color: Colors.white, size: 24),
-      ),
-    );
-  }
-
-  Widget _buildActionIcon({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-    required Color iconColor,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        child: Icon(icon, color: iconColor, size: 24),
-      ),
-    );
-  }
-
   Widget _buildBottomActions() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF1a2a4e), // 星空深藍卡片
+        border: Border(
+          top: BorderSide(color: const Color(0xFF6366f1), width: 1),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.4),
-            spreadRadius: 1,
-            blurRadius: 3,
-            offset: const Offset(0, -1),
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
           ),
         ],
       ),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildCommentAndRatingButton(),
+          // 留言按鈕
+          _buildBottomButton(
+            icon: Icons.comment,
+            label: '$_commentCount',
+            onTap: _navigateToCommentsPage,
+          ),
 
-          const Spacer(),
+          // 機器人按鈕 - 已註解
+          /* _buildBottomButton(
+            icon: Icons.smart_toy,
+            label: 'AI',
+            onTap: () {
+              if (_currentUserId != null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('點擊了聊天機器人，待實作導航')),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('請先登入以使用聊天機器人')),
+                );
+              }
+            },
+          ), */
 
-          _buildFloatingActionRobotButton(),
+          // 收藏按鈕
+          _buildBottomButton(
+            icon: isFavorite ? Icons.bookmark : Icons.bookmark_border,
+            label: '收藏',
+            onTap: () {
+              if (_currentUserId != null) {
+                _insertUserAction('bookmark', 'eventsorting');
+              } else {
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('請先登入以使用收藏功能')));
+              }
+            },
+          ),
 
-          const Spacer(),
-
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildActionIcon(
-                icon: isFavorite ? Icons.bookmark : Icons.bookmark_outline,
-                label: '收藏',
-                iconColor: isFavorite ? Colors.blue : Colors.grey.shade600!,
-                onTap: () {
-                  if (_currentUserId != null) {
-                    _insertUserAction('bookmark', 'eventsorting');
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('請先登入以使用收藏功能')),
-                    );
-                  }
-                },
-              ),
-
-              _buildActionIcon(
-                icon: Icons.share_outlined,
-                label: '分享',
-                iconColor: Colors.grey.shade600!,
-                onTap: () {
-                  _insertUserAction('share', 'eventsorting'); // ✅ 保留：記錄用戶行為
-                  _handleShareTap(); // ✅ 新增：調用實際分享功能
-                },
-              ),
-            ],
+          // 分享按鈕
+          _buildBottomButton(
+            icon: Icons.share,
+            label: '分享',
+            onTap: () {
+              _insertUserAction('share', 'eventsorting');
+              _handleShareTap();
+            },
           ),
         ],
+      ),
+    );
+  }
+
+  // ViewNewsContent 風格的底部按鈕
+  Widget _buildBottomButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF2a3a5e), // 深藍背景
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFF6366f1), width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 24, color: const Color(0xFF60a5fa)),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFFd1d5db),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

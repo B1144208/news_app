@@ -117,12 +117,12 @@ class _MultiplePerspectivesDetailPageState
 
   // 💥 MODIFIED: 通用用戶行為 API 函式 (已新增 anonymous 參數和處理)
   Future<void> _insertUserAction(
-      String actionType,
-      String dataType, {
-        String? text,
-        int? score,
-        String? anonymous, // 💥 修正點：新增匿名名稱參數
-      }) async {
+    String actionType,
+    String dataType, {
+    String? text,
+    int? score,
+    String? anonymous, // 💥 修正點：新增匿名名稱參數
+  }) async {
     // 假設您的後端路由是 $baseUrl/user/:actionType/:dataType
     final url = '$_userActionBaseUrl/user/$actionType/$dataType';
 
@@ -168,8 +168,7 @@ class _MultiplePerspectivesDetailPageState
       if (score != null) body['score'] = score;
 
       // 🌟 新增：如果存在匿名名稱，則傳遞給後端 🌟
-      if (anonymous != null)
-        body['anonymous'] = anonymous;
+      if (anonymous != null) body['anonymous'] = anonymous;
 
       // 如果是非 view/share 操作，但沒有 currentUserId，則阻止操作
       if (_currentUserId == null) {
@@ -256,16 +255,16 @@ class _MultiplePerspectivesDetailPageState
       MaterialPageRoute(
         builder:
             (context) => CommentsPage(
-          dataId: widget.id,
-          // 🌟 修正：使用 ?? 0 確保傳遞 int 類型，解決潛在的類型不匹配錯誤
-          currentUserId: _currentUserId ?? 0,
-          dataType: 'multipleperspectives',
-          insertUserAction: _insertUserAction,
-          // 傳遞目前的分數數據和更新回調
-          totalScore: _totalScore,
-          totalRater: _totalRater,
-          onParentDataUpdated: _refreshViewDetails, // 傳遞回調函式
-        ),
+              dataId: widget.id,
+              // 🌟 修正：使用 ?? 0 確保傳遞 int 類型，解決潛在的類型不匹配錯誤
+              currentUserId: _currentUserId ?? 0,
+              dataType: 'multipleperspectives',
+              insertUserAction: _insertUserAction,
+              // 傳遞目前的分數數據和更新回調
+              totalScore: _totalScore,
+              totalRater: _totalRater,
+              onParentDataUpdated: _refreshViewDetails, // 傳遞回調函式
+            ),
       ),
     );
   }
@@ -327,8 +326,8 @@ class _MultiplePerspectivesDetailPageState
           ),
         ),
         actions: [
-          // 模式切換開關
-          Switch(
+          // 模式切換開關 - 已註解
+          /* Switch(
             value: !_isEventSortingMode,
             onChanged: (bool value) {
               if (!value) {
@@ -345,7 +344,7 @@ class _MultiplePerspectivesDetailPageState
             inactiveTrackColor: const Color(0xFF6366f1).withOpacity(0.2),
             inactiveThumbColor: const Color(0xFF1a2a4e),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 16), */
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
@@ -635,25 +634,25 @@ class _MultiplePerspectivesDetailPageState
         iconColor: const Color(0xFF60a5fa),
         collapsedIconColor: const Color(0xFF60a5fa),
         children:
-        details
-            .map(
-              (item) => Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 20,
-              vertical: 12,
-            ),
-            child: Text(
-              item,
-              style: TextStyle(
-                color: Colors.grey[300],
-                fontSize: 14,
-                height: 1.6,
-                letterSpacing: 0.2,
-              ),
-            ),
-          ),
-        )
-            .toList(),
+            details
+                .map(
+                  (item) => Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    child: Text(
+                      item,
+                      style: TextStyle(
+                        color: Colors.grey[300],
+                        fontSize: 14,
+                        height: 1.6,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
       ),
     );
   }
@@ -747,21 +746,21 @@ class _MultiplePerspectivesDetailPageState
               ],
             ),
             child:
-            viewpoints.isEmpty
-                ? Center(
-              child: Text(
-                '沒有足夠資料來生成圖表。',
-                style: TextStyle(color: Colors.grey[400]),
-              ),
-            )
-                : PieChart(
-              PieChartData(
-                sections: sections,
-                sectionsSpace: 2,
-                centerSpaceRadius: 40,
-                borderData: FlBorderData(show: false),
-              ),
-            ),
+                viewpoints.isEmpty
+                    ? Center(
+                      child: Text(
+                        '沒有足夠資料來生成圖表。',
+                        style: TextStyle(color: Colors.grey[400]),
+                      ),
+                    )
+                    : PieChart(
+                      PieChartData(
+                        sections: sections,
+                        sectionsSpace: 2,
+                        centerSpaceRadius: 40,
+                        borderData: FlBorderData(show: false),
+                      ),
+                    ),
           ),
         ),
       ],
@@ -793,141 +792,117 @@ class _MultiplePerspectivesDetailPageState
   }
 
   // 復刻 EventSortingDetailPage 的留言按鈕樣式 (圓角邊框帶計數)
-  Widget _buildCommentAndRatingButton() {
-    return InkWell(
-      onTap: _navigateToCommentsPage, // 呼叫統一的導航函式
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.grey[300]!),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.chat_bubble_outline, // 模仿原版圖標
-              size: 20,
-              color: Colors.grey[600],
-            ),
-            const SizedBox(width: 8),
-            Text(
-              // 顯示實際的留言數量
-              '${_commentCount}則',
-              style: TextStyle(color: Colors.grey[600], fontSize: 14),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // 復刻 EventSortingDetailPage 的機器人按鈕樣式 (藍色圓形)
-  Widget _buildFloatingActionRobotButton() {
-    return InkWell(
-      onTap: () {
-        if (_currentUserId != null) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('點擊了聊天機器人，待實作導航')));
-        } else {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('請先登入以使用聊天機器人')));
-        }
-      },
-      child: Container(
-        width: 48,
-        height: 48,
-        decoration: const BoxDecoration(
-          color: Colors.blue,
-          shape: BoxShape.circle,
-        ),
-        child: const Icon(Icons.smart_toy, color: Colors.white, size: 24),
-      ),
-    );
-  }
-
-  // 復刻 EventSortingDetailPage 的右側動作圖標樣式
-  Widget _buildActionIcon({
-    required IconData icon,
-    required String label, // 雖然不用 label，但保留簽名
-    required VoidCallback onTap,
-    required Color iconColor,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(12), // 模仿原版右側按鈕的 padding
-        child: Icon(icon, color: iconColor, size: 24),
-      ),
-    );
-  }
-
-  // 復刻 EventSortingDetailPage 的底部操作欄
+  // ViewNewsContent 風格的底部操作欄
   Widget _buildBottomActions() {
     return Container(
-      // 復刻原版 BAR 的 padding, 裝飾 (背景色與陰影)
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF1a2a4e), // 星空深藍卡片
+        border: Border(
+          top: BorderSide(color: const Color(0xFF6366f1), width: 1),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.4),
-            spreadRadius: 1,
-            blurRadius: 3,
-            offset: const Offset(0, -1),
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
           ),
         ],
       ),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          // 1. 留言/評分按鈕 (圓角邊框帶計數樣式)
-          _buildCommentAndRatingButton(),
+          // 留言按鈕
+          _buildBottomButton(
+            icon: Icons.comment,
+            label: '$_commentCount',
+            onTap: _navigateToCommentsPage,
+          ),
 
-          const Spacer(), // 分隔留言按鈕和聊天機器人按鈕
-          // 2. 機器人圖示 (圓形藍色樣式)
-          _buildFloatingActionRobotButton(),
+          // 機器人按鈕 - 已註解
+          /* _buildBottomButton(
+            icon: Icons.smart_toy,
+            label: 'AI',
+            onTap: () {
+              if (_currentUserId != null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('點擊了聊天機器人，待實作導航')),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('請先登入以使用聊天機器人')),
+                );
+              }
+            },
+          ), */
 
-          const Spacer(), // 分隔機器人按鈕和右側按鈕組
-          // 3. 右側按鈕組 (收藏與分享)
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 收藏按鈕
-              _buildActionIcon(
-                icon:
-                isFavorite
-                    ? Icons.bookmark
-                    : Icons.bookmark_outline, // 根據狀態切換圖標
-                label: '收藏',
-                iconColor: isFavorite ? Colors.blue : Colors.grey.shade600!,
-                onTap: () {
-                  if (_currentUserId != null) {
-                    // _insertUserAction 會自動切換 isFavorite 狀態並顯示 Snackbar
-                    _insertUserAction('bookmark', 'multipleperspectives');
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('請先登入以使用收藏功能')),
-                    );
-                  }
-                },
-              ),
+          // 收藏按鈕
+          _buildBottomButton(
+            icon: isFavorite ? Icons.bookmark : Icons.bookmark_border,
+            label: '收藏',
+            onTap: () {
+              if (_currentUserId != null) {
+                _insertUserAction('bookmark', 'multipleperspectives');
+              } else {
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('請先登入以使用收藏功能')));
+              }
+            },
+          ),
 
-              // ✅ 修改：分享按鈕 - 調用實際分享功能
-              _buildActionIcon(
-                icon: Icons.share_outlined,
-                label: '分享',
-                iconColor: Colors.grey.shade600!,
-                onTap: () {
-                  _insertUserAction('share', 'multipleperspectives');
-                  _handleShareTap(); // ✅ 調用實際分享功能
-                },
-              ),
-            ],
+          // 分享按鈕
+          _buildBottomButton(
+            icon: Icons.share,
+            label: '分享',
+            onTap: () {
+              _insertUserAction('share', 'multipleperspectives');
+              _handleShareTap();
+            },
           ),
         ],
+      ),
+    );
+  }
+
+  // ViewNewsContent 風格的底部按鈕
+  Widget _buildBottomButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF2a3a5e), // 深藍背景
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFF6366f1), width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 24, color: const Color(0xFF60a5fa)),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFFd1d5db),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
