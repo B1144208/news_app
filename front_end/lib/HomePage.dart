@@ -4,7 +4,10 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
 import 'dart:typed_data';
+import 'dart:io';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:crypto/crypto.dart';
 import 'config.dart';
 import 'LoginPage.dart';
 import 'AdminPage.dart';
@@ -93,13 +96,13 @@ class _HomePageState extends State<HomePage> {
   ];
   int _currentParagraphIndex = 0; // 當前播放的文章索引
 
-  // 儲存已生成的 MP3 快取（避免重複生成）
-  final Map<int, String> _audioCache = {};
+  // 不再使用記憶體快取 Map，改用檔案系統快取
   @override
   void initState() {
     super.initState();
     _fetchCategories(); // 先載入分類
     _scrollController.addListener(_onScroll); // 新增:監聽滾動事件
+    _cleanExpiredCache(); // 新增：清理過期快取
 
     // 監聽音訊播放完成事件
     _audioPlayer.onPlayerComplete.listen((event) {
@@ -806,7 +809,7 @@ class _HomePageState extends State<HomePage> {
     await _playCurrentParagraph();
   }
 
-  // 播放當前文章 - 檢查快取或生成 TTS
+  // 播放當前文章 - 使用檔案系統快取
   Future<void> _playCurrentParagraph() async {
     if (_currentParagraphIndex >= paragraphCount) {
       // 所有文章播放完畢
@@ -819,25 +822,19 @@ class _HomePageState extends State<HomePage> {
 
       print('🎵 準備播放第 ${_currentParagraphIndex + 1} 篇');
 
-      // 檢查是否已有快取的音訊
-      if (_audioCache.containsKey(_currentParagraphIndex)) {
-        // 使用快取的 data URL
-        String cachedAudioUrl = _audioCache[_currentParagraphIndex]!;
-        print('✅ 使用快取音訊');
+      // ========== 改用檔案系統快取 ==========
+      final cacheKey = 'quickplay_${_currentParagraphIndex}';
 
-        await _audioPlayer.stop();
-        await _audioPlayer.setPlaybackRate(_playbackSpeed);
-        await _audioPlayer.play(UrlSource(cachedAudioUrl));
+      // 1. 檢查本地快取
+      final cachedAudioPath = await _getCachedAudio(cacheKey);
 
-        setState(() {
-          _isPlaying = true;
-        });
-
-        print('🎵 正在播放第 ${_currentParagraphIndex + 1} 篇文章');
+      if (cachedAudioPath != null) {
+        print('✅ 使用快取音訊: $cachedAudioPath');
+        await _playAudioFromFile(cachedAudioPath);
         return;
       }
 
-      // 沒有快取，呼叫 TTS API 生成音訊
+      // 2. 快取不存在，呼叫 TTS API 生成音訊
       print('🔄 生成 TTS 音訊...');
 
       final response = await http.post(
@@ -857,29 +854,12 @@ class _HomePageState extends State<HomePage> {
 
         print('✅ 收到音訊數據: ${bytes.length} bytes');
 
-        // 停止當前播放
-        await _audioPlayer.stop();
+        // 3. 儲存到快取
+        final savedPath = await _saveAudioToCache(cacheKey, bytes);
+        print('💾 已儲存快取: $savedPath');
 
-        // 轉換為 base64 data URL
-        final String base64Audio = base64Encode(bytes);
-        final String dataUrl = 'data:audio/mpeg;base64,$base64Audio';
-
-        // 儲存到快取
-        _audioCache[_currentParagraphIndex] = dataUrl;
-
-        print('💾 音訊已快取');
-
-        // 設定播放速度
-        await _audioPlayer.setPlaybackRate(_playbackSpeed);
-
-        // 使用 UrlSource 播放 data URL
-        await _audioPlayer.play(UrlSource(dataUrl));
-
-        setState(() {
-          _isPlaying = true;
-        });
-
-        print('🎵 正在播放第 ${_currentParagraphIndex + 1} 篇文章');
+        // 4. 播放音訊
+        await _playAudioFromFile(savedPath);
       } else {
         print('❌ TTS API 錯誤: ${response.statusCode}');
         if (mounted) {
@@ -963,6 +943,114 @@ class _HomePageState extends State<HomePage> {
 
     // 更新 AudioPlayer 的播放速度
     await _audioPlayer.setPlaybackRate(_playbackSpeed);
+  }
+
+  // ========== 新增：取得快取目錄路徑 ==========
+  Future<String> _getCacheDirectory() async {
+    final directory = await getApplicationDocumentsDirectory();
+    final cacheDir = Directory('${directory.path}/tts_cache');
+
+    // 確保快取目錄存在
+    if (!await cacheDir.exists()) {
+      await cacheDir.create(recursive: true);
+    }
+
+    return cacheDir.path;
+  }
+
+  // ========== 新增：檢查快取是否存在且未過期 ==========
+  Future<String?> _getCachedAudio(String cacheKey) async {
+    try {
+      final cachePath = await _getCacheDirectory();
+      final file = File('$cachePath/$cacheKey.mp3');
+
+      // 檢查檔案是否存在
+      if (!await file.exists()) {
+        return null;
+      }
+
+      // 檢查檔案是否過期(7天)
+      final fileStat = await file.stat();
+      final now = DateTime.now();
+      final difference = now.difference(fileStat.modified);
+
+      if (difference.inDays > 7) {
+        print('⏰ 快取已過期: $cacheKey (${difference.inDays}天前)');
+        await file.delete();
+        return null;
+      }
+
+      print('✅ 找到有效快取: $cacheKey (${difference.inDays}天前)');
+      return file.path;
+    } catch (e) {
+      print('❌ 檢查快取失敗: $e');
+      return null;
+    }
+  }
+
+  // ========== 新增：儲存音訊到快取 ==========
+  Future<String> _saveAudioToCache(
+      String cacheKey,
+      Uint8List audioBytes,
+      ) async {
+    final cachePath = await _getCacheDirectory();
+    final file = File('$cachePath/$cacheKey.mp3');
+
+    await file.writeAsBytes(audioBytes);
+
+    return file.path;
+  }
+
+  // ========== 新增：從檔案播放音訊 ==========
+  Future<void> _playAudioFromFile(String filePath) async {
+    await _audioPlayer.stop();
+    await _audioPlayer.setPlaybackRate(_playbackSpeed);
+
+    // 使用 DeviceFileSource 播放本地檔案
+    await _audioPlayer.play(DeviceFileSource(filePath));
+
+    if (!mounted) return;
+    setState(() {
+      _isPlaying = true;
+    });
+
+    print('🎵 正在播放第 ${_currentParagraphIndex + 1} 篇文章');
+  }
+
+  // ========== 新增：清理過期快取(啟動時執行) ==========
+  Future<void> _cleanExpiredCache() async {
+    try {
+      final cachePath = await _getCacheDirectory();
+      final cacheDir = Directory(cachePath);
+
+      if (!await cacheDir.exists()) {
+        return;
+      }
+
+      final now = DateTime.now();
+      int deletedCount = 0;
+
+      // 遍歷所有快取檔案
+      await for (var entity in cacheDir.list()) {
+        if (entity is File && entity.path.endsWith('.mp3')) {
+          final fileStat = await entity.stat();
+          final difference = now.difference(fileStat.modified);
+
+          // 刪除超過7天的檔案
+          if (difference.inDays > 7) {
+            await entity.delete();
+            deletedCount++;
+            print('🗑️ 已刪除過期快取: ${entity.path.split('/').last}');
+          }
+        }
+      }
+
+      if (deletedCount > 0) {
+        print('✅ 清理完成: 刪除了 $deletedCount 個過期快取檔案');
+      }
+    } catch (e) {
+      print('❌ 清理快取失敗: $e');
+    }
   }
 
   // 關閉播放器
@@ -2278,8 +2366,8 @@ class _HomePageState extends State<HomePage> {
                     child: Text(
                       '${_playbackSpeed}x',
                       style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.white,
+                        fontSize: 12,
+                        color: Colors.white,
                       ),
                     ),
                   ),
